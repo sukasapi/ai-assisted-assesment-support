@@ -1,0 +1,439 @@
+<!DOCTYPE html>
+
+<html lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>AIS-ANALYZER | Log AI</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;600;700;800&amp;family=Hanken+Grotesk:wght@400;600;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<style>
+    .material-symbols-outlined {
+      font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+    }
+    .accent-gradient {
+      background: linear-gradient(135deg, #0058be 0%, #2170e4 100%);
+    }
+    .glass-card {
+      background: rgba(255, 255, 255, 0.8);
+      backdrop-filter: blur(12px);
+      border: 1px solid rgba(194, 198, 214, 0.3);
+    }
+  </style>
+<script id="tailwind-config">
+    tailwind.config = {
+      darkMode: "class",
+      theme: {
+        extend: {
+          "colors": {
+            "on-error": "#ffffff",
+            "on-background": "#191b23",
+            "surface-container-low": "#f2f3fd",
+            "on-primary-fixed-variant": "#004395",
+            "surface-container-highest": "#e1e2ec",
+            "primary": "#0058be",
+            "on-secondary-fixed": "#131b2e",
+            "on-primary-fixed": "#001a42",
+            "tertiary": "#924700",
+            "surface-container": "#ecedf7",
+            "on-tertiary-fixed-variant": "#723600",
+            "on-secondary-fixed-variant": "#3f465c",
+            "inverse-surface": "#2e3038",
+            "background": "#f9f9ff",
+            "inverse-on-surface": "#eff0fa",
+            "tertiary-fixed-dim": "#ffb786",
+            "surface": "#f9f9ff",
+            "primary-container": "#2170e4",
+            "on-secondary-container": "#5c647a",
+            "surface-container-high": "#e6e7f2",
+            "error": "#ba1a1a",
+            "primary-fixed": "#d8e2ff",
+            "surface-bright": "#f9f9ff",
+            "secondary-fixed": "#dae2fd",
+            "on-surface": "#191b23",
+            "on-error-container": "#93000a",
+            "secondary-fixed-dim": "#bec6e0",
+            "on-primary-container": "#fefcff",
+            "on-tertiary-container": "#fffbff",
+            "on-tertiary-fixed": "#311400",
+            "surface-variant": "#e1e2ec",
+            "surface-container-lowest": "#ffffff",
+            "on-tertiary": "#ffffff",
+            "on-surface-variant": "#424754",
+            "tertiary-container": "#b75b00",
+            "surface-tint": "#005ac2",
+            "outline": "#727785",
+            "tertiary-fixed": "#ffdcc6",
+            "outline-variant": "#c2c6d6",
+            "inverse-primary": "#adc6ff",
+            "primary-fixed-dim": "#adc6ff",
+            "surface-dim": "#d8d9e3",
+            "secondary": "#565e74",
+            "on-primary": "#ffffff",
+            "error-container": "#ffdad6",
+            "secondary-container": "#dae2fd",
+            "on-secondary": "#ffffff"
+          },
+          "borderRadius": {
+            "DEFAULT": "0.25rem",
+            "lg": "0.5rem",
+            "xl": "0.75rem",
+            "full": "9999px"
+          },
+          "spacing": {
+            "stack-lg": "32px",
+            "margin-mobile": "16px",
+            "gutter": "24px",
+            "margin-desktop": "40px",
+            "stack-md": "16px",
+            "base": "4px",
+            "stack-sm": "8px",
+            "container-max": "1280px"
+          },
+          "fontFamily": {
+            "headline-lg": ["Plus Jakarta Sans"],
+            "headline-md": ["Plus Jakarta Sans"],
+            "body-lg": ["Hanken Grotesk"],
+            "body-md": ["Hanken Grotesk"],
+            "label-md": ["Hanken Grotesk"]
+          }
+        }
+      }
+    }
+  </script>
+</head>
+<body class="bg-background text-on-surface font-body-md">
+<!-- Side Navigation Shell -->
+<aside class="fixed left-0 top-0 h-screen w-64 flex flex-col border-r border-outline-variant bg-surface-container-low z-40 shadow-md">
+<div class="p-6">
+<div class="flex items-center gap-3">
+<div class="w-10 h-10 rounded-lg accent-gradient flex items-center justify-center text-white">
+<span class="material-symbols-outlined">analytics</span>
+</div>
+<div>
+<h1 class="font-headline-md text-headline-md font-bold text-primary">AIS-ANALYZER</h1>
+<p class="text-xs text-on-surface-variant">Enterprise Analysis</p>
+</div>
+</div>
+</div>
+<nav class="flex-1 px-4 space-y-1">
+<a class="flex items-center gap-3 px-4 py-3 text-on-surface-variant hover:bg-surface-container-high transition-colors rounded-lg" href="#">
+<span class="material-symbols-outlined">dashboard</span>
+<span class="font-label-md">Dashboard</span>
+</a>
+<a class="flex items-center gap-3 px-4 py-3 text-on-surface-variant hover:bg-surface-container-high transition-colors rounded-lg" href="#">
+<span class="material-symbols-outlined">database</span>
+<span class="font-label-md">Data Management</span>
+</a>
+<a class="flex items-center gap-3 px-4 py-3 text-on-surface-variant hover:bg-surface-container-high transition-colors rounded-lg" href="#">
+<span class="material-symbols-outlined">insights</span>
+<span class="font-label-md">Vessel Analytics</span>
+</a>
+<a class="flex items-center gap-3 px-4 py-3 bg-secondary-container text-on-secondary-container rounded-lg font-semibold" href="#">
+<span class="material-symbols-outlined">assessment</span>
+<span class="font-label-md">Reporting</span>
+</a>
+<a class="flex items-center gap-3 px-4 py-3 text-on-surface-variant hover:bg-surface-container-high transition-colors rounded-lg" href="#">
+<span class="material-symbols-outlined">map</span>
+<span class="font-label-md">Geospatial</span>
+</a>
+</nav>
+<div class="p-4 mt-auto border-t border-outline-variant">
+<button class="w-full flex items-center justify-center gap-2 accent-gradient text-white py-3 rounded-xl font-bold shadow-lg hover:opacity-90 transition-opacity">
+<span class="material-symbols-outlined">sensors</span>
+        Live Tracking
+      </button>
+<div class="mt-4 space-y-1">
+<a class="flex items-center gap-3 px-4 py-2 text-on-surface-variant hover:bg-surface-container-high transition-colors rounded-lg" href="#">
+<span class="material-symbols-outlined">settings</span>
+<span class="text-sm">Settings</span>
+</a>
+<a class="flex items-center gap-3 px-4 py-2 text-on-surface-variant hover:bg-surface-container-high transition-colors rounded-lg" href="#">
+<span class="material-symbols-outlined">help</span>
+<span class="text-sm">Support</span>
+</a>
+</div>
+</div>
+</aside>
+<!-- Main Content Area -->
+<main class="ml-64 min-h-screen">
+<!-- Top Bar -->
+<header class="sticky top-0 z-30 flex justify-between items-center w-full px-margin-desktop py-4 border-b border-outline-variant bg-surface/80 backdrop-blur-md shadow-sm">
+<div class="flex items-center gap-6">
+<div class="relative group">
+<span class="absolute inset-y-0 left-3 flex items-center text-on-surface-variant">
+<span class="material-symbols-outlined">search</span>
+</span>
+<input class="pl-10 pr-4 py-2 rounded-full border border-outline-variant bg-surface-container-lowest focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none transition-all w-64" placeholder="Cari log analisis..." type="text"/>
+</div>
+<nav class="hidden md:flex gap-6">
+<a class="text-on-surface-variant hover:text-primary font-label-md transition-colors" href="#">Overview</a>
+<a class="text-primary border-b-2 border-primary pb-1 font-bold font-label-md" href="#">History</a>
+<a class="text-on-surface-variant hover:text-primary font-label-md transition-colors" href="#">Maintenance</a>
+</nav>
+</div>
+<div class="flex items-center gap-4">
+<button class="px-6 py-2 bg-primary text-white rounded-full font-bold text-sm shadow-md hover:scale-105 active:scale-95 transition-all">
+          Export Data
+        </button>
+<div class="flex gap-2">
+<button class="p-2 text-on-surface-variant hover:bg-surface-container-high rounded-full transition-colors relative">
+<span class="material-symbols-outlined">notifications</span>
+<span class="absolute top-2 right-2 w-2 h-2 bg-error rounded-full border-2 border-surface"></span>
+</button>
+<button class="p-2 text-on-surface-variant hover:bg-surface-container-high rounded-full transition-colors">
+<span class="material-symbols-outlined">account_circle</span>
+</button>
+</div>
+</div>
+</header>
+<!-- Page Content -->
+<div class="px-margin-desktop py-stack-lg max-w-container-max mx-auto">
+<!-- Page Header & Stats -->
+<div class="flex flex-col md:flex-row md:items-end justify-between mb-8 gap-4">
+<div>
+<h2 class="font-headline-lg text-headline-lg text-on-background">Log AI &amp; Analisis Mesin</h2>
+<p class="text-on-surface-variant mt-2 font-body-lg">Pantau performa dan hasil pemrosesan data AIS secara real-time.</p>
+</div>
+<div class="flex gap-4">
+<div class="bg-surface-container-low p-4 rounded-xl border border-outline-variant flex items-center gap-4 min-w-[160px]">
+<div class="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center text-primary">
+<span class="material-symbols-outlined">check_circle</span>
+</div>
+<div>
+<p class="text-xs font-bold text-on-surface-variant uppercase tracking-wider">Berhasil</p>
+<p class="text-2xl font-bold">1,284</p>
+</div>
+</div>
+<div class="bg-surface-container-low p-4 rounded-xl border border-outline-variant flex items-center gap-4 min-w-[160px]">
+<div class="w-10 h-10 rounded-full bg-error/10 flex items-center justify-center text-error">
+<span class="material-symbols-outlined">error</span>
+</div>
+<div>
+<p class="text-xs font-bold text-on-surface-variant uppercase tracking-wider">Gagal</p>
+<p class="text-2xl font-bold">12</p>
+</div>
+</div>
+</div>
+</div>
+<!-- Filters Section -->
+<div class="glass-card p-6 rounded-2xl mb-8 flex flex-wrap items-center gap-4">
+<div class="flex items-center gap-2">
+<span class="material-symbols-outlined text-on-surface-variant">filter_list</span>
+<span class="font-bold text-sm">Filter:</span>
+</div>
+<select class="rounded-lg border-outline-variant bg-surface font-label-md py-2 px-4 focus:ring-primary focus:border-primary">
+<option>Semua Status</option>
+<option>Berhasil</option>
+<option>Berproses</option>
+<option>Gagal</option>
+</select>
+<select class="rounded-lg border-outline-variant bg-surface font-label-md py-2 px-4 focus:ring-primary focus:border-primary">
+<option>7 Hari Terakhir</option>
+<option>24 Jam Terakhir</option>
+<option>30 Hari Terakhir</option>
+<option>Kustom Rentang</option>
+</select>
+<div class="flex-1"></div>
+<button class="flex items-center gap-2 px-4 py-2 text-on-surface-variant hover:text-primary font-bold transition-colors">
+<span class="material-symbols-outlined text-sm">refresh</span>
+          Muat Ulang
+        </button>
+</div>
+<!-- Log Table Layout -->
+<div class="bg-surface-container-lowest rounded-2xl border border-outline-variant overflow-hidden shadow-md">
+<table class="w-full text-left border-collapse">
+<thead>
+<tr class="bg-surface-container-high border-b border-outline-variant">
+<th class="px-6 py-4 font-bold text-sm uppercase tracking-wider text-on-surface-variant">Waktu Analisis</th>
+<th class="px-6 py-4 font-bold text-sm uppercase tracking-wider text-on-surface-variant">Nama Peserta / Vessel</th>
+<th class="px-6 py-4 font-bold text-sm uppercase tracking-wider text-on-surface-variant">Status</th>
+<th class="px-6 py-4 font-bold text-sm uppercase tracking-wider text-on-surface-variant">Durasi</th>
+<th class="px-6 py-4 font-bold text-sm uppercase tracking-wider text-on-surface-variant text-right">Aksi</th>
+</tr>
+</thead>
+<tbody class="divide-y divide-outline-variant">
+<!-- Row 1: Berhasil -->
+<tr class="hover:bg-primary/5 transition-colors group">
+<td class="px-6 py-5">
+<div class="flex flex-col">
+<span class="font-bold">24 Okt 2023</span>
+<span class="text-xs text-on-surface-variant">14:22:10 WIB</span>
+</div>
+</td>
+<td class="px-6 py-5">
+<div class="flex items-center gap-3">
+<img alt="Avatar" class="w-8 h-8 rounded-full object-cover" data-alt="A professional headshot of a female logistics manager in a bright, modern office environment. She is smiling confidently, wearing a navy blue blazer. The lighting is soft and natural, emphasizing a high-end corporate tech aesthetic with a clean, blurred background featuring digital screens showing global shipping routes." src="https://lh3.googleusercontent.com/aida-public/AB6AXuAptPBw94oP4-1icWE5RjN1HjpT2Q6fIKFaZWrr4LPXfwt7XMA5kTtILALVD4Qix1DoFyu3_zHz7HDjpdMH5P-dv1Y6smF4cjDTaw9AwgiSs4Tk7YYmZb9EII0uRIsYin6zHY4y-BLEvLSxpILs13o9yZUenFjmvVV7WTKzOiyvGdEx9D2ogjlHJcc0HN7f4_syrq-9pZugqD-1wd6dAZQAI1w8NY7_IoCUE7JyPF-2ticXcRxJgc4REbJ-qT40st54pIBU9TyOHh8"/>
+<div class="flex flex-col">
+<span class="font-bold">Ocean Voyager X</span>
+<span class="text-xs text-on-surface-variant">ID: VES-99210</span>
+</div>
+</div>
+</td>
+<td class="px-6 py-5">
+<span class="px-3 py-1 rounded-full text-xs font-bold bg-green-100 text-green-700 flex items-center gap-1 w-fit">
+<span class="material-symbols-outlined text-sm" style="font-variation-settings: 'FILL' 1;">check_circle</span>
+                  Berhasil
+                </span>
+</td>
+<td class="px-6 py-5 font-medium text-on-surface-variant">1.4s</td>
+<td class="px-6 py-5 text-right">
+<button class="p-2 rounded-full hover:bg-primary/10 text-primary transition-all">
+<span class="material-symbols-outlined">expand_more</span>
+</button>
+</td>
+</tr>
+<!-- Expanded Details Mockup -->
+<tr class="bg-surface-container">
+<td class="px-6 py-6" colspan="5">
+<div class="flex gap-8 items-start">
+<div class="flex-1 space-y-3">
+<h4 class="font-bold text-primary flex items-center gap-2">
+<span class="material-symbols-outlined">smart_toy</span>
+                      Rekomendasi AI
+                    </h4>
+<p class="text-sm leading-relaxed text-on-surface">
+                      Berdasarkan pola pergerakan terakhir, kapal menunjukkan anomali kecepatan rendah di koordinat <span class="font-bold">4.21S / 106.84E</span>. Direkomendasikan untuk melakukan inspeksi bahan bakar jarak jauh dan pemantauan radar intensif selama 12 jam ke depan.
+                    </p>
+<div class="flex gap-2 pt-2">
+<span class="px-2 py-1 bg-surface-container-highest rounded text-[10px] font-bold uppercase tracking-tight">Anomali Terdeteksi</span>
+<span class="px-2 py-1 bg-surface-container-highest rounded text-[10px] font-bold uppercase tracking-tight">Prioritas Menengah</span>
+</div>
+</div>
+<div class="w-64">
+<div class="bg-white p-3 rounded-xl border border-outline-variant shadow-sm">
+<div class="h-32 rounded-lg mb-2 relative overflow-hidden bg-surface-dim">
+<img alt="Map View" class="w-full h-full object-cover opacity-60" data-alt="A high-tech digital map showing maritime routes across the ocean. The map is rendered in dark blues and cyans with glowing light-blue lines indicating vessel paths. Data points and small geometric icons represent ships, with one highlighted in vibrant orange to indicate an alert. The style is sleek, futuristic, and data-driven." src="https://lh3.googleusercontent.com/aida-public/AB6AXuCAmadea2B9BlAYxtjJzTwP_j5VWFjtIOPZZFb7X6IkWPMYwtAszC3ot66F2w77XPeQVO0i7Eze8eOUXjs72Nfzuv4XiArWjr5UtnO2dW-gdiRjUCmfyKn3NELDugk9WEW3yOhwJXEf4PDuiOg7kpWjE3IzlbQyf7Y4QDSpRImDA3ckyPFEvZk7dIMik9B8qddsWZcyI-KIwC8ad6ZM6XlNx8AwEktGizt-1iVOIaZMd8Jz1U3Czr1XQsxfaEWkzn8v6083k8nlgy4"/>
+<div class="absolute inset-0 flex items-center justify-center">
+<span class="material-symbols-outlined text-primary text-3xl">location_on</span>
+</div>
+</div>
+<p class="text-[10px] font-bold text-on-surface-variant uppercase text-center">Visualisasi Geospasial</p>
+</div>
+</div>
+</div>
+</td>
+</tr>
+<!-- Row 2: Berproses -->
+<tr class="hover:bg-primary/5 transition-colors group">
+<td class="px-6 py-5">
+<div class="flex flex-col">
+<span class="font-bold">24 Okt 2023</span>
+<span class="text-xs text-on-surface-variant">14:20:05 WIB</span>
+</div>
+</td>
+<td class="px-6 py-5">
+<div class="flex items-center gap-3">
+<img alt="Avatar" class="w-8 h-8 rounded-full object-cover" data-alt="A detailed portrait of a male technology expert with glasses, looking thoughtfully at a screen off-camera. The lighting is cool-toned, reflecting the glow of a computer monitor. The background is a sophisticated tech lab with blurred server racks and cable management, conveying an atmosphere of deep technical expertise and focus." src="https://lh3.googleusercontent.com/aida-public/AB6AXuBoQUII23cjnXBh9DPAfblY4oBjtS5rNj7OCku1_6A3XuFUV2I31tHIQ_2efUtQjkcKdG0j3cJhV3VlqVWsvqSJwAPYCeqHLTz0LYNnbarsaF0FRGjt8JpR_Hf_WglNIKMGIZzrdQeyIyrf7EP5EDuRLnpjyDFluGFoGjr3QOljEEj9OibpECL9iuXrpu5VW-k7LeQP-HbSlH0kI-1jDvKI1BlSuGWYQ-ml3sKAeYmZaXZgtSPm2HJDJAJ72jo2vYc5KPVyHl7hvEc"/>
+<div class="flex flex-col">
+<span class="font-bold">Beryl Container</span>
+<span class="text-xs text-on-surface-variant">ID: VES-88123</span>
+</div>
+</div>
+</td>
+<td class="px-6 py-5">
+<span class="px-3 py-1 rounded-full text-xs font-bold bg-primary/10 text-primary flex items-center gap-2 w-fit">
+<svg class="animate-spin h-3 w-3 text-primary" fill="none" viewbox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+<circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+<path class="opacity-75" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" fill="currentColor"></path>
+</svg>
+                  Berproses
+                </span>
+</td>
+<td class="px-6 py-5 font-medium text-on-surface-variant">8.2s...</td>
+<td class="px-6 py-5 text-right">
+<button class="p-2 rounded-full hover:bg-primary/10 text-on-surface-variant transition-all">
+<span class="material-symbols-outlined">expand_more</span>
+</button>
+</td>
+</tr>
+<!-- Row 3: Gagal -->
+<tr class="hover:bg-primary/5 transition-colors group">
+<td class="px-6 py-5">
+<div class="flex flex-col">
+<span class="font-bold">24 Okt 2023</span>
+<span class="text-xs text-on-surface-variant">14:15:44 WIB</span>
+</div>
+</td>
+<td class="px-6 py-5">
+<div class="flex items-center gap-3">
+<div class="w-8 h-8 rounded-full bg-surface-container-highest flex items-center justify-center text-on-surface-variant">
+<span class="material-symbols-outlined text-sm">question_mark</span>
+</div>
+<div class="flex flex-col">
+<span class="font-bold">Unknown Signal</span>
+<span class="text-xs text-on-surface-variant">ID: ERR-40404</span>
+</div>
+</div>
+</td>
+<td class="px-6 py-5">
+<span class="px-3 py-1 rounded-full text-xs font-bold bg-error/10 text-error flex items-center gap-1 w-fit">
+<span class="material-symbols-outlined text-sm" style="font-variation-settings: 'FILL' 1;">error</span>
+                  Gagal
+                </span>
+</td>
+<td class="px-6 py-5 font-medium text-on-surface-variant">0.3s</td>
+<td class="px-6 py-5 text-right">
+<button class="p-2 rounded-full hover:bg-primary/10 text-on-surface-variant transition-all">
+<span class="material-symbols-outlined">expand_more</span>
+</button>
+</td>
+</tr>
+<!-- Row 4: Berhasil -->
+<tr class="hover:bg-primary/5 transition-colors group">
+<td class="px-6 py-5">
+<div class="flex flex-col">
+<span class="font-bold">24 Okt 2023</span>
+<span class="text-xs text-on-surface-variant">13:55:12 WIB</span>
+</div>
+</td>
+<td class="px-6 py-5">
+<div class="flex items-center gap-3">
+<img alt="Avatar" class="w-8 h-8 rounded-full object-cover" data-alt="A close-up portrait of a male data analyst in a sleek, minimalist workplace. He is wearing a crisp white shirt and looking directly at the camera with a calm, intelligent expression. The background is a clean, bright space with subtle hints of technology like a thin-bezel monitor showing complex data charts in primary blues and whites." src="https://lh3.googleusercontent.com/aida-public/AB6AXuCUiJSgmYndfvZQyg-QN3Ci8qgEyQbisn1bIaUZ0x11HJ5ttFt7IKSE-MNkxlyQr0hCdrRyxxQT2dJRqTzQJKqPJFiC1BaGDUWqWz5sb2Im7ssnOfbUM1mC8XyFlkYFUGXCNoKnsxDgiCaBJZyNdluSY6pZxAHDrQTdmyK-BIIEHEQV1PKQ5eqclmsZKdBtRKP75s3ztYnocT0TFud9J2DysnhA7I1P1KKy7kMw00Rh_40FURY6gvdpgUsOhQ5KIq3dklsCU19Wsmw"/>
+<div class="flex flex-col">
+<span class="font-bold">Evergreen G12</span>
+<span class="text-xs text-on-surface-variant">ID: VES-12003</span>
+</div>
+</div>
+</td>
+<td class="px-6 py-5">
+<span class="px-3 py-1 rounded-full text-xs font-bold bg-green-100 text-green-700 flex items-center gap-1 w-fit">
+<span class="material-symbols-outlined text-sm" style="font-variation-settings: 'FILL' 1;">check_circle</span>
+                  Berhasil
+                </span>
+</td>
+<td class="px-6 py-5 font-medium text-on-surface-variant">2.1s</td>
+<td class="px-6 py-5 text-right">
+<button class="p-2 rounded-full hover:bg-primary/10 text-on-surface-variant transition-all">
+<span class="material-symbols-outlined">expand_more</span>
+</button>
+</td>
+</tr>
+</tbody>
+</table>
+<!-- Pagination -->
+<div class="px-6 py-4 bg-surface-container-low flex items-center justify-between">
+<p class="text-sm text-on-surface-variant font-medium">Menampilkan 1-10 dari 1,296 log</p>
+<div class="flex items-center gap-2">
+<button class="w-8 h-8 flex items-center justify-center rounded-lg border border-outline-variant hover:bg-surface-container-high text-on-surface-variant disabled:opacity-50" disabled="">
+<span class="material-symbols-outlined">chevron_left</span>
+</button>
+<button class="w-8 h-8 flex items-center justify-center rounded-lg bg-primary text-white font-bold text-sm">1</button>
+<button class="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-surface-container-high font-bold text-sm">2</button>
+<button class="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-surface-container-high font-bold text-sm">3</button>
+<span class="text-on-surface-variant px-1">...</span>
+<button class="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-surface-container-high font-bold text-sm">130</button>
+<button class="w-8 h-8 flex items-center justify-center rounded-lg border border-outline-variant hover:bg-surface-container-high text-on-surface-variant">
+<span class="material-symbols-outlined">chevron_right</span>
+</button>
+</div>
+</div>
+</div>
+</div>
+</main>
+<!-- Contextual FAB (Suppressed for this list view according to mandate, but kept in code as reference if needed elsewhere) -->
+<!-- <button class="fixed bottom-8 right-8 w-14 h-14 rounded-full accent-gradient text-white shadow-2xl flex items-center justify-center hover:scale-110 active:scale-95 transition-all z-50">
+    <span class="material-symbols-outlined">add</span>
+  </button> -->
+</body></html>

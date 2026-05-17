@@ -2,475 +2,490 @@
 
 @section('title', 'Detail asesmen — ' . config('app.name'))
 
-@section('content')
-    <div class="mb-6">
-        <a href="{{ route('asesmen.index') }}" class="text-sm text-zinc-600 hover:text-zinc-900">&larr; Kembali</a>
-        <h1 class="mt-2 text-2xl font-semibold text-zinc-900">Asesmen: {{ $asesmen->participant?->nama_lengkap ?? 'Peserta' }}</h1>
-        <p class="mt-1 text-sm text-zinc-600">
-            Matriks <strong>{{ $asesmen->matrixVersion?->kode_versi }}</strong>
-            · Tujuan:
-            @if ($asesmen->tujuan?->value === 'promosi') Promosi @else Pemetaan talenta @endif
-            @if ($asesmen->tanpa_intray)
-                <span class="rounded bg-amber-100 px-1.5 py-0.5 text-amber-900">Tanpa INTRAY</span>
-            @endif
-        </p>
-    </div>
+@section('topbar_back')
+    <a href="{{ route('asesmen.index') }}" class="inline-flex items-center gap-2 font-section-header text-section-header text-on-surface-variant transition-colors hover:text-primary">
+        <span class="material-symbols-outlined">arrow_back</span>
+        Kembali ke Daftar
+    </a>
+@endsection
 
+@section('content')
     @php
         $metodeBukti = $asesmen->metode_koleksi_bukti;
         $punyaAlatTersediaInput = $alatTersediaInput->isNotEmpty();
-        $statusAsesmenLabel = match($asesmen->status?->value) {
-            'selesai_final' => 'Selesai final',
-            'terintegrasi' => 'Terintegrasi',
-            'berlangsung' => 'Berlangsung',
-            default => 'Draf',
+        $statusAsesmen = $asesmen->status?->value ?? 'draf';
+        $isFinal = $statusAsesmen === 'selesai_final';
+        $isDraft = ! $isFinal;
+        $jumlahAlatAktif = $pemilihanAlatPreset->where('aktif', true)->count();
+        $cakupanLengkap = $ringkasanFinalisasi['total_kompetensi_kurang'] === 0 && $ringkasanFinalisasi['total_wajib'] > 0;
+        $matrixLabel = trim(($asesmen->matrixVersion?->nama_versi ?: $asesmen->matrixVersion?->kode_versi) ?? '—');
+        $idAsesmenLabel = '#ASM-' . str_pad((string) $asesmen->id, 4, '0', STR_PAD_LEFT);
+
+        $ikonAlat = function (?string $kode): string {
+            return match (strtoupper((string) $kode)) {
+                'LGD' => 'groups',
+                'BEI' => 'forum',
+                'PA', 'PRESENTATION', 'PRES' => 'present_to_all',
+                default => 'assignment',
+            };
+        };
+
+        $labelStatusBukti = fn (string $s): string => match ($s) {
+            'terisi' => 'Terisi',
+            'belum_lengkap' => 'Belum Lengkap',
+            default => 'Kosong',
+        };
+
+        $ikonStatusBukti = fn (string $s): string => match ($s) {
+            'terisi' => 'check',
+            'belum_lengkap' => 'edit',
+            default => 'radio_button_unchecked',
         };
     @endphp
 
-    <section class="mb-8 rounded-lg border border-zinc-200 bg-white p-5 shadow-sm">
-        <div class="flex flex-wrap items-start justify-between gap-3">
+    <div class="space-y-gutter" data-testid="asesmen-detail">
+        {{-- Section A: Header --}}
+        <section class="card-depth flex flex-col items-start justify-between gap-6 rounded-xl bg-surface-container-lowest p-8 md:flex-row md:items-center">
             <div>
-                <h2 class="text-sm font-semibold uppercase tracking-wide text-zinc-500">Status asesmen</h2>
-                <p class="mt-1 text-sm text-zinc-800">
-                    Saat ini:
-                    <span class="rounded bg-zinc-100 px-2 py-0.5 font-medium text-zinc-900">{{ $statusAsesmenLabel }}</span>
-                </p>
-                @if ($asesmen->status?->value !== 'selesai_final')
-                    <p class="mt-1 text-xs text-zinc-600">Sebelum tombol finalisasi ditekan konsultan/admin, status tetap <strong>draf</strong>.</p>
-                @elseif ($asesmen->waktu_finalisasi)
-                    <p class="mt-1 text-xs text-zinc-600">Difinalisasi pada {{ $asesmen->waktu_finalisasi->timezone(config('app.timezone'))->format('d M Y H:i') }}.</p>
-                @endif
-            </div>
-            @can('update', $asesmen)
-                @if ($asesmen->status?->value !== 'selesai_final')
-                    <form method="POST" action="{{ route('asesmen.finalisasi', $asesmen) }}" class="shrink-0">
-                        @csrf
-                        @method('PATCH')
-                        <button type="submit" class="rounded-md bg-emerald-900 px-3 py-1.5 text-sm font-medium text-white hover:bg-emerald-800">Finalisasi asesmen</button>
-                    </form>
-                @elseif ((auth()->user()->peran ?? '') === 'admin')
-                    <form method="POST" action="{{ route('asesmen.batal-finalisasi', $asesmen) }}" class="shrink-0">
-                        @csrf
-                        @method('PATCH')
-                        <button type="submit" class="rounded-md border border-rose-300 bg-rose-50 px-3 py-1.5 text-sm font-medium text-rose-900 hover:bg-rose-100">Batalkan finalisasi</button>
-                    </form>
-                @endif
-            @endcan
-        </div>
-
-        <div class="mt-4 rounded-md border border-zinc-100 bg-zinc-50/60 p-3">
-            <p class="text-xs font-medium uppercase tracking-wide text-zinc-500">Cakupan kompetensi wajib (matriks)</p>
-            <p class="mt-1 text-sm text-zinc-700">
-                Terpenuhi <strong>{{ $ringkasanFinalisasi['total_terpenuhi'] }}</strong> dari
-                <strong>{{ $ringkasanFinalisasi['total_wajib'] }}</strong> kompetensi wajib.
-            </p>
-            @if ($ringkasanFinalisasi['total_kompetensi_kurang'] > 0)
-                <div class="mt-2 rounded border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-900">
-                    Kompetensi wajib berikut belum mendapatkan tingkat/level indikator perilaku dari evidence:
-                    <ul class="mt-1 list-inside list-disc text-xs">
-                        @foreach ($ringkasanFinalisasi['kompetensi_kurang'] as $k)
-                            <li><span class="font-mono">{{ $k['kode'] }}</span> — {{ $k['nama'] }}</li>
-                        @endforeach
-                    </ul>
-                </div>
-            @else
-                <p class="mt-2 text-xs text-emerald-700">Semua kompetensi wajib sudah memiliki tingkat indikator perilaku.</p>
-            @endif
-        </div>
-    </section>
-
-    @can('update', $asesmen)
-        <section class="mb-8 rounded-lg border border-emerald-200 bg-emerald-50/50 p-5 shadow-sm">
-            <h2 class="text-sm font-semibold uppercase tracking-wide text-emerald-900">Metode koleksi bukti</h2>
-            <p class="mt-1 text-xs text-emerald-900/80">Pilih alur utama untuk asesmen ini. Formulir di bawah mengikuti pilihan; Anda dapat mengganti metode kapan saja.</p>
-            <p class="mt-2 text-sm font-medium text-emerald-950">Aktif: {{ $metodeBukti->label() }}</p>
-            <form method="POST" action="{{ route('asesmen.metode-koleksi-bukti.update', $asesmen) }}" class="mt-4 space-y-3">
-                @csrf
-                @method('PATCH')
-                <div class="grid gap-3 sm:grid-cols-2">
-                    <label class="flex cursor-pointer gap-2 rounded-lg border border-emerald-200 bg-white p-3 text-sm has-[:checked]:ring-2 has-[:checked]:ring-emerald-600">
-                        <input type="radio" name="metode_koleksi_bukti" value="manual" class="mt-0.5 size-4 border-zinc-300 text-emerald-800 focus:ring-emerald-500" @checked($metodeBukti === \App\Enums\AssessmentEvidenceCollectionMode::Manual)>
-                        <span><span class="font-medium text-zinc-900">Manual</span> — bukti per kompetensi + AI per bukti</span>
-                    </label>
-                    <label class="flex cursor-pointer gap-2 rounded-lg border border-emerald-200 bg-white p-3 text-sm has-[:checked]:ring-2 has-[:checked]:ring-violet-600">
-                        <input type="radio" name="metode_koleksi_bukti" value="payload_alat" class="mt-0.5 size-4 border-zinc-300 text-violet-700 focus:ring-violet-500" @checked($metodeBukti === \App\Enums\AssessmentEvidenceCollectionMode::PayloadAlat)>
-                        <span><span class="font-medium text-zinc-900">Otomatis</span> — payload alat + AI bulk</span>
-                    </label>
-                </div>
-                <button type="submit" class="rounded-md bg-emerald-900 px-3 py-1.5 text-sm font-medium text-white hover:bg-emerald-800">Simpan metode</button>
-            </form>
-        </section>
-    @endcan
-
-    <section class="mb-8 rounded-lg border border-zinc-200 bg-white p-5 shadow-sm">
-        <h2 class="text-sm font-semibold uppercase tracking-wide text-zinc-500">Asesor</h2>
-        @if ($asesmen->assessorAssignments->isEmpty())
-            <p class="mt-2 text-sm text-zinc-600">Belum ada asesor yang ditetapkan.</p>
-        @else
-            <ul class="mt-2 list-inside list-disc text-sm text-zinc-800">
-                @foreach ($asesmen->assessorAssignments as $a)
-                    <li>{{ $a->user?->name ?? 'Pengguna #' . $a->id_pengguna }}</li>
-                @endforeach
-            </ul>
-        @endif
-    </section>
-
-    <details class="mb-8 rounded-lg border border-zinc-200 bg-white shadow-sm open:shadow-md open:[&>summary>svg]:rotate-180" open>
-        <summary class="flex cursor-pointer list-none items-center justify-between gap-3 px-5 py-4 marker:content-none [&::-webkit-details-marker]:hidden">
-            <div class="min-w-0">
-                <h2 class="text-sm font-semibold uppercase tracking-wide text-zinc-500">Alat penilaian (preset)</h2>
-                <p class="mt-0.5 truncate text-xs text-zinc-500">{{ $asesmen->toolSelections->count() }} alat · klik untuk membuka / menutup</p>
-            </div>
-            <svg class="size-5 shrink-0 text-zinc-400 transition-transform duration-200" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" aria-hidden="true">
-                <path stroke-linecap="round" stroke-linejoin="round" d="m19.5 8.25-7.5 7.5-7.5-7.5" />
-            </svg>
-        </summary>
-        <div class="border-t border-zinc-100 px-5 pb-5 pt-3">
-            <p class="mb-3 text-xs text-zinc-600">
-                Kisi seperti pemetaan versi matriks: baris = kompetensi (per kelompok), kolom = alat dalam preset asesmen ini.
-                Sel menampilkan pemetaan pada versi <span class="font-mono font-medium text-zinc-800">{{ $asesmen->matrixVersion?->kode_versi }}</span>.
-                Label di kepala kolom = status preset asesmen (wajib / opsional); isi sel = aturan di matriks (✓ wajib atau ✓ opsional).
-            </p>
-
-            @if (! $punyaKompetensiUntukMatriks || $pemilihanAlatPreset->isEmpty())
-                <div class="rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
-                    @if (! $punyaKompetensiUntukMatriks)
-                        Belum ada data kompetensi untuk menampilkan kisi.
+                <h1 class="font-display text-3xl tracking-tight text-on-surface md:text-4xl">{{ $asesmen->participant?->nama_lengkap ?? 'Peserta' }}</h1>
+                <div class="mt-4 flex flex-wrap items-center gap-3">
+                    <span class="flex items-center gap-2 rounded-lg border border-outline-variant/50 bg-surface-container-low px-3 py-1.5 text-sm font-semibold text-on-surface-variant">
+                        <span class="material-symbols-outlined text-sm">grid_view</span>
+                        Matrix: {{ $matrixLabel }}
+                    </span>
+                    @if ($asesmen->tanpa_intray)
+                        <span class="rounded-lg border border-outline-variant/50 bg-surface-container px-3 py-1.5 text-label text-on-surface-variant">Tanpa INTRAY</span>
                     @endif
-                    @if ($pemilihanAlatPreset->isEmpty())
-                        Belum ada alat dalam preset asesmen ini.
+                    @if ($asesmen->tujuan?->value === 'promosi')
+                        <span class="rounded-lg border border-primary/20 bg-primary-fixed/30 px-3 py-1.5 text-label font-semibold text-primary">Promosi</span>
                     @endif
                 </div>
-            @elseif ($kelompokKompetensiMatriks->isEmpty())
-                <div class="rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
-                    Tidak ada kelompok kompetensi dengan kompetensi aktif.
-                </div>
-            @else
-                <div class="overflow-x-auto rounded-lg border border-zinc-200 bg-white shadow-sm">
-                    <table class="min-w-max divide-y divide-zinc-200 text-sm">
-                        <thead class="bg-zinc-50 text-left text-xs font-medium uppercase text-zinc-500">
-                            <tr>
-                                <th class="sticky left-0 z-10 border-r border-zinc-200 bg-zinc-50 px-3 py-2 align-bottom">Kompetensi</th>
-                                @foreach ($pemilihanAlatPreset as $sel)
-                                    @php $tool = $sel->tool; @endphp
-                                    <th class="max-w-[6rem] px-2 py-2 text-center align-bottom" title="{{ $tool?->nama }}">
-                                        <span class="block truncate font-mono normal-case text-zinc-700">{{ $tool?->kode }}</span>
-                                        @if ($sel->aktif)
-                                            @if ($sel->wajib)
-                                                <span class="mt-1 inline-block rounded bg-rose-50 px-1.5 py-0.5 text-[10px] font-medium normal-case text-rose-900">Preset wajib</span>
-                                            @else
-                                                <span class="mt-1 inline-block rounded bg-zinc-100 px-1.5 py-0.5 text-[10px] font-medium normal-case text-zinc-600">Preset ops.</span>
-                                            @endif
-                                        @else
-                                            <span class="mt-1 inline-block rounded bg-zinc-200 px-1.5 py-0.5 text-[10px] font-normal normal-case text-zinc-600">Nonaktif</span>
-                                        @endif
-                                    </th>
-                                @endforeach
-                            </tr>
-                        </thead>
-                        <tbody class="divide-y divide-zinc-100">
-                            @include('assessments.partials.preset-competency-tool-matrix-tbody')
-                        </tbody>
-                    </table>
-                </div>
-                <p class="mt-3 flex flex-wrap gap-x-4 gap-y-1 text-xs text-zinc-500">
-                    <span><span class="inline-flex size-5 items-center justify-center rounded-full bg-rose-100 text-[10px] text-rose-900">✓</span> wajib di matriks</span>
-                    <span><span class="inline-flex size-5 items-center justify-center rounded-full bg-zinc-200 text-[10px] text-zinc-800">✓</span> opsional di matriks</span>
-                    <span><span class="text-zinc-400">—</span> tidak dipetakan pada versi ini</span>
-                </p>
-            @endif
-        </div>
-    </details>
-
-    @if ($metodeBukti === \App\Enums\AssessmentEvidenceCollectionMode::Manual)
-        <section class="mb-8 rounded-lg border border-zinc-200 bg-white p-5 shadow-sm">
-            <h2 class="mb-3 text-sm font-semibold uppercase tracking-wide text-zinc-500">Bukti penilaian</h2>
-            <p class="mb-3 rounded-md border border-emerald-100 bg-emerald-50/40 px-3 py-2 text-xs text-emerald-950">Metode <strong>manual</strong>: tambahkan bukti per kompetensi; tombol <strong>Analisis AI</strong> ada di tiap kartu bukti (butuh kunci OpenRouter di .env; set <span class="font-mono">AI_AKTIF=false</span> untuk mematikannya).</p>
-            @if ($asesmen->evidenceItems->isEmpty())
-                <p class="text-sm text-zinc-600">Belum ada bukti.</p>
-            @else
-                <ul class="space-y-3 text-sm">
-                    @foreach ($asesmen->evidenceItems as $b)
-                        <li class="rounded-md border border-zinc-100 bg-zinc-50/50 p-3">
-                            <div class="flex flex-wrap items-start justify-between gap-2">
-                                <div class="font-medium text-zinc-900">{{ $b->tool?->kode }} · {{ $b->competency?->kode_kompetensi }} {{ $b->competency?->nama }}</div>
-                                @can('update', $asesmen)
-                                    @if (config('ai.aktif'))
-                                        <form method="POST" action="{{ route('asesmen.bukti.analisis-ai', [$asesmen, $b]) }}" class="shrink-0 js-ai-processing-form" data-ai-mode="incremental">
-                                            @csrf
-                                            <button type="submit" class="rounded border border-violet-300 bg-violet-50 px-2 py-1 text-xs font-medium text-violet-900 hover:bg-violet-100">Analisis AI</button>
-                                        </form>
-                                    @endif
-                                @endcan
-                            </div>
-                            <p class="mt-1 whitespace-pre-wrap text-zinc-700">{{ $b->teks_mentah }}</p>
-                            @if ($b->ai_dinilai_pada || $b->ai_tingkat || $b->ai_alasan)
-                                <div class="mt-3 rounded border border-violet-100 bg-violet-50/60 p-2 text-xs text-violet-950">
-                                    <p class="font-semibold text-violet-900">Hasil AI</p>
-                                    @if ($b->ai_tingkat)
-                                        <p class="mt-1"><span class="text-violet-800">Tingkat usulan:</span> {{ $b->ai_tingkat }}</p>
-                                    @endif
-                                    @if ($b->ai_keyakinan !== null)
-                                        <p class="mt-0.5"><span class="text-violet-800">Keyakinan:</span> {{ $b->ai_keyakinan }}</p>
-                                    @endif
-                                    @if ($b->ai_alasan)
-                                        <p class="mt-1 whitespace-pre-wrap"><span class="text-violet-800">Alasan:</span> {{ $b->ai_alasan }}</p>
-                                    @endif
-                                    @if (is_array($b->ai_muatan))
-                                        @if (! empty($b->ai_muatan['kutipan_dari_teks_mentah']))
-                                            <p class="mt-1 whitespace-pre-wrap"><span class="text-violet-800">Kutipan:</span> {{ $b->ai_muatan['kutipan_dari_teks_mentah'] }}</p>
-                                        @endif
-                                        @if (! empty($b->ai_muatan['konfirmatori']))
-                                            <p class="mt-1 whitespace-pre-wrap"><span class="text-violet-800">Konfirmatori:</span> {{ $b->ai_muatan['konfirmatori'] }}</p>
-                                        @endif
-                                    @endif
-                                    @if ($b->ai_dinilai_pada)
-                                        <p class="mt-1 text-violet-700">{{ $b->ai_dinilai_pada->timezone(config('app.timezone'))->format('d M Y H:i') }}</p>
-                                    @endif
-                                </div>
-                            @endif
-                        </li>
-                    @endforeach
-                </ul>
-            @endif
-
-            @can('update', $asesmen)
-                <form method="POST" action="{{ route('asesmen.bukti.store', $asesmen) }}" class="mt-4 space-y-3 border-t border-zinc-100 pt-4">
-                    @csrf
-                    <div class="grid gap-3 sm:grid-cols-2">
-                        <div>
-                            <label for="id_alat_penilaian_bukti" class="block text-xs font-medium text-zinc-700">Alat</label>
-                            <select name="id_alat_penilaian" id="id_alat_penilaian_bukti" required @disabled(! $punyaAlatTersediaInput) class="mt-1 w-full rounded-md border border-zinc-300 px-2 py-1.5 text-sm disabled:bg-zinc-100 disabled:text-zinc-500">
-                                @if (! $punyaAlatTersediaInput)
-                                    <option value="">Tidak ada alat yang dipakai pada matriks ini</option>
-                                @else
-                                    @foreach ($alatTersediaInput as $sel)
-                                        <option value="{{ $sel->id_alat_penilaian }}">{{ $sel->tool?->kode }} — {{ $sel->tool?->nama }}</option>
-                                    @endforeach
-                                @endif
-                            </select>
-                        </div>
-                        <div>
-                            <label for="id_kompetensi_bukti" class="block text-xs font-medium text-zinc-700">Kompetensi</label>
-                            <select name="id_kompetensi" id="id_kompetensi_bukti" required class="mt-1 w-full rounded-md border border-zinc-300 px-2 py-1.5 text-sm">
-                                @foreach ($kompetensi as $c)
-                                    <option value="{{ $c->id }}">{{ $c->kode_kompetensi }} — {{ $c->nama }}</option>
-                                @endforeach
-                            </select>
-                        </div>
-                    </div>
-                    <div>
-                        <label for="teks_mentah" class="block text-xs font-medium text-zinc-700">Teks mentah</label>
-                        <p class="mt-0.5 text-xs text-zinc-500">Editor ini membantu formatting saat input, namun data tetap disimpan sebagai teks mentah.</p>
-                        <textarea name="teks_mentah" id="teks_mentah" rows="4" required data-normalize-preview="1" class="mt-1 w-full rounded-md border border-zinc-300 px-2 py-1.5 text-sm">{{ old('teks_mentah') }}</textarea>
-                    </div>
-                    <button type="submit" @disabled(! $punyaAlatTersediaInput) class="rounded-md bg-zinc-900 px-3 py-1.5 text-sm text-white hover:bg-zinc-800 disabled:cursor-not-allowed disabled:bg-zinc-400">Tambah bukti</button>
-                </form>
-            @endcan
-        </section>
-    @endif
-
-    @if ($metodeBukti === \App\Enums\AssessmentEvidenceCollectionMode::PayloadAlat)
-        <section class="mb-8 rounded-lg border border-zinc-200 bg-white p-5 shadow-sm">
-            <h2 class="mb-2 text-sm font-semibold uppercase tracking-wide text-zinc-500">Payload alat (bulk)</h2>
-            <p class="text-xs text-zinc-600">Tempel teks mentah dari alat (log, ekspor, dll.), simpan payload, lalu gunakan <strong>Analisis AI bulk</strong> pada daftar di bawah. Butuh kunci OpenRouter di .env. Hasil wajib direview asesor.</p>
-
-            @can('update', $asesmen)
-                <form method="POST" action="{{ route('asesmen.payload-alat.store', $asesmen) }}" class="mt-4 space-y-3 border-t border-zinc-100 pt-4">
-                    @csrf
-                    <div>
-                        <label for="id_alat_penilaian_payload" class="block text-xs font-medium text-zinc-700">Alat</label>
-                        <select name="id_alat_penilaian" id="id_alat_penilaian_payload" required @disabled(! $punyaAlatTersediaInput) class="mt-1 w-full rounded-md border border-zinc-300 px-2 py-1.5 text-sm disabled:bg-zinc-100 disabled:text-zinc-500">
-                            @if (! $punyaAlatTersediaInput)
-                                <option value="">Tidak ada alat yang dipakai pada matriks ini</option>
-                            @else
-                                @foreach ($alatTersediaInput as $sel)
-                                    <option value="{{ $sel->id_alat_penilaian }}">{{ $sel->tool?->kode }} — {{ $sel->tool?->nama }}</option>
-                                @endforeach
-                            @endif
-                        </select>
-                    </div>
-                    <div>
-                        <label for="teks_muatan" class="block text-xs font-medium text-zinc-700">Teks muatan</label>
-                        <textarea name="teks_muatan" id="teks_muatan" rows="5" required data-normalize-preview="1" class="mt-1 w-full rounded-md border border-zinc-300 px-2 py-1.5 text-sm">{{ old('teks_muatan') }}</textarea>
-                    </div>
-                    <button type="submit" @disabled(! $punyaAlatTersediaInput) class="rounded-md bg-zinc-900 px-3 py-1.5 text-sm text-white hover:bg-zinc-800 disabled:cursor-not-allowed disabled:bg-zinc-400">Simpan payload</button>
-                </form>
-            @endcan
-
-            @if ($asesmen->toolPayloads->isNotEmpty())
-                <h3 class="mt-6 text-xs font-semibold uppercase tracking-wide text-zinc-500">Payload tersimpan</h3>
-                <ul class="mt-2 space-y-2 text-sm">
-                    @foreach ($asesmen->toolPayloads as $p)
-                        <li class="rounded border border-zinc-100 bg-zinc-50/50 p-3">
-                            <div class="flex flex-wrap items-start justify-between gap-2">
-                                <span class="font-medium text-zinc-900">#{{ $p->id }} · {{ $p->tool?->kode }}</span>
-                                @can('update', $asesmen)
-                                    @if (config('ai.aktif'))
-                                        <form method="POST" action="{{ route('asesmen.payload-alat.analisis-ai', [$asesmen, $p]) }}" class="js-ai-processing-form" data-ai-mode="bulk">
-                                            @csrf
-                                            <button type="submit" class="rounded border border-violet-300 bg-violet-50 px-2 py-1 text-xs font-medium text-violet-900 hover:bg-violet-100">Analisis AI bulk</button>
-                                        </form>
-                                    @endif
-                                @endcan
-                            </div>
-                            <p class="mt-1 line-clamp-3 text-zinc-700">{{ \Illuminate\Support\Str::limit($p->teks_muatan, 240) }}</p>
-                            @if ($p->diproses_pada && is_array($p->hasil_analisis_ai))
-                                <div class="mt-2 rounded border border-violet-100 bg-violet-50/60 p-2 text-xs text-violet-950">
-                                    <p class="font-semibold text-violet-900">Usulan AI ({{ $p->diproses_pada->format('d M Y H:i') }})</p>
-                                    <div class="mt-2 overflow-x-auto rounded border border-violet-100/80 bg-white">
-                                        <table class="min-w-[720px] w-full divide-y divide-violet-100 text-left text-xs">
-                                            <thead class="bg-violet-50/90 font-medium uppercase tracking-wide text-violet-900">
-                                                <tr>
-                                                    <th class="px-2 py-2">Kompetensi</th>
-                                                    <th class="px-2 py-2">Level</th>
-                                                    <th class="px-2 py-2">Kutipan (referensi)</th>
-                                                    <th class="px-2 py-2">Ringkasan</th>
-                                                    <th class="px-2 py-2">Alasan (AI)</th>
-                                                    <th class="px-2 py-2">Konfirmatori</th>
-                                                    <th class="px-2 py-2">Keyakinan</th>
-                                                    <th class="px-2 py-2">Perilaku kunci (usulan)</th>
-                                                </tr>
-                                            </thead>
-                                            <tbody class="divide-y divide-violet-50 text-zinc-800">
-                                                @foreach ($p->hasil_analisis_ai['usulan'] ?? [] as $u)
-                                                    <tr class="align-top">
-                                                        <td class="px-2 py-2 font-mono font-semibold text-zinc-900">{{ $u['kode_kompetensi'] ?? '?' }}</td>
-                                                        <td class="px-2 py-2">{{ ! empty($u['tingkat']) ? $u['tingkat'] : '—' }}</td>
-                                                        <td class="max-w-[14rem] whitespace-pre-wrap px-2 py-2 text-zinc-700">{{ $u['kutipan'] ?? '—' }}</td>
-                                                        <td class="max-w-[12rem] whitespace-pre-wrap px-2 py-2">{{ \Illuminate\Support\Str::limit($u['ringkasan'] ?? '', 220) }}</td>
-                                                        <td class="max-w-[14rem] whitespace-pre-wrap px-2 py-2 text-zinc-700">{{ $u['alasan'] ?? '—' }}</td>
-                                                        <td class="max-w-[14rem] whitespace-pre-wrap px-2 py-2 text-zinc-700">{{ $u['konfirmatori'] ?? '—' }}</td>
-                                                        <td class="px-2 py-2">{{ isset($u['keyakinan']) ? number_format((float) $u['keyakinan'], 2) : '—' }}</td>
-                                                        <td class="max-w-[14rem] whitespace-pre-wrap px-2 py-2">{{ $u['teks_perilaku'] ?? '—' }}</td>
-                                                    </tr>
-                                                @endforeach
-                                            </tbody>
-                                        </table>
-                                    </div>
-                                </div>
-                            @endif
-                        </li>
-                    @endforeach
-                </ul>
-            @endif
-        </section>
-    @endif
-
-    <section class="rounded-lg border border-zinc-200 bg-white p-5 shadow-sm">
-        <h2 class="mb-3 text-sm font-semibold uppercase tracking-wide text-zinc-500">Perilaku kunci</h2>
-        @if ($asesmen->keyBehaviors->isEmpty())
-            <p class="text-sm text-zinc-600">Belum ada perilaku kunci.</p>
-        @else
-            <div class="overflow-x-auto rounded border border-zinc-100">
-                <table class="min-w-[820px] w-full divide-y divide-zinc-100 text-left text-sm">
-                    <thead class="bg-zinc-50 text-xs font-medium uppercase tracking-wide text-zinc-500">
-                        <tr>
-                            <th class="px-3 py-2">Alat</th>
-                            <th class="px-3 py-2">Kompetensi</th>
-                            <th class="px-3 py-2">Level indikator</th>
-                            <th class="px-3 py-2">Teks perilaku</th>
-                            <th class="px-3 py-2">Alasan (AI / asesor)</th>
-                            <th class="px-3 py-2">Kutipan (referensi)</th>
-                            <th class="px-3 py-2">Aksi</th>
-                        </tr>
-                    </thead>
-                    <tbody class="divide-y divide-zinc-50">
-                        @foreach ($asesmen->keyBehaviors as $pk)
-                            <tr class="align-top text-zinc-800">
-                                <td class="px-3 py-2 font-mono text-xs font-medium">{{ $pk->tool?->kode ?? '—' }}</td>
-                                <td class="px-3 py-2">{{ $pk->competency?->kode_kompetensi ?? '?' }}</td>
-                                <td class="px-3 py-2">
-                                    @if ($pk->competencyLevel)
-                                        <span class="font-medium">Level {{ $pk->competencyLevel->tingkat }}</span>
-                                        @if (! empty($pk->competencyLevel->etiket))
-                                            <span class="block text-xs text-zinc-500">{{ $pk->competencyLevel->etiket }}</span>
-                                        @endif
-                                    @else
-                                        <span class="text-zinc-400">—</span>
-                                    @endif
-                                </td>
-                                <td class="max-w-[18rem] whitespace-pre-wrap px-3 py-2">{{ $pk->teks_perilaku }}</td>
-                                <td class="max-w-[16rem] whitespace-pre-wrap px-3 py-2 text-zinc-700">{{ $pk->alasan_pemilihan ?: '—' }}</td>
-                                <td class="max-w-[18rem] whitespace-pre-wrap px-3 py-2 text-xs text-zinc-700">
-                                    @if ($pk->kutipan_referensi)
-                                        {{ $pk->kutipan_referensi }}
-                                    @elseif ($pk->evidence)
-                                        <span class="mb-1 block text-[10px] font-medium uppercase tracking-wide text-zinc-500">Bukti #{{ $pk->evidence->id }}</span>
-                                        {{ \Illuminate\Support\Str::limit($pk->evidence->teks_mentah, 500) }}
-                                    @else
-                                        —
-                                    @endif
-                                </td>
-                                <td class="px-3 py-2">
-                                    @can('update', $asesmen)
-                                        <a href="{{ route('asesmen.perilaku.edit', [$asesmen, $pk]) }}" class="text-xs font-medium text-violet-800 underline decoration-violet-300 hover:text-violet-950">Edit</a>
-                                    @endcan
-                                </td>
-                            </tr>
-                        @endforeach
-                    </tbody>
-                </table>
             </div>
-        @endif
+            <div class="flex flex-col items-start gap-1 md:items-end">
+                <p class="text-label uppercase tracking-widest text-on-surface-variant/60">ID Asesmen</p>
+                <p class="font-code text-lg font-bold text-primary">{{ $idAsesmenLabel }}</p>
+            </div>
+        </section>
 
-        @can('update', $asesmen)
-        <form method="POST" action="{{ route('asesmen.perilaku.store', $asesmen) }}" class="mt-4 space-y-3 border-t border-zinc-100 pt-4">
-            @csrf
-            <div class="grid gap-3 sm:grid-cols-2">
+        {{-- Section B: Status & cakupan --}}
+        <section class="grid grid-cols-1 gap-gutter lg:grid-cols-3">
+            <div class="card-depth flex flex-col justify-between rounded-xl bg-surface-container-lowest p-8 lg:col-span-1">
                 <div>
-                    <label for="id_alat_penilaian_pk" class="block text-xs font-medium text-zinc-700">Alat</label>
-                    <select name="id_alat_penilaian" id="id_alat_penilaian_pk" required @disabled(! $punyaAlatTersediaInput) class="mt-1 w-full rounded-md border border-zinc-300 px-2 py-1.5 text-sm disabled:bg-zinc-100 disabled:text-zinc-500">
-                        @if (! $punyaAlatTersediaInput)
-                            <option value="">Tidak ada alat yang dipakai pada matriks ini</option>
+                    <p class="mb-6 text-section-header uppercase text-on-surface-variant">Status Progress</p>
+                    <div class="mb-8 flex flex-wrap items-center gap-4">
+                        @if ($isFinal)
+                            <span class="flex items-center gap-2 rounded-full border border-emerald-200 bg-emerald-50 px-4 py-1.5 text-sm font-bold text-emerald-700">
+                                <span class="material-symbols-outlined text-sm" style="font-variation-settings: 'FILL' 1;">check_circle</span>
+                                Final
+                            </span>
                         @else
-                            @foreach ($alatTersediaInput as $sel)
-                                <option value="{{ $sel->id_alat_penilaian }}">{{ $sel->tool?->kode }} — {{ $sel->tool?->nama }}</option>
-                            @endforeach
+                            <span class="flex items-center gap-2 rounded-full border border-amber-200 bg-amber-50 px-4 py-1.5 text-sm font-bold text-amber-700">
+                                <span class="material-symbols-outlined text-sm" style="font-variation-settings: 'FILL' 1;">pending</span>
+                                Draft
+                            </span>
                         @endif
-                    </select>
+                        <span class="text-body-base font-semibold text-on-surface">{{ $persenProgress }}% Selesai</span>
+                    </div>
+                    @if ($isFinal && $asesmen->waktu_finalisasi)
+                        <p class="mb-4 text-xs text-on-surface-variant">Difinalisasi {{ $asesmen->waktu_finalisasi->timezone(config('app.timezone'))->format('d M Y H:i') }}</p>
+                    @endif
                 </div>
-                <div>
-                    <label for="id_kompetensi_pk" class="block text-xs font-medium text-zinc-700">Kompetensi</label>
-                    <select name="id_kompetensi" id="id_kompetensi_pk" required class="mt-1 w-full rounded-md border border-zinc-300 px-2 py-1.5 text-sm">
-                        @foreach ($kompetensi as $c)
-                            <option value="{{ $c->id }}">{{ $c->kode_kompetensi }} — {{ $c->nama }}</option>
+                @can('update', $asesmen)
+                    @if ($isDraft)
+                        <form method="POST" action="{{ route('asesmen.finalisasi', $asesmen) }}">
+                            @csrf
+                            @method('PATCH')
+                            <button type="submit" class="flex w-full items-center justify-center gap-2 rounded-xl bg-primary py-3.5 font-bold text-white shadow-lg shadow-primary/20 transition-all hover:opacity-90">
+                                <span class="material-symbols-outlined">check_circle</span>
+                                Finalisasi Asesmen
+                            </button>
+                        </form>
+                    @elseif ((auth()->user()->peran ?? '') === 'admin')
+                        <form method="POST" action="{{ route('asesmen.batal-finalisasi', $asesmen) }}">
+                            @csrf
+                            @method('PATCH')
+                            <button type="submit" class="w-full rounded-xl border border-error/30 bg-error-container/30 py-3 text-sm font-bold text-on-error-container hover:bg-error-container/50">Batalkan Finalisasi</button>
+                        </form>
+                    @endif
+                @endcan
+            </div>
+
+            <div class="card-depth rounded-xl bg-surface-container-lowest p-8 lg:col-span-2">
+                <div class="mb-8 flex flex-wrap items-center justify-between gap-3">
+                    <p class="text-section-header uppercase text-on-surface-variant">Cakupan Kompetensi</p>
+                    @if ($ringkasanFinalisasi['total_wajib'] === 0)
+                        <span class="flex items-center gap-2 rounded-lg border border-outline-variant/40 bg-surface-container px-3 py-1.5 text-label font-bold text-on-surface-variant">Belum ada kompetensi wajib</span>
+                    @elseif ($cakupanLengkap)
+                        <span class="flex items-center gap-2 rounded-lg border border-emerald-100 bg-emerald-50 px-3 py-1.5 text-label font-bold text-emerald-700">
+                            <span class="material-symbols-outlined text-sm">check_circle</span> Lengkap
+                        </span>
+                    @else
+                        <span class="flex items-center gap-2 rounded-lg border border-amber-100 bg-amber-50 px-3 py-1.5 text-label font-bold text-amber-700">
+                            <span class="material-symbols-outlined text-sm">warning</span> Belum Lengkap
+                        </span>
+                    @endif
+                </div>
+                @if ($gridCakupanKompetensi === [])
+                    <p class="text-sm text-on-surface-variant">Aktifkan alat preset dan pemetaan wajib di matriks untuk melihat progress per kompetensi.</p>
+                @else
+                    <div class="grid grid-cols-2 gap-6 sm:grid-cols-4">
+                        @foreach ($gridCakupanKompetensi as $item)
+                            @php
+                                $barColor = $item['persen'] >= 100 ? 'bg-emerald-500' : ($item['persen'] > 0 ? 'bg-amber-500' : 'bg-outline-variant/40');
+                            @endphp
+                            <div class="rounded-xl border border-outline-variant/30 bg-surface-container-lowest p-4 text-center">
+                                <p class="mb-2 truncate text-label text-on-surface-variant" title="{{ $item['nama'] }}">{{ $item['nama'] }}</p>
+                                <div class="h-2 w-full overflow-hidden rounded-full bg-surface-container-high">
+                                    <div class="{{ $barColor }} h-full rounded-full transition-all" style="width: {{ $item['persen'] }}%"></div>
+                                </div>
+                            </div>
                         @endforeach
-                    </select>
+                    </div>
+                    @if ($ringkasanFinalisasi['total_kompetensi_kurang'] > 0)
+                        <p class="mt-4 text-xs text-on-surface-variant">
+                            {{ $ringkasanFinalisasi['total_terpenuhi'] }}/{{ $ringkasanFinalisasi['total_wajib'] }} kompetensi wajib sudah memiliki level indikator.
+                        </p>
+                    @endif
+                @endif
+            </div>
+        </section>
+
+        {{-- Section C & D: Metode & asesor --}}
+        <section class="grid grid-cols-1 gap-gutter md:grid-cols-2">
+            <div class="card-depth rounded-xl bg-surface-container-lowest p-8">
+                <p class="mb-6 text-section-header uppercase text-on-surface-variant">Metode Pengumpulan Bukti</p>
+                @can('update', $asesmen)
+                    <form method="POST" action="{{ route('asesmen.metode-koleksi-bukti.update', $asesmen) }}" id="form-metode-bukti">
+                        @csrf
+                        @method('PATCH')
+                        <input type="hidden" name="metode_koleksi_bukti" id="metode_koleksi_bukti_input" value="{{ $metodeBukti->value }}">
+                        <div class="flex w-fit rounded-xl bg-surface-container-low p-1.5">
+                            <button type="button" data-metode="manual" class="metode-toggle px-8 py-2 text-body-base font-bold transition-colors rounded-lg {{ $metodeBukti === \App\Enums\AssessmentEvidenceCollectionMode::Manual ? 'bg-surface-container-lowest text-primary shadow-sm' : 'text-on-surface-variant hover:text-on-surface' }}">Manual</button>
+                            <button type="button" data-metode="payload_alat" class="metode-toggle px-8 py-2 text-body-base transition-colors rounded-lg {{ $metodeBukti === \App\Enums\AssessmentEvidenceCollectionMode::PayloadAlat ? 'bg-surface-container-lowest text-primary shadow-sm font-bold' : 'text-on-surface-variant hover:text-on-surface' }}">Otomatis</button>
+                        </div>
+                    </form>
+                    <script>
+                        document.querySelectorAll('.metode-toggle').forEach((btn) => {
+                            btn.addEventListener('click', () => {
+                                document.getElementById('metode_koleksi_bukti_input').value = btn.dataset.metode;
+                                document.getElementById('form-metode-bukti').submit();
+                            });
+                        });
+                    </script>
+                @else
+                    <div class="flex w-fit rounded-xl bg-surface-container-low p-1.5">
+                        <span class="rounded-lg bg-surface-container-lowest px-8 py-2 text-body-base font-bold text-primary shadow-sm">{{ $metodeBukti === \App\Enums\AssessmentEvidenceCollectionMode::Manual ? 'Manual' : 'Otomatis' }}</span>
+                    </div>
+                @endcan
+                <p class="mt-4 text-sm italic leading-relaxed text-on-surface-variant/70">
+                    @if ($metodeBukti === \App\Enums\AssessmentEvidenceCollectionMode::Manual)
+                        Bukti akan diinput secara manual oleh asesor melalui alat penilaian yang ditentukan.
+                    @else
+                        Bukti dikumpulkan lewat payload alat dan diproses dengan analisis AI bulk.
+                    @endif
+                </p>
+            </div>
+
+            <div class="card-depth rounded-xl bg-surface-container-lowest p-8">
+                <p class="mb-6 text-section-header uppercase text-on-surface-variant">Tim Asesor</p>
+                @if ($asesmen->assessorAssignments->isEmpty())
+                    <p class="text-sm text-on-surface-variant">Belum ada asesor yang ditetapkan.</p>
+                @else
+                    <div class="flex items-center gap-3">
+                        <div class="flex -space-x-3">
+                            @foreach ($asesmen->assessorAssignments->take(5) as $a)
+                                <div class="flex h-11 w-11 items-center justify-center overflow-hidden rounded-full border-2 border-white bg-primary-fixed/50 ring-1 ring-outline-variant/30" title="{{ $a->user?->name }}">
+                                    <span class="text-sm font-bold text-primary">{{ strtoupper(substr($a->user?->name ?? '?', 0, 1)) }}</span>
+                                </div>
+                            @endforeach
+                        </div>
+                        <span class="ml-2 text-sm font-medium text-on-surface-variant">{{ $asesmen->assessorAssignments->count() }} Asesor Ditugaskan</span>
+                    </div>
+                @endif
+            </div>
+        </section>
+
+        {{-- Section E: Preset alat (tabel) --}}
+        <section class="card-depth overflow-hidden rounded-xl bg-surface-container-lowest">
+            <details class="group" open>
+                <summary class="flex cursor-pointer list-none items-center justify-between p-8 transition-colors hover:bg-surface-container-low/50 [&::-webkit-details-marker]:hidden">
+                    <div class="flex items-center gap-4">
+                        <span class="material-symbols-outlined text-primary transition-transform group-open:rotate-180">expand_more</span>
+                        <span class="text-section-header uppercase tracking-wide text-on-surface">Alat Penilaian Preset</span>
+                    </div>
+                    <span class="rounded-lg bg-surface-container px-3 py-1 text-sm font-bold text-on-surface-variant">{{ $jumlahAlatAktif }} Alat Terpilih</span>
+                </summary>
+                <div class="border-t border-outline-variant/30 px-8 pb-8 pt-6">
+                    @if ($ringkasanAlatPreset === [])
+                        <p class="text-sm text-on-surface-variant">Belum ada alat aktif dalam preset asesmen ini.</p>
+                    @else
+                        <div class="overflow-x-auto">
+                            <table class="w-full text-left">
+                                <thead>
+                                    <tr class="bg-surface-container-low/50">
+                                        <th class="px-6 py-4 text-xs font-section-header uppercase text-on-surface">Nama Alat</th>
+                                        <th class="px-6 py-4 text-xs font-section-header uppercase text-on-surface">Kompetensi yang Diukur</th>
+                                        <th class="px-6 py-4 text-xs font-section-header uppercase text-on-surface">Status Bukti</th>
+                                    </tr>
+                                </thead>
+                                <tbody class="divide-y divide-outline-variant/20">
+                                    @foreach ($ringkasanAlatPreset as $baris)
+                                        <tr class="transition-colors hover:bg-surface-container-lowest">
+                                            <td class="px-6 py-5 text-body-base font-bold text-on-surface">{{ $baris['kode'] }} — {{ $baris['nama'] }}</td>
+                                            <td class="px-6 py-5 text-body-muted text-on-surface-variant">{{ $baris['kompetensi_label'] }}</td>
+                                            <td class="px-6 py-5">
+                                                <span class="{{ $baris['status_kelas'] }} flex items-center gap-2 text-sm font-bold">
+                                                    <span class="material-symbols-outlined text-sm font-bold">{{ $ikonStatusBukti($baris['status']) }}</span>
+                                                    {{ $labelStatusBukti($baris['status']) }}
+                                                </span>
+                                            </td>
+                                        </tr>
+                                    @endforeach
+                                </tbody>
+                            </table>
+                        </div>
+                    @endif
                 </div>
+            </details>
+        </section>
+
+        {{-- Section F: Bukti manual (kartu per alat) --}}
+        @if ($metodeBukti === \App\Enums\AssessmentEvidenceCollectionMode::Manual)
+            <section class="space-y-6">
+                <div class="flex items-center justify-between">
+                    <h2 class="font-display text-2xl text-on-surface">Bukti Penilaian</h2>
+                </div>
+
+                @forelse ($pemilihanAlatPreset->where('aktif', true) as $sel)
+                    @php
+                        $tool = $sel->tool;
+                        $idAlat = (int) $sel->id_alat_penilaian;
+                        $buktiAlat = $buktiPerAlat->get($idAlat, collect());
+                        $adaBukti = $buktiAlat->isNotEmpty();
+                        $punyaAi = $buktiAlat->contains(fn ($b) => $b->ai_dinilai_pada || $b->ai_alasan || $b->ai_tingkat);
+                    @endphp
+                    <div class="card-depth overflow-hidden rounded-xl bg-surface-container-lowest {{ ! $adaBukti ? 'opacity-90' : '' }}">
+                        <div class="flex items-center justify-between border-b border-outline-variant/30 bg-surface-container-low/50 px-8 py-5">
+                            <div class="flex items-center gap-3">
+                                <span class="material-symbols-outlined {{ $adaBukti ? 'text-primary' : 'text-on-surface-variant/50' }}" @if($adaBukti) style="font-variation-settings: 'FILL' 1;" @endif>{{ $ikonAlat($tool?->kode) }}</span>
+                                <h3 class="font-bold text-on-surface">{{ $tool?->kode }} — {{ $tool?->nama }}</h3>
+                            </div>
+                            @if ($adaBukti && config('ai.aktif'))
+                                @can('update', $asesmen)
+                                    @php $bPertama = $buktiAlat->first(); @endphp
+                                    <form method="POST" action="{{ route('asesmen.bukti.analisis-ai', [$asesmen, $bPertama]) }}" class="js-ai-processing-form shrink-0" data-ai-mode="incremental">
+                                        @csrf
+                                        <button type="submit" class="flex items-center gap-2 rounded-full bg-primary px-5 py-2 text-sm font-bold text-white shadow-md shadow-primary/10 transition-all hover:opacity-90">
+                                            <span class="material-symbols-outlined text-sm">psychology</span>
+                                            Analisis AI
+                                        </button>
+                                    </form>
+                                @endcan
+                            @else
+                                <button type="button" disabled class="flex cursor-not-allowed items-center gap-2 rounded-full bg-surface-container-high px-5 py-2 text-sm font-bold text-on-surface-variant/60">
+                                    <span class="material-symbols-outlined text-sm">psychology</span>
+                                    Analisis AI
+                                </button>
+                            @endif
+                        </div>
+                        <div class="space-y-6 p-8">
+                            @foreach ($buktiAlat as $b)
+                                @if ($b->ai_alasan || $b->ai_tingkat || (is_array($b->ai_muatan) && ! empty($b->ai_muatan['kutipan_dari_teks_mentah'])))
+                                    <div class="ai-accent-bg relative rounded-xl border p-5 shadow-sm">
+                                        <div class="absolute -top-3 left-6 rounded-full bg-primary px-3 py-1 text-[10px] font-bold uppercase tracking-wider text-white">Hasil AI</div>
+                                        <p class="pt-2 text-sm font-medium leading-relaxed">
+                                            @if ($b->ai_tingkat)
+                                                <span class="font-bold text-primary">Level {{ $b->ai_tingkat }}</span> —
+                                            @endif
+                                            {{ $b->ai_alasan ?: ($b->ai_muatan['kutipan_dari_teks_mentah'] ?? '') }}
+                                        </p>
+                                    </div>
+                                @endif
+                                <div class="space-y-3">
+                                    <label class="text-xs font-bold uppercase tracking-wider text-on-surface-variant">
+                                        {{ $b->competency?->nama ?? 'Kompetensi' }}
+                                        <span class="font-normal normal-case">({{ $b->competency?->kode_kompetensi }})</span>
+                                    </label>
+                                    <div class="min-h-[120px] rounded-xl border border-outline-variant/40 bg-surface-container-lowest p-5 text-sm leading-relaxed text-on-surface shadow-inner whitespace-pre-wrap">{{ $b->teks_mentah }}</div>
+                                </div>
+                            @endforeach
+
+                            @if (! $adaBukti)
+                                <div class="flex min-h-[140px] flex-col items-center justify-center gap-3 rounded-xl border-2 border-dashed border-outline-variant/50 bg-surface-container-lowest p-8 text-on-surface-variant/60">
+                                    <span class="material-symbols-outlined text-4xl">upload_file</span>
+                                    <p class="text-sm font-medium">Belum ada bukti untuk alat ini — tambahkan di bawah.</p>
+                                </div>
+                            @endif
+
+                            @can('update', $asesmen)
+                                <form method="POST" action="{{ route('asesmen.bukti.store', $asesmen) }}" class="space-y-3 border-t border-outline-variant/20 pt-4">
+                                    @csrf
+                                    <input type="hidden" name="id_alat_penilaian" value="{{ $idAlat }}">
+                                    <div>
+                                        <label class="text-xs font-bold uppercase tracking-wider text-on-surface-variant">Kompetensi</label>
+                                        <select name="id_kompetensi" required class="mt-1 w-full rounded-xl border border-outline-variant/40 bg-surface-container-lowest px-3 py-2 text-sm">
+                                            @foreach ($kompetensi as $c)
+                                                <option value="{{ $c->id }}">{{ $c->kode_kompetensi }} — {{ $c->nama }}</option>
+                                            @endforeach
+                                        </select>
+                                    </div>
+                                    <div>
+                                        <label class="text-xs font-bold uppercase tracking-wider text-on-surface-variant">Catatan Asesor</label>
+                                        <textarea name="teks_mentah" rows="4" required data-normalize-preview="1" class="mt-1 w-full rounded-xl border border-outline-variant/40 bg-surface-container-lowest px-4 py-3 text-sm shadow-inner" placeholder="Tuliskan bukti observasi di sini...">{{ old('teks_mentah') }}</textarea>
+                                    </div>
+                                    <button type="submit" @disabled(! $punyaAlatTersediaInput) class="rounded-lg accent-gradient px-4 py-2 text-sm font-bold text-white hover:opacity-90 disabled:opacity-50">Tambah bukti</button>
+                                </form>
+                            @endcan
+                        </div>
+                    </div>
+                @empty
+                    <p class="text-sm text-on-surface-variant">Tidak ada alat aktif pada preset.</p>
+                @endforelse
+            </section>
+        @endif
+
+        {{-- Payload otomatis --}}
+        @if ($metodeBukti === \App\Enums\AssessmentEvidenceCollectionMode::PayloadAlat)
+            @include('assessments.partials.show-payload-alat', [
+                'asesmen' => $asesmen,
+                'alatTersediaInput' => $alatTersediaInput,
+                'punyaAlatTersediaInput' => $punyaAlatTersediaInput,
+            ])
+        @endif
+
+        {{-- Section G: Perilaku kunci --}}
+        <section class="space-y-6 pb-8">
+            <h2 class="font-display text-2xl text-on-surface">Mapping Perilaku Kunci</h2>
+            <div class="card-depth overflow-hidden rounded-xl bg-surface-container-lowest">
+                @if ($asesmen->keyBehaviors->isEmpty())
+                    <p class="p-8 text-sm text-on-surface-variant">Belum ada mapping perilaku kunci.</p>
+                @else
+                    <div class="overflow-x-auto">
+                        <table class="min-w-[1000px] w-full text-left">
+                            <thead>
+                                <tr class="bg-on-surface text-white">
+                                    <th class="w-32 px-6 py-5 text-xs font-section-header uppercase">Alat</th>
+                                    <th class="w-56 px-6 py-5 text-xs font-section-header uppercase">Kompetensi</th>
+                                    <th class="w-20 px-6 py-5 text-center text-xs font-section-header uppercase">Lvl</th>
+                                    <th class="px-6 py-5 text-xs font-section-header uppercase">Indikator Perilaku &amp; Reasoning</th>
+                                    <th class="w-32 px-6 py-5 text-right text-xs font-section-header uppercase">Aksi</th>
+                                </tr>
+                            </thead>
+                            <tbody class="divide-y divide-outline-variant/10">
+                                @foreach ($asesmen->keyBehaviors as $pk)
+                                    @php
+                                        $dariAi = $pk->evidence && ($pk->evidence->ai_dinilai_pada || $pk->evidence->ai_tingkat);
+                                        $kutipan = $pk->kutipan_referensi ?: (is_array($pk->evidence?->ai_muatan) ? ($pk->evidence->ai_muatan['kutipan_dari_teks_mentah'] ?? null) : null);
+                                    @endphp
+                                    <tr class="transition-colors hover:bg-surface-container-lowest {{ $dariAi ? 'bg-primary-fixed/20' : '' }}">
+                                        <td class="px-6 py-8 align-top">
+                                            <span class="rounded px-2 py-1 text-[10px] font-bold uppercase tracking-tighter {{ $dariAi ? 'bg-primary-fixed/50 text-primary' : 'bg-surface-container text-on-surface-variant' }}">{{ $dariAi ? 'AI-GEN' : ($pk->tool?->kode ?? '—') }}</span>
+                                        </td>
+                                        <td class="px-6 py-8 align-top">
+                                            <p class="font-bold {{ $dariAi ? 'text-primary' : 'text-on-surface' }}">{{ $pk->competency?->nama ?? '?' }}</p>
+                                            @if ($pk->competency?->group?->nama)
+                                                <p class="mt-1 text-xs {{ $dariAi ? 'text-primary/70' : 'text-on-surface-variant' }}">{{ $pk->competency->group->nama }}</p>
+                                            @endif
+                                        </td>
+                                        <td class="px-6 py-8 align-top text-center">
+                                            @if ($pk->competencyLevel)
+                                                <span class="rounded-lg border border-outline-variant/30 px-2.5 py-1.5 font-bold {{ $dariAi ? 'bg-primary text-white shadow-sm' : 'bg-surface-container text-on-surface' }}">{{ $pk->competencyLevel->tingkat }}</span>
+                                            @else
+                                                <span class="text-on-surface-variant/50">—</span>
+                                            @endif
+                                        </td>
+                                        <td class="space-y-5 px-6 py-8 align-top">
+                                            <div class="space-y-2">
+                                                <p class="font-bold leading-tight text-on-surface">{{ $pk->teks_perilaku }}</p>
+                                                @if ($pk->alasan_pemilihan)
+                                                    <p class="text-sm leading-relaxed text-on-surface-variant">{{ $pk->alasan_pemilihan }}</p>
+                                                @endif
+                                            </div>
+                                            @if ($kutipan)
+                                                <div class="rounded-r-lg border-l-4 border-primary/50 bg-surface-container-low p-4 text-sm italic text-on-surface-variant shadow-sm">
+                                                    "{{ $kutipan }}"
+                                                </div>
+                                            @endif
+                                        </td>
+                                        <td class="px-6 py-8 align-top text-right">
+                                            @can('update', $asesmen)
+                                                <a href="{{ route('asesmen.perilaku.edit', [$asesmen, $pk]) }}" class="inline-flex items-center gap-1 rounded-lg bg-surface-container p-2 text-on-surface-variant transition-all hover:text-primary" title="Edit">
+                                                    <span class="material-symbols-outlined text-sm">edit</span>
+                                                </a>
+                                            @endcan
+                                        </td>
+                                    </tr>
+                                @endforeach
+                            </tbody>
+                        </table>
+                    </div>
+                @endif
+
+                @can('update', $asesmen)
+                    <details class="border-t border-outline-variant/20 bg-surface-container-low/30">
+                        <summary class="flex cursor-pointer list-none items-center justify-center gap-3 p-6 text-sm font-bold text-on-surface-variant transition-all hover:text-primary [&::-webkit-details-marker]:hidden">
+                            <span class="material-symbols-outlined">add_circle</span>
+                            Tambah Mapping Perilaku
+                        </summary>
+                        <form method="POST" action="{{ route('asesmen.perilaku.store', $asesmen) }}" class="space-y-4 border-t border-outline-variant/20 px-8 pb-8 pt-4">
+                            @csrf
+                            <div class="grid gap-4 sm:grid-cols-2">
+                                <div>
+                                    <label for="id_alat_penilaian_pk" class="text-xs font-medium text-on-surface-variant">Alat</label>
+                                    <select name="id_alat_penilaian" id="id_alat_penilaian_pk" required @disabled(! $punyaAlatTersediaInput) class="mt-1 w-full rounded-lg border border-outline-variant px-3 py-2 text-sm">
+                                        @foreach ($alatTersediaInput as $sel)
+                                            <option value="{{ $sel->id_alat_penilaian }}">{{ $sel->tool?->kode }} — {{ $sel->tool?->nama }}</option>
+                                        @endforeach
+                                    </select>
+                                </div>
+                                <div>
+                                    <label for="id_kompetensi_pk" class="text-xs font-medium text-on-surface-variant">Kompetensi</label>
+                                    <select name="id_kompetensi" id="id_kompetensi_pk" required class="mt-1 w-full rounded-lg border border-outline-variant px-3 py-2 text-sm">
+                                        @foreach ($kompetensi as $c)
+                                            <option value="{{ $c->id }}">{{ $c->kode_kompetensi }} — {{ $c->nama }}</option>
+                                        @endforeach
+                                    </select>
+                                </div>
+                            </div>
+                            <div class="grid gap-4 sm:grid-cols-2">
+                                <div>
+                                    <label for="id_bukti_penilaian" class="text-xs font-medium text-on-surface-variant">Bukti (opsional)</label>
+                                    <select name="id_bukti_penilaian" id="id_bukti_penilaian" class="mt-1 w-full rounded-lg border border-outline-variant px-3 py-2 text-sm">
+                                        <option value="">— tidak ada —</option>
+                                        @foreach ($asesmen->evidenceItems as $b)
+                                            <option value="{{ $b->id }}">#{{ $b->id }} {{ $b->tool?->kode }}</option>
+                                        @endforeach
+                                    </select>
+                                </div>
+                                <div>
+                                    <label for="id_tingkat_kompetensi" class="text-xs font-medium text-on-surface-variant">Tingkat (opsional)</label>
+                                    <select name="id_tingkat_kompetensi" id="id_tingkat_kompetensi" class="mt-1 w-full rounded-lg border border-outline-variant px-3 py-2 text-sm">
+                                        <option value="">— tidak ada —</option>
+                                        @foreach ($tingkatKompetensi as $tk)
+                                            <option value="{{ $tk->id }}">{{ $tk->competency?->kode_kompetensi }} · Level {{ $tk->tingkat }}</option>
+                                        @endforeach
+                                    </select>
+                                </div>
+                            </div>
+                            <div>
+                                <label for="teks_perilaku" class="text-xs font-medium text-on-surface-variant">Teks perilaku</label>
+                                <textarea name="teks_perilaku" id="teks_perilaku" rows="3" required class="mt-1 w-full rounded-lg border border-outline-variant px-3 py-2 text-sm">{{ old('teks_perilaku') }}</textarea>
+                            </div>
+                            <div class="grid gap-4 sm:grid-cols-2">
+                                <div>
+                                    <label for="alasan_pemilihan_pk" class="text-xs font-medium text-on-surface-variant">Alasan / reasoning</label>
+                                    <textarea name="alasan_pemilihan" id="alasan_pemilihan_pk" rows="2" class="mt-1 w-full rounded-lg border border-outline-variant px-3 py-2 text-sm">{{ old('alasan_pemilihan') }}</textarea>
+                                </div>
+                                <div>
+                                    <label for="kutipan_referensi_pk" class="text-xs font-medium text-on-surface-variant">Kutipan referensi</label>
+                                    <textarea name="kutipan_referensi" id="kutipan_referensi_pk" rows="2" class="mt-1 w-full rounded-lg border border-outline-variant px-3 py-2 text-sm" placeholder="Potongan teks dari bukti">{{ old('kutipan_referensi') }}</textarea>
+                                </div>
+                            </div>
+                            <button type="submit" @disabled(! $punyaAlatTersediaInput) class="rounded-lg accent-gradient px-4 py-2 text-sm font-bold text-white hover:opacity-90 disabled:opacity-50">Simpan mapping</button>
+                        </form>
+                    </details>
+                @endcan
             </div>
-            <div>
-                <label for="id_bukti_penilaian" class="block text-xs font-medium text-zinc-700">Bukti (opsional)</label>
-                <select name="id_bukti_penilaian" id="id_bukti_penilaian" class="mt-1 w-full rounded-md border border-zinc-300 px-2 py-1.5 text-sm">
-                    <option value="">— tidak ada —</option>
-                    @foreach ($asesmen->evidenceItems as $b)
-                        <option value="{{ $b->id }}">#{{ $b->id }} {{ $b->tool?->kode }} · {{ \Illuminate\Support\Str::limit($b->teks_mentah, 40) }}</option>
-                    @endforeach
-                </select>
-            </div>
-            <div>
-                <label for="id_tingkat_kompetensi" class="block text-xs font-medium text-zinc-700">Tingkat kompetensi (opsional)</label>
-                <select name="id_tingkat_kompetensi" id="id_tingkat_kompetensi" class="mt-1 w-full rounded-md border border-zinc-300 px-2 py-1.5 text-sm">
-                    <option value="">— tidak ada —</option>
-                    @foreach ($tingkatKompetensi as $tk)
-                        <option value="{{ $tk->id }}">{{ $tk->competency?->kode_kompetensi }} · Level {{ $tk->tingkat }}</option>
-                    @endforeach
-                </select>
-            </div>
-            <div>
-                <label for="teks_perilaku" class="block text-xs font-medium text-zinc-700">Teks perilaku</label>
-                <textarea name="teks_perilaku" id="teks_perilaku" rows="3" required class="mt-1 w-full rounded-md border border-zinc-300 px-2 py-1.5 text-sm">{{ old('teks_perilaku') }}</textarea>
-            </div>
-            <div>
-                <label for="alasan_pemilihan_pk" class="block text-xs font-medium text-zinc-700">Alasan pemilihan tingkat (opsional)</label>
-                <textarea name="alasan_pemilihan" id="alasan_pemilihan_pk" rows="2" class="mt-1 w-full rounded-md border border-zinc-300 px-2 py-1.5 text-sm">{{ old('alasan_pemilihan') }}</textarea>
-            </div>
-            <div>
-                <label for="kutipan_referensi_pk" class="block text-xs font-medium text-zinc-700">Kutipan referensi (opsional)</label>
-                <textarea name="kutipan_referensi" id="kutipan_referensi_pk" rows="2" class="mt-1 w-full rounded-md border border-zinc-300 px-2 py-1.5 text-sm" placeholder="Potongan teks dari bukti atau payload">{{ old('kutipan_referensi') }}</textarea>
-            </div>
-            <button type="submit" @disabled(! $punyaAlatTersediaInput) class="rounded-md bg-zinc-900 px-3 py-1.5 text-sm text-white hover:bg-zinc-800 disabled:cursor-not-allowed disabled:bg-zinc-400">Tambah perilaku kunci</button>
-        </form>
-        @endcan
-    </section>
+        </section>
+    </div>
 @endsection

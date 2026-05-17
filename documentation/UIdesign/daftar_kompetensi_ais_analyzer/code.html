@@ -1,0 +1,390 @@
+<!DOCTYPE html>
+
+<html class="light" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>AIS-ANALYZER - Kompetensi</title>
+<!-- Fonts -->
+<link href="https://fonts.googleapis.com" rel="preconnect"/>
+<link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect"/>
+<link href="https://fonts.googleapis.com/css2?family=Hanken+Grotesk:wght@400;600;700&amp;family=Plus+Jakarta+Sans:wght@600;700;800&amp;display=swap" rel="stylesheet"/>
+<!-- Material Symbols -->
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<!-- Tailwind CSS -->
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<script id="tailwind-config">
+      tailwind.config = {
+        darkMode: "class",
+        theme: {
+          extend: {
+            "colors": {
+                    "secondary-fixed-dim": "#bec6e0",
+                    "on-secondary-fixed-variant": "#3f465c",
+                    "surface-dim": "#d8d9e3",
+                    "inverse-surface": "#2e3038",
+                    "surface-variant": "#e1e2ec",
+                    "inverse-primary": "#adc6ff",
+                    "error": "#ba1a1a",
+                    "primary-fixed-dim": "#adc6ff",
+                    "surface-container-high": "#e6e7f2",
+                    "primary-container": "#2170e4",
+                    "tertiary": "#924700",
+                    "surface-container-low": "#f2f3fd",
+                    "on-tertiary-container": "#fffbff",
+                    "on-tertiary": "#ffffff",
+                    "tertiary-container": "#b75b00",
+                    "on-primary-container": "#fefcff",
+                    "on-error": "#ffffff",
+                    "on-secondary": "#ffffff",
+                    "secondary": "#565e74",
+                    "on-tertiary-fixed": "#311400",
+                    "on-surface-variant": "#424754",
+                    "secondary-container": "#dae2fd",
+                    "outline-variant": "#c2c6d6",
+                    "on-secondary-container": "#5c647a",
+                    "primary": "#0058be",
+                    "background": "#f9f9ff",
+                    "on-background": "#191b23",
+                    "surface": "#f9f9ff",
+                    "inverse-on-surface": "#eff0fa",
+                    "surface-container": "#ecedf7",
+                    "on-primary": "#ffffff",
+                    "on-tertiary-fixed-variant": "#723600",
+                    "on-primary-fixed": "#001a42",
+                    "on-secondary-fixed": "#131b2e",
+                    "tertiary-fixed": "#ffdcc6",
+                    "secondary-fixed": "#dae2fd",
+                    "error-container": "#ffdad6",
+                    "on-surface": "#191b23",
+                    "surface-container-highest": "#e1e2ec",
+                    "primary-fixed": "#d8e2ff",
+                    "surface-bright": "#f9f9ff",
+                    "surface-container-lowest": "#ffffff",
+                    "on-primary-fixed-variant": "#004395",
+                    "outline": "#727785",
+                    "on-error-container": "#93000a",
+                    "surface-tint": "#005ac2",
+                    "tertiary-fixed-dim": "#ffb786"
+            },
+            "borderRadius": {
+                    "DEFAULT": "0.25rem",
+                    "lg": "0.5rem",
+                    "xl": "0.75rem",
+                    "full": "9999px"
+            },
+            "spacing": {
+                    "gutter": "24px",
+                    "stack-sm": "8px",
+                    "base": "4px",
+                    "stack-md": "16px",
+                    "margin-desktop": "40px",
+                    "container-max": "1280px",
+                    "stack-lg": "32px",
+                    "margin-mobile": "16px",
+                    "sidebar_width": "280px"
+            },
+            "fontFamily": {
+                    "body-lg": ["Hanken Grotesk"],
+                    "label-md": ["Hanken Grotesk"],
+                    "headline-lg": ["Plus Jakarta Sans"],
+                    "display-lg": ["Plus Jakarta Sans"],
+                    "label-sm": ["Hanken Grotesk"],
+                    "headline-md": ["Plus Jakarta Sans"],
+                    "body-md": ["Hanken Grotesk"]
+            },
+            "fontSize": {
+                    "body-lg": ["18px", {"lineHeight": "1.6", "fontWeight": "400"}],
+                    "label-md": ["14px", {"lineHeight": "1.4", "letterSpacing": "0.01em", "fontWeight": "600"}],
+                    "headline-lg": ["32px", {"lineHeight": "1.2", "letterSpacing": "-0.01em", "fontWeight": "700"}],
+                    "display-lg": ["48px", {"lineHeight": "1.1", "letterSpacing": "-0.02em", "fontWeight": "800"}],
+                    "label-sm": ["12px", {"lineHeight": "1.2", "fontWeight": "700"}],
+                    "headline-md": ["24px", {"lineHeight": "1.3", "fontWeight": "600"}],
+                    "body-md": ["16px", {"lineHeight": "1.5", "fontWeight": "400"}]
+            }
+          },
+        },
+      }
+    </script>
+<style>
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+        .accent-gradient {
+            background: linear-gradient(135deg, #0058be 0%, #2170e4 100%);
+        }
+        .inner-glow {
+            box-shadow: inset 0 1px 0 0 rgba(255, 255, 255, 0.2);
+        }
+        .custom-shadow {
+            box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
+        }
+    </style>
+</head>
+<body class="bg-background text-on-background font-body-md">
+<!-- Sidebar Navigation Shell -->
+<aside class="fixed left-0 top-0 h-full w-[280px] bg-surface border-r border-outline-variant flex flex-col py-stack_md z-50">
+<div class="px-6 mb-10">
+<h1 class="font-display-lg text-headline-md font-semibold text-primary">AIS-ANALYZER</h1>
+<p class="text-label-sm text-on-surface-variant tracking-wider uppercase">Assessment Analysis</p>
+</div>
+<nav class="flex-1 px-4 space-y-2">
+<!-- Active State Logic: Master Data is the logical home for Kompetensi List -->
+<a class="flex items-center gap-4 px-4 py-3 rounded-xl transition-colors hover:bg-surface-container-low text-on-surface-variant font-label-md" href="#">
+<span class="material-symbols-outlined">dashboard</span>
+                Dashboard
+            </a>
+<a class="flex items-center gap-4 px-4 py-3 rounded-xl transition-colors hover:bg-surface-container-low text-on-surface-variant font-label-md" href="#">
+<span class="material-symbols-outlined">assessment</span>
+                Asesmen
+            </a>
+<a class="flex items-center gap-4 px-4 py-3 rounded-xl transition-colors bg-surface-container-lowest custom-shadow text-secondary font-bold font-label-md" href="#">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">database</span>
+                Master Data
+            </a>
+<a class="flex items-center gap-4 px-4 py-3 rounded-xl transition-colors hover:bg-surface-container-low text-on-surface-variant font-label-md" href="#">
+<span class="material-symbols-outlined">person</span>
+                User Profile
+            </a>
+</nav>
+<div class="px-4 mt-auto">
+<button class="w-full flex items-center justify-center gap-2 accent-gradient text-on-primary py-3 px-4 rounded-xl font-label-md inner-glow hover:opacity-90 active:scale-95 transition-all">
+<span class="material-symbols-outlined">add</span>
+                Buat Asesmen
+            </button>
+<div class="mt-6 border-t border-outline-variant pt-4">
+<a class="flex items-center gap-4 px-4 py-3 rounded-xl transition-colors hover:bg-surface-container-low text-on-surface-variant font-label-md" href="#">
+<span class="material-symbols-outlined">logout</span>
+                    Keluar
+                </a>
+</div>
+</div>
+</aside>
+<!-- Main Content Canvas -->
+<main class="ml-[280px] min-h-screen flex flex-col">
+<!-- Top App Bar Shell -->
+<header class="h-16 flex justify-between items-center w-full px-gutter bg-background max-w-container-max mx-auto sticky top-0 z-40">
+<div class="flex items-center gap-8">
+<span class="font-headline-md text-primary font-semibold">Kompetensi</span>
+<nav class="hidden md:flex gap-6">
+<a class="text-primary font-label-md border-b-2 border-primary pb-1" href="#">Dashboard</a>
+<a class="text-on-surface-variant hover:text-primary font-label-md transition-colors pb-1" href="#">Data Master</a>
+</nav>
+</div>
+<div class="flex items-center gap-4">
+<button class="p-2 text-on-surface-variant hover:bg-surface-container-low rounded-full transition-colors relative">
+<span class="material-symbols-outlined">notifications</span>
+<span class="absolute top-2 right-2 w-2 h-2 bg-error rounded-full border-2 border-background"></span>
+</button>
+<button class="p-2 text-on-surface-variant hover:bg-surface-container-low rounded-full transition-colors">
+<span class="material-symbols-outlined">help</span>
+</button>
+<div class="h-8 w-px bg-outline-variant mx-2"></div>
+<div class="flex items-center gap-3 cursor-pointer active:opacity-70 transition-opacity">
+<img alt="User Avatar" class="w-8 h-8 rounded-full object-cover border border-outline-variant shadow-sm" data-alt="A professional headshot of a young male executive with a warm, confident expression. He is set against a clean, out-of-focus modern office background with soft cinematic lighting. The aesthetic is bright and minimal, using a light-mode color palette that emphasizes clarity and high-performance corporate style." src="https://lh3.googleusercontent.com/aida-public/AB6AXuDoL7isbPkE0xperXbqHlkaHSRN-J1G1irSNjL5zAVIWzOjCb5M94UoA0PtZ4WqNqz-iAG5HNG9oVtzJF0tduFj8oV5rgqbcQRtZo4P2po3kkwzvPXNHWjsvPEzTmNq23NYJrWSMgzy9Pwz_Ce_vd9NgD5d8fTaOjUbystQPwhDLhF6FlM5CdV3fNNAF5adnht1ibvq8DT0VUh-1W18US9ALXbB52iCJQ4wBsNuKIh0pWp5Ki0FfcZkYGZWuFY2oIuPCc1goBb3ah4"/>
+<span class="font-label-md text-on-surface">Alex Rivera</span>
+</div>
+</div>
+</header>
+<section class="flex-1 px-gutter py-8 max-w-container-max mx-auto w-full">
+<!-- Page Header Actions -->
+<div class="flex flex-col md:flex-row md:items-end justify-between gap-6 mb-8">
+<div>
+<h2 class="font-headline-lg text-on-surface mb-2">Daftar Kompetensi</h2>
+<p class="text-body-md text-on-surface-variant">Manajemen database kompetensi standar organisasi untuk analisis asesmen.</p>
+</div>
+<button class="accent-gradient text-on-primary px-6 py-3 rounded-lg font-label-md flex items-center gap-2 custom-shadow hover:brightness-110 transition-all active:scale-95">
+<span class="material-symbols-outlined">add_circle</span>
+                    Tambah Kompetensi
+                </button>
+</div>
+<!-- Dashboard Filtering & Search (Bento Style Card) -->
+<div class="bg-surface-container-lowest border border-outline-variant rounded-xl p-4 mb-6 custom-shadow">
+<div class="flex flex-wrap items-center gap-4">
+<div class="relative flex-1 min-w-[300px]">
+<span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-outline">search</span>
+<input class="w-full pl-10 pr-4 py-2.5 bg-background border border-outline-variant rounded-lg focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none transition-all font-body-md text-on-surface" placeholder="Cari kompetensi berdasarkan nama atau kode..." type="text"/>
+</div>
+<div class="flex items-center gap-2">
+<select class="bg-background border border-outline-variant rounded-lg px-4 py-2.5 font-label-md text-on-surface-variant outline-none focus:border-primary cursor-pointer">
+<option>Semua Kelompok</option>
+<option>Soft Skills</option>
+<option>Technical</option>
+<option>Leadership</option>
+</select>
+<button class="p-2.5 border border-outline-variant rounded-lg hover:bg-surface-container-low text-on-surface-variant transition-colors">
+<span class="material-symbols-outlined">filter_list</span>
+</button>
+</div>
+</div>
+</div>
+<!-- Main Data Table Container -->
+<div class="bg-surface-container-lowest border border-outline-variant rounded-xl overflow-hidden custom-shadow">
+<div class="overflow-x-auto">
+<table class="w-full text-left border-collapse">
+<thead>
+<tr class="bg-surface-container text-on-surface-variant border-b border-outline-variant">
+<th class="px-6 py-4 font-label-md uppercase tracking-wider">Kelompok</th>
+<th class="px-6 py-4 font-label-md uppercase tracking-wider">Kode</th>
+<th class="px-6 py-4 font-label-md uppercase tracking-wider">Nama Kompetensi</th>
+<th class="px-6 py-4 font-label-md uppercase tracking-wider text-center">Tingkat Maks</th>
+<th class="px-6 py-4 font-label-md uppercase tracking-wider">Status</th>
+<th class="px-6 py-4 font-label-md uppercase tracking-wider text-right">Aksi</th>
+</tr>
+</thead>
+<tbody class="divide-y divide-outline-variant">
+<!-- Row 1 -->
+<tr class="hover:bg-surface-container-low transition-colors group">
+<td class="px-6 py-4">
+<span class="px-2 py-1 bg-secondary-container text-on-secondary-container rounded font-label-sm">Leadership</span>
+</td>
+<td class="px-6 py-4 font-label-md text-primary">CMP-LDR-001</td>
+<td class="px-6 py-4">
+<div class="font-body-md font-semibold text-on-surface">Strategic Thinking</div>
+<div class="text-label-sm text-on-surface-variant">Kemampuan merencanakan strategi jangka panjang.</div>
+</td>
+<td class="px-6 py-4 text-center font-bold text-on-surface">5</td>
+<td class="px-6 py-4">
+<div class="flex items-center gap-2 text-primary font-label-md">
+<span class="w-2 h-2 rounded-full bg-primary"></span>
+                                        Aktif
+                                    </div>
+</td>
+<td class="px-6 py-4 text-right">
+<button class="p-2 text-outline hover:text-primary transition-colors">
+<span class="material-symbols-outlined">edit</span>
+</button>
+<button class="p-2 text-outline hover:text-error transition-colors">
+<span class="material-symbols-outlined">delete</span>
+</button>
+</td>
+</tr>
+<!-- Row 2 -->
+<tr class="hover:bg-surface-container-low transition-colors group">
+<td class="px-6 py-4">
+<span class="px-2 py-1 bg-tertiary-fixed text-on-tertiary-fixed-variant rounded font-label-sm">Soft Skills</span>
+</td>
+<td class="px-6 py-4 font-label-md text-primary">CMP-SFT-012</td>
+<td class="px-6 py-4">
+<div class="font-body-md font-semibold text-on-surface">Effective Communication</div>
+<div class="text-label-sm text-on-surface-variant">Penyampaian informasi yang jelas dan persuasif.</div>
+</td>
+<td class="px-6 py-4 text-center font-bold text-on-surface">4</td>
+<td class="px-6 py-4">
+<div class="flex items-center gap-2 text-primary font-label-md">
+<span class="w-2 h-2 rounded-full bg-primary"></span>
+                                        Aktif
+                                    </div>
+</td>
+<td class="px-6 py-4 text-right">
+<button class="p-2 text-outline hover:text-primary transition-colors">
+<span class="material-symbols-outlined">edit</span>
+</button>
+<button class="p-2 text-outline hover:text-error transition-colors">
+<span class="material-symbols-outlined">delete</span>
+</button>
+</td>
+</tr>
+<!-- Row 3 -->
+<tr class="hover:bg-surface-container-low transition-colors group">
+<td class="px-6 py-4">
+<span class="px-2 py-1 bg-primary-fixed text-on-primary-fixed-variant rounded font-label-sm">Technical</span>
+</td>
+<td class="px-6 py-4 font-label-md text-primary">CMP-TEC-045</td>
+<td class="px-6 py-4">
+<div class="font-body-md font-semibold text-on-surface">Data Analysis</div>
+<div class="text-label-sm text-on-surface-variant">Interpretasi data statistik untuk pengambilan keputusan.</div>
+</td>
+<td class="px-6 py-4 text-center font-bold text-on-surface">5</td>
+<td class="px-6 py-4">
+<div class="flex items-center gap-2 text-outline font-label-md">
+<span class="w-2 h-2 rounded-full bg-outline-variant"></span>
+                                        Draft
+                                    </div>
+</td>
+<td class="px-6 py-4 text-right">
+<button class="p-2 text-outline hover:text-primary transition-colors">
+<span class="material-symbols-outlined">edit</span>
+</button>
+<button class="p-2 text-outline hover:text-error transition-colors">
+<span class="material-symbols-outlined">delete</span>
+</button>
+</td>
+</tr>
+<!-- Row 4 -->
+<tr class="hover:bg-surface-container-low transition-colors group">
+<td class="px-6 py-4">
+<span class="px-2 py-1 bg-secondary-container text-on-secondary-container rounded font-label-sm">Leadership</span>
+</td>
+<td class="px-6 py-4 font-label-md text-primary">CMP-LDR-004</td>
+<td class="px-6 py-4">
+<div class="font-body-md font-semibold text-on-surface">Conflict Resolution</div>
+<div class="text-label-sm text-on-surface-variant">Menangani perbedaan pendapat secara profesional.</div>
+</td>
+<td class="px-6 py-4 text-center font-bold text-on-surface">4</td>
+<td class="px-6 py-4">
+<div class="flex items-center gap-2 text-primary font-label-md">
+<span class="w-2 h-2 rounded-full bg-primary"></span>
+                                        Aktif
+                                    </div>
+</td>
+<td class="px-6 py-4 text-right">
+<button class="p-2 text-outline hover:text-primary transition-colors">
+<span class="material-symbols-outlined">edit</span>
+</button>
+<button class="p-2 text-outline hover:text-error transition-colors">
+<span class="material-symbols-outlined">delete</span>
+</button>
+</td>
+</tr>
+</tbody>
+</table>
+</div>
+<!-- Pagination Footer -->
+<div class="px-6 py-4 border-t border-outline-variant bg-surface flex items-center justify-between">
+<span class="text-label-md text-on-surface-variant">Menampilkan 1-4 dari 48 kompetensi</span>
+<div class="flex gap-2">
+<button class="p-2 rounded-lg border border-outline-variant hover:bg-surface-container-low disabled:opacity-30 disabled:cursor-not-allowed" disabled="">
+<span class="material-symbols-outlined">chevron_left</span>
+</button>
+<button class="w-10 h-10 rounded-lg accent-gradient text-on-primary font-label-md shadow-sm">1</button>
+<button class="w-10 h-10 rounded-lg border border-outline-variant hover:bg-surface-container-low font-label-md transition-colors">2</button>
+<button class="w-10 h-10 rounded-lg border border-outline-variant hover:bg-surface-container-low font-label-md transition-colors">3</button>
+<button class="p-2 rounded-lg border border-outline-variant hover:bg-surface-container-low transition-colors">
+<span class="material-symbols-outlined">chevron_right</span>
+</button>
+</div>
+</div>
+</div>
+<!-- Bento Stats Summary (Asymmetric Layout) -->
+<div class="grid grid-cols-1 md:grid-cols-4 gap-6 mt-12">
+<div class="md:col-span-1 bg-primary-container p-6 rounded-2xl text-on-primary-container flex flex-col justify-between min-h-[160px]">
+<span class="material-symbols-outlined text-4xl opacity-50">auto_awesome</span>
+<div>
+<p class="text-label-md opacity-80">Total Kompetensi</p>
+<h3 class="text-display-lg font-bold">48</h3>
+</div>
+</div>
+<div class="md:col-span-2 bg-surface-container-lowest border border-outline-variant p-6 rounded-2xl flex items-center gap-6 custom-shadow">
+<div class="flex-1">
+<h4 class="font-headline-md text-on-surface mb-2">Paling Sering Digunakan</h4>
+<p class="text-body-md text-on-surface-variant mb-4">Strategic Thinking telah digunakan dalam 24 asesmen bulan ini.</p>
+<div class="h-2 w-full bg-surface-container-high rounded-full overflow-hidden">
+<div class="h-full bg-primary w-[75%] rounded-full"></div>
+</div>
+</div>
+<span class="material-symbols-outlined text-primary text-5xl">trending_up</span>
+</div>
+<div class="md:col-span-1 bg-surface-container p-6 rounded-2xl flex flex-col justify-center items-center text-center">
+<p class="text-label-md text-on-surface-variant mb-2">Status Draft</p>
+<h3 class="text-headline-lg font-bold text-secondary">06</h3>
+<p class="text-label-sm text-outline mt-1 italic">Butuh Review</p>
+</div>
+</div>
+</section>
+<!-- Footer -->
+<footer class="mt-auto px-gutter py-6 border-t border-outline-variant bg-surface text-center">
+<p class="text-label-sm text-on-surface-variant">© 2024 AIS-ANALYZER. Sistem Manajemen Asesmen Modern.</p>
+</footer>
+</main>
+</body></html>
