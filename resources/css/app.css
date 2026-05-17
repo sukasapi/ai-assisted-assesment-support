@@ -1,3 +1,5 @@
+@import url('https://fonts.googleapis.com/css2?family=Hanken+Grotesk:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap');
+
 @import 'tailwindcss';
 
 @source '../../vendor/laravel/framework/src/Illuminate/Pagination/resources/views/*.blade.php';
@@ -7,6 +9,123 @@
 @source "../**/*.vue";
 
 @theme {
-    --font-sans: 'Instrument Sans', ui-sans-serif, system-ui, sans-serif, 'Apple Color Emoji', 'Segoe UI Emoji',
-        'Segoe UI Symbol', 'Noto Color Emoji';
+    --font-sans: 'Hanken Grotesk', ui-sans-serif, system-ui, sans-serif;
+    --font-display: 'Plus Jakarta Sans', ui-sans-serif, system-ui, sans-serif;
+    --font-mono: 'JetBrains Mono', ui-monospace, monospace;
+
+    --color-surface: #f9f9ff;
+    --color-surface-dim: #d8d9e3;
+    --color-surface-bright: #f9f9ff;
+    --color-surface-container-lowest: #ffffff;
+    --color-surface-container-low: #f2f3fd;
+    --color-surface-container: #ecedf7;
+    --color-surface-container-high: #e6e7f2;
+    --color-surface-container-highest: #e1e2ec;
+    --color-on-surface: #191b23;
+    --color-on-surface-variant: #424754;
+    --color-inverse-surface: #2e3038;
+    --color-inverse-on-surface: #eff0fa;
+    --color-outline: #727785;
+    --color-outline-variant: #c2c6d6;
+    --color-surface-tint: #005ac2;
+    --color-primary: #0058be;
+    --color-on-primary: #ffffff;
+    --color-primary-container: #2170e4;
+    --color-on-primary-container: #fefcff;
+    --color-inverse-primary: #adc6ff;
+    --color-secondary: #565e74;
+    --color-on-secondary: #ffffff;
+    --color-secondary-container: #dae2fd;
+    --color-on-secondary-container: #5c647a;
+    --color-tertiary: #924700;
+    --color-on-tertiary: #ffffff;
+    --color-tertiary-container: #b75b00;
+    --color-on-tertiary-container: #fffbff;
+    --color-error: #ba1a1a;
+    --color-on-error: #ffffff;
+    --color-error-container: #ffdad6;
+    --color-on-error-container: #93000a;
+    --color-primary-fixed: #d8e2ff;
+    --color-primary-fixed-dim: #adc6ff;
+    --color-on-primary-fixed: #001a42;
+    --color-on-primary-fixed-variant: #004395;
+    --color-secondary-fixed: #dae2fd;
+    --color-secondary-fixed-dim: #bec6e0;
+    --color-on-secondary-fixed: #131b2e;
+    --color-on-secondary-fixed-variant: #3f465c;
+    --color-tertiary-fixed: #ffdcc6;
+    --color-tertiary-fixed-dim: #ffb786;
+    --color-on-tertiary-fixed: #311400;
+    --color-on-tertiary-fixed-variant: #723600;
+    --color-background: #f9f9ff;
+    --color-on-background: #191b23;
+    --color-surface-variant: #e1e2ec;
+
+    --spacing-sidebar-width: 4.5rem;
+    --spacing-container-max: 80rem;
+    --spacing-gutter: 1.5rem;
+    --spacing-stack-sm: 0.5rem;
+    --spacing-stack-md: 1rem;
+    --spacing-stack-lg: 2rem;
+
+    --radius-sm: 0.25rem;
+    --radius-DEFAULT: 0.5rem;
+    --radius-lg: 0.75rem;
+    --radius-xl: 1rem;
+}
+
+@layer base {
+    body {
+        @apply bg-surface text-on-surface antialiased;
+        font-family: var(--font-sans);
+    }
+
+    h1,
+    h2,
+    h3,
+    .font-display {
+        font-family: var(--font-display);
+    }
+}
+
+@layer components {
+    .material-symbols-outlined {
+        font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        vertical-align: middle;
+    }
+
+    .card-depth {
+        @apply rounded-xl border border-outline-variant/40 bg-surface-container-lowest shadow-md;
+        box-shadow:
+            0 4px 6px -1px rgb(0 0 0 / 0.08),
+            0 2px 4px -2px rgb(0 0 0 / 0.06);
+    }
+
+    .accent-gradient {
+        background: linear-gradient(135deg, #0058be 0%, #2170e4 100%);
+    }
+
+    .ai-accent {
+        @apply border border-outline-variant bg-secondary-container text-on-surface;
+    }
+
+    .ai-accent-bg {
+        @apply relative rounded-xl border border-primary/20 bg-primary-fixed/40 text-on-surface shadow-sm;
+    }
+
+    .sticky-col {
+        @apply sticky left-0 z-10 bg-surface-container-lowest;
+    }
+
+    .sticky-col-header {
+        @apply sticky left-0 z-20 bg-surface-container-low;
+    }
+
+    .wysiwyg .ql-container {
+        @apply rounded-b-lg border-outline-variant bg-white text-sm;
+    }
+
+    .wysiwyg .ql-toolbar {
+        @apply rounded-t-lg border-outline-variant bg-surface-container-low;
+    }
 }

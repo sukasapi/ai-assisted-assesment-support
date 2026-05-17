@@ -3,25 +3,37 @@
 @section('title', 'Master data — ' . config('app.name'))
 
 @section('content')
-    <h1 class="text-2xl font-semibold text-zinc-900">Master data</h1>
-    <p class="mt-2 max-w-2xl text-sm text-zinc-600">Referensi kamus kompetensi, alat penilaian, matriks, dan peserta. <strong>Admin</strong> dapat menambah, mengubah, dan menghapus (soft delete). <strong>Konsultan</strong> dapat melihat data.</p>
+    <x-ui.page-header title="Master data">
+        <x-slot:description>Referensi kamus kompetensi, alat penilaian, matriks, dan peserta.</x-slot:description>
+    </x-ui.page-header>
 
-    <ul class="mt-8 grid gap-3 sm:grid-cols-2">
-        <li><a href="{{ route('master.kelompok-kompetensi.index') }}" class="block rounded-lg border border-zinc-200 bg-white p-4 text-sm font-medium text-zinc-900 shadow-sm hover:border-zinc-300">Kelompok kompetensi</a></li>
-        <li><a href="{{ route('master.kompetensi.index') }}" class="block rounded-lg border border-zinc-200 bg-white p-4 text-sm font-medium text-zinc-900 shadow-sm hover:border-zinc-300">Kompetensi</a></li>
-        <li><a href="{{ route('master.tingkat-kompetensi.index') }}" class="block rounded-lg border border-zinc-200 bg-white p-4 text-sm font-medium text-zinc-900 shadow-sm hover:border-zinc-300">Tingkat kompetensi</a></li>
-        <li><a href="{{ route('master.alat-penilaian.index') }}" class="block rounded-lg border border-zinc-200 bg-white p-4 text-sm font-medium text-zinc-900 shadow-sm hover:border-zinc-300">Alat penilaian</a></li>
-        <li>
-            <a href="{{ route('master.versi-matriks.index') }}" class="block rounded-lg border border-zinc-200 bg-white p-4 shadow-sm hover:border-zinc-300">
-                <span class="text-sm font-medium text-zinc-900">Versi matriks</span>
-                <span class="mt-1 block text-xs font-normal text-zinc-500">Termasuk pemetaan kompetensi–alat per versi</span>
-            </a>
-        </li>
-        <li><a href="{{ route('master.peserta.index') }}" class="block rounded-lg border border-zinc-200 bg-white p-4 text-sm font-medium text-zinc-900 shadow-sm hover:border-zinc-300">Peserta</a></li>
-        @if (auth()->user()->role === 'admin')
-            <li><a href="{{ route('master.log-aktivitas.index') }}" class="block rounded-lg border border-zinc-200 bg-white p-4 text-sm font-medium text-zinc-900 shadow-sm hover:border-zinc-300">Log aktivitas</a></li>
-            <li><a href="{{ route('master.log-ai.index') }}" class="block rounded-lg border border-zinc-200 bg-white p-4 text-sm font-medium text-zinc-900 shadow-sm hover:border-zinc-300">Log AI</a></li>
-            <li><a href="{{ route('peserta.impor-csv') }}" class="block rounded-lg border border-zinc-200 bg-white p-4 text-sm font-medium text-zinc-900 shadow-sm hover:border-zinc-300">Impor peserta (CSV)</a></li>
-        @endif
+    @php
+        $links = [
+            ['route' => 'master.kelompok-kompetensi.index', 'icon' => 'category', 'label' => 'Kelompok kompetensi'],
+            ['route' => 'master.kompetensi.index', 'icon' => 'psychology', 'label' => 'Kompetensi'],
+            ['route' => 'master.tingkat-kompetensi.index', 'icon' => 'stairs', 'label' => 'Tingkat kompetensi'],
+            ['route' => 'master.alat-penilaian.index', 'icon' => 'construction', 'label' => 'Alat penilaian'],
+            ['route' => 'master.versi-matriks.index', 'icon' => 'grid_view', 'label' => 'Versi matriks', 'hint' => 'Termasuk pemetaan per versi'],
+            ['route' => 'master.peserta.index', 'icon' => 'group', 'label' => 'Peserta'],
+        ];
+        if (auth()->user()->role === 'admin') {
+            $links[] = ['route' => 'master.log-aktivitas.index', 'icon' => 'history', 'label' => 'Log aktivitas'];
+            $links[] = ['route' => 'master.log-ai.index', 'icon' => 'smart_toy', 'label' => 'Log AI'];
+            $links[] = ['route' => 'peserta.impor-csv', 'icon' => 'upload_file', 'label' => 'Impor peserta (CSV)'];
+        }
+    @endphp
+
+    <ul class="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+        @foreach ($links as $item)
+            <li>
+                <a href="{{ route($item['route']) }}" class="card-depth flex flex-col gap-2 p-4 transition-shadow hover:shadow-lg">
+                    <span class="material-symbols-outlined text-2xl text-primary">{{ $item['icon'] }}</span>
+                    <span class="text-sm font-semibold text-on-surface">{{ $item['label'] }}</span>
+                    @if (! empty($item['hint']))
+                        <span class="text-xs text-on-surface-variant">{{ $item['hint'] }}</span>
+                    @endif
+                </a>
+            </li>
+        @endforeach
     </ul>
 @endsection

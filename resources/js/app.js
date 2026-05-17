@@ -6,8 +6,8 @@ import 'quill/dist/quill.snow.css';
 window.Swal = Swal;
 
 const swalTheme = {
-    confirmButtonColor: '#27272a',
-    cancelButtonColor: '#71717a',
+    confirmButtonColor: '#0058be',
+    cancelButtonColor: '#727785',
 };
 
 function escapeHtml(text) {

@@ -1,0 +1,346 @@
+<!DOCTYPE html>
+
+<html lang="id"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;600;700;800&amp;family=Hanken+Grotesk:wght@400;600;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<style>
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+        .accent-gradient {
+            background: linear-gradient(135deg, #0058be 0%, #2170e4 100%);
+        }
+        .inner-glow {
+            box-shadow: inset 0 1px 0 0 rgba(255, 255, 255, 0.2);
+        }
+    </style>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    "colors": {
+                        "secondary-fixed-dim": "#bec6e0",
+                        "on-secondary-fixed-variant": "#3f465c",
+                        "surface-dim": "#d8d9e3",
+                        "inverse-surface": "#2e3038",
+                        "surface-variant": "#e1e2ec",
+                        "inverse-primary": "#adc6ff",
+                        "error": "#ba1a1a",
+                        "primary-fixed-dim": "#adc6ff",
+                        "surface-container-high": "#e6e7f2",
+                        "primary-container": "#2170e4",
+                        "tertiary": "#924700",
+                        "surface-container-low": "#f2f3fd",
+                        "on-tertiary-container": "#fffbff",
+                        "on-tertiary": "#ffffff",
+                        "tertiary-container": "#b75b00",
+                        "on-primary-container": "#fefcff",
+                        "on-error": "#ffffff",
+                        "on-secondary": "#ffffff",
+                        "secondary": "#565e74",
+                        "on-tertiary-fixed": "#311400",
+                        "on-surface-variant": "#424754",
+                        "secondary-container": "#dae2fd",
+                        "outline-variant": "#c2c6d6",
+                        "on-secondary-container": "#5c647a",
+                        "primary": "#0058be",
+                        "background": "#f9f9ff",
+                        "on-background": "#191b23",
+                        "surface": "#f9f9ff",
+                        "inverse-on-surface": "#eff0fa",
+                        "surface-container": "#ecedf7",
+                        "on-primary": "#ffffff",
+                        "on-tertiary-fixed-variant": "#723600",
+                        "on-primary-fixed": "#001a42",
+                        "on-secondary-fixed": "#131b2e",
+                        "tertiary-fixed": "#ffdcc6",
+                        "secondary-fixed": "#dae2fd",
+                        "error-container": "#ffdad6",
+                        "on-surface": "#191b23",
+                        "surface-container-highest": "#e1e2ec",
+                        "primary-fixed": "#d8e2ff",
+                        "surface-bright": "#f9f9ff",
+                        "surface-container-lowest": "#ffffff",
+                        "on-primary-fixed-variant": "#004395",
+                        "outline": "#727785",
+                        "on-error-container": "#93000a",
+                        "surface-tint": "#005ac2",
+                        "tertiary-fixed-dim": "#ffb786"
+                    },
+                    "borderRadius": {
+                        "DEFAULT": "0.25rem",
+                        "lg": "0.5rem",
+                        "xl": "0.75rem",
+                        "full": "9999px"
+                    },
+                    "spacing": {
+                        "gutter": "24px",
+                        "stack-sm": "8px",
+                        "base": "4px",
+                        "stack-md": "16px",
+                        "margin-desktop": "40px",
+                        "container-max": "1280px",
+                        "stack-lg": "32px",
+                        "margin-mobile": "16px",
+                        "sidebar_width": "280px"
+                    },
+                    "fontFamily": {
+                        "body-lg": ["Hanken Grotesk"],
+                        "label-md": ["Hanken Grotesk"],
+                        "headline-lg": ["Plus Jakarta Sans"],
+                        "display-lg": ["Plus Jakarta Sans"],
+                        "label-sm": ["Hanken Grotesk"],
+                        "headline-md": ["Plus Jakarta Sans"],
+                        "body-md": ["Hanken Grotesk"]
+                    },
+                    "fontSize": {
+                        "body-lg": ["18px", {"lineHeight": "1.6", "fontWeight": "400"}],
+                        "label-md": ["14px", {"lineHeight": "1.4", "letterSpacing": "0.01em", "fontWeight": "600"}],
+                        "headline-lg": ["32px", {"lineHeight": "1.2", "letterSpacing": "-0.01em", "fontWeight": "700"}],
+                        "display-lg": ["48px", {"lineHeight": "1.1", "letterSpacing": "-0.02em", "fontWeight": "800"}],
+                        "label-sm": ["12px", {"lineHeight": "1.2", "fontWeight": "700"}],
+                        "headline-md": ["24px", {"lineHeight": "1.3", "fontWeight": "600"}],
+                        "body-md": ["16px", {"lineHeight": "1.5", "fontWeight": "400"}]
+                    }
+                }
+            }
+        }
+    </script>
+</head>
+<body class="bg-background text-on-background font-body-md overflow-x-hidden">
+<!-- Side Navigation Bar -->
+<aside class="fixed left-0 top-0 h-full w-[280px] bg-surface border-r border-outline-variant flex flex-col py-8 z-50">
+<div class="px-6 mb-10">
+<h1 class="font-display-lg text-headline-md font-semibold text-primary">AIS-ANALYZER</h1>
+<p class="text-label-sm text-on-surface-variant tracking-wider">Assessment Analysis</p>
+</div>
+<nav class="flex-1 flex flex-col gap-1 px-4">
+<a class="flex items-center gap-3 px-4 py-3 rounded-xl text-on-surface-variant hover:bg-surface-container-low transition-colors group" href="#">
+<span class="material-symbols-outlined text-[24px]">dashboard</span>
+<span class="font-label-md">Dashboard</span>
+</a>
+<a class="flex items-center gap-3 px-4 py-3 rounded-xl text-on-surface-variant hover:bg-surface-container-low transition-colors group" href="#">
+<span class="material-symbols-outlined text-[24px]">assessment</span>
+<span class="font-label-md">Asesmen</span>
+</a>
+<a class="flex items-center gap-3 px-4 py-3 rounded-xl text-secondary font-bold bg-surface-container-low border-r-4 border-primary transition-colors group" href="#">
+<span class="material-symbols-outlined text-[24px]">database</span>
+<span class="font-label-md">Master Data</span>
+</a>
+<a class="flex items-center gap-3 px-4 py-3 rounded-xl text-on-surface-variant hover:bg-surface-container-low transition-colors group" href="#">
+<span class="material-symbols-outlined text-[24px]">person</span>
+<span class="font-label-md">User Profile</span>
+</a>
+</nav>
+<div class="px-4 mt-auto">
+<button class="w-full accent-gradient inner-glow text-white font-label-md py-3 rounded-xl flex items-center justify-center gap-2 active:scale-95 transition-transform shadow-md">
+<span class="material-symbols-outlined text-[20px]">add</span>
+                Buat Asesmen
+            </button>
+<div class="mt-6 pt-6 border-t border-outline-variant">
+<a class="flex items-center gap-3 px-4 py-3 rounded-xl text-error hover:bg-error-container/10 transition-colors" href="#">
+<span class="material-symbols-outlined text-[24px]">logout</span>
+<span class="font-label-md">Keluar</span>
+</a>
+</div>
+</div>
+</aside>
+<!-- Main Content Area -->
+<main class="ml-[280px] min-h-screen">
+<!-- Top App Bar -->
+<header class="h-16 px-gutter flex justify-between items-center bg-background sticky top-0 z-40">
+<div class="flex items-center gap-4">
+<h2 class="font-headline-md text-on-surface">Versi Matriks</h2>
+</div>
+<div class="flex items-center gap-6">
+<div class="flex items-center gap-4">
+<button class="text-on-surface-variant hover:text-primary transition-colors">
+<span class="material-symbols-outlined">notifications</span>
+</button>
+<button class="text-on-surface-variant hover:text-primary transition-colors">
+<span class="material-symbols-outlined">help</span>
+</button>
+</div>
+<div class="h-10 w-10 rounded-full bg-secondary-container overflow-hidden border-2 border-primary/20">
+<img alt="User Avatar" class="w-full h-full object-cover" data-alt="A professional headshot of a corporate technology executive, clean lighting, minimalist background, representing a high-performance SaaS platform user profile. The aesthetic is modern and authoritative, aligned with a Zinc and Electric Blue design system." src="https://lh3.googleusercontent.com/aida-public/AB6AXuC6FcB7UBQLe_Gjkxh_fWEbSK0C0O-zEJFGh4fQQpk9Jhxn0kcH_XzrL7lC4q_O2LV7vW15qe2wgt_An-CW11HO3gNVzmpBEyUm6MPTibwosDwmBRZt5Pjt8ZmidU-QIM81cBTLwr3IPBYczvpSxMy_AGsMrEcwghArCXskt8ExpT0wQXrPSS4nypridm32vGve4NDnE1NS8w2s4ZeMeDom-kcat2DPR6vGnuirMW17-L0KYPYlXvdiDL_0g6LNTMpsKUcxSzHI2iI"/>
+</div>
+</div>
+</header>
+<!-- Content Canvas -->
+<div class="p-gutter max-w-container-max mx-auto">
+<!-- Breadcrumb & Action Row -->
+<div class="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-8">
+<div>
+<nav class="flex items-center gap-2 text-label-sm text-on-surface-variant mb-2">
+<span>Master Data</span>
+<span class="material-symbols-outlined text-[16px]">chevron_right</span>
+<span class="text-primary font-bold">Versi Matriks</span>
+</nav>
+<p class="text-body-md text-on-surface-variant">Kelola daftar versi matriks untuk standarisasi asesmen organisasi.</p>
+</div>
+<button class="accent-gradient inner-glow text-white font-label-md px-6 py-3 rounded-xl flex items-center justify-center gap-2 active:scale-95 transition-transform shadow-md hover:shadow-lg transition-shadow">
+<span class="material-symbols-outlined text-[20px]">post_add</span>
+                    Buat Versi Baru
+                </button>
+</div>
+<!-- Matrix List Table Card -->
+<div class="bg-surface-container-lowest rounded-xl border border-outline-variant shadow-md overflow-hidden">
+<!-- Table Controls -->
+<div class="p-6 border-b border-outline-variant flex flex-col md:flex-row gap-4 justify-between items-center">
+<div class="relative w-full md:w-96">
+<span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-on-surface-variant">search</span>
+<input class="w-full pl-10 pr-4 py-2 bg-surface-container-low border border-outline-variant rounded-lg focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none text-body-md transition-all" placeholder="Cari kode atau nama versi..." type="text"/>
+</div>
+<div class="flex items-center gap-2">
+<button class="px-4 py-2 text-label-md text-on-surface-variant border border-outline-variant rounded-lg hover:bg-surface-container-low transition-colors flex items-center gap-2">
+<span class="material-symbols-outlined text-[18px]">filter_list</span>
+                            Filter
+                        </button>
+</div>
+</div>
+<!-- Actual Table -->
+<div class="overflow-x-auto">
+<table class="w-full text-left border-collapse">
+<thead>
+<tr class="bg-surface-container-low text-on-surface-variant uppercase tracking-wider text-label-sm">
+<th class="px-6 py-4 font-bold">Kode</th>
+<th class="px-6 py-4 font-bold">Nama Versi</th>
+<th class="px-6 py-4 font-bold">Kunci Kamus</th>
+<th class="px-6 py-4 font-bold">Status</th>
+<th class="px-6 py-4 font-bold text-center">Aksi</th>
+</tr>
+</thead>
+<tbody class="divide-y divide-outline-variant">
+<!-- Row 1 -->
+<tr class="hover:bg-surface-container-lowest transition-colors group">
+<td class="px-6 py-4 font-label-md text-primary">MX-2024-V1</td>
+<td class="px-6 py-4 font-label-md text-on-surface">Matriks Standar Kompetensi 2024</td>
+<td class="px-6 py-4">
+<code class="bg-surface-container-high px-2 py-1 rounded text-label-sm font-mono text-secondary">DICT_COMP_2024_01</code>
+</td>
+<td class="px-6 py-4">
+<span class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-primary-container text-on-primary-container text-label-sm">
+<span class="w-1.5 h-1.5 rounded-full bg-on-primary-container"></span>
+                                        Default &amp; Aktif
+                                    </span>
+</td>
+<td class="px-6 py-4 text-center">
+<a class="text-primary hover:underline font-label-md flex items-center justify-center gap-1 group-hover:scale-105 transition-transform" href="#">
+<span class="material-symbols-outlined text-[18px]">hub</span>
+                                        Pemetaan
+                                    </a>
+</td>
+</tr>
+<!-- Row 2 -->
+<tr class="hover:bg-surface-container-lowest transition-colors group">
+<td class="px-6 py-4 font-label-md text-primary">MX-2023-V2</td>
+<td class="px-6 py-4 font-label-md text-on-surface">Matriks Leadership &amp; Softskill</td>
+<td class="px-6 py-4">
+<code class="bg-surface-container-high px-2 py-1 rounded text-label-sm font-mono text-secondary">DICT_SOFT_2023_02</code>
+</td>
+<td class="px-6 py-4">
+<span class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-secondary-container text-on-secondary-container text-label-sm">
+<span class="w-1.5 h-1.5 rounded-full bg-on-secondary-container"></span>
+                                        Aktif
+                                    </span>
+</td>
+<td class="px-6 py-4 text-center">
+<a class="text-primary hover:underline font-label-md flex items-center justify-center gap-1 group-hover:scale-105 transition-transform" href="#">
+<span class="material-symbols-outlined text-[18px]">hub</span>
+                                        Pemetaan
+                                    </a>
+</td>
+</tr>
+<!-- Row 3 -->
+<tr class="hover:bg-surface-container-lowest transition-colors group">
+<td class="px-6 py-4 font-label-md text-primary">MX-TECH-01</td>
+<td class="px-6 py-4 font-label-md text-on-surface">Spesialisasi Teknis IT</td>
+<td class="px-6 py-4">
+<code class="bg-surface-container-high px-2 py-1 rounded text-label-sm font-mono text-secondary">DICT_TECH_IT_001</code>
+</td>
+<td class="px-6 py-4">
+<span class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-outline-variant/30 text-on-surface-variant text-label-sm">
+                                        Arsip
+                                    </span>
+</td>
+<td class="px-6 py-4 text-center">
+<a class="text-primary hover:underline font-label-md flex items-center justify-center gap-1 group-hover:scale-105 transition-transform" href="#">
+<span class="material-symbols-outlined text-[18px]">hub</span>
+                                        Pemetaan
+                                    </a>
+</td>
+</tr>
+<!-- Row 4 -->
+<tr class="hover:bg-surface-container-lowest transition-colors group">
+<td class="px-6 py-4 font-label-md text-primary">MX-BHS-V1</td>
+<td class="px-6 py-4 font-label-md text-on-surface">Kemampuan Bahasa Asing</td>
+<td class="px-6 py-4">
+<code class="bg-surface-container-high px-2 py-1 rounded text-label-sm font-mono text-secondary">DICT_LANG_INT_01</code>
+</td>
+<td class="px-6 py-4">
+<span class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-secondary-container text-on-secondary-container text-label-sm">
+<span class="w-1.5 h-1.5 rounded-full bg-on-secondary-container"></span>
+                                        Aktif
+                                    </span>
+</td>
+<td class="px-6 py-4 text-center">
+<a class="text-primary hover:underline font-label-md flex items-center justify-center gap-1 group-hover:scale-105 transition-transform" href="#">
+<span class="material-symbols-outlined text-[18px]">hub</span>
+                                        Pemetaan
+                                    </a>
+</td>
+</tr>
+</tbody>
+</table>
+</div>
+<!-- Pagination -->
+<div class="px-6 py-4 bg-surface-container-low border-t border-outline-variant flex items-center justify-between">
+<span class="text-label-sm text-on-surface-variant">Menampilkan 1-4 dari 12 versi</span>
+<div class="flex items-center gap-2">
+<button class="p-2 rounded-lg border border-outline-variant hover:bg-surface transition-colors disabled:opacity-50" disabled="">
+<span class="material-symbols-outlined">chevron_left</span>
+</button>
+<button class="w-8 h-8 rounded-lg bg-primary text-white font-label-md flex items-center justify-center">1</button>
+<button class="w-8 h-8 rounded-lg hover:bg-surface transition-colors font-label-md flex items-center justify-center">2</button>
+<button class="w-8 h-8 rounded-lg hover:bg-surface transition-colors font-label-md flex items-center justify-center">3</button>
+<button class="p-2 rounded-lg border border-outline-variant hover:bg-surface transition-colors">
+<span class="material-symbols-outlined">chevron_right</span>
+</button>
+</div>
+</div>
+</div>
+<!-- Asymmetric Info Cards (Bento Style) -->
+<div class="grid grid-cols-1 md:grid-cols-3 gap-6 mt-10">
+<div class="col-span-1 md:col-span-2 p-8 rounded-xl bg-primary-container text-on-primary-container relative overflow-hidden group shadow-md">
+<div class="relative z-10">
+<h3 class="font-headline-md mb-2">Panduan Pemetaan Matriks</h3>
+<p class="text-body-md opacity-90 max-w-lg mb-6">
+                            Pastikan Kunci Kamus telah terdaftar sebelumnya di sistem sebelum melakukan pemetaan indikator. Setiap versi matriks mendukung pemetaan unik antar departemen.
+                        </p>
+<button class="px-6 py-2 bg-white text-primary font-label-md rounded-lg hover:bg-primary-fixed transition-colors active:scale-95">Pelajari Selengkapnya</button>
+</div>
+<span class="material-symbols-outlined text-[160px] absolute -right-10 -bottom-10 opacity-10 rotate-12 group-hover:rotate-0 transition-transform duration-500">auto_awesome_motion</span>
+</div>
+<div class="p-8 rounded-xl bg-surface-container border border-outline-variant flex flex-col justify-between shadow-md">
+<div>
+<div class="w-12 h-12 rounded-full bg-secondary-container flex items-center justify-center text-on-secondary-container mb-4">
+<span class="material-symbols-outlined">history</span>
+</div>
+<h3 class="font-headline-md text-on-surface mb-2">Riwayat Versi</h3>
+<p class="text-label-md text-on-surface-variant">Terakhir diperbarui oleh Admin pada 24 Okt 2023, 14:20 WIB.</p>
+</div>
+<a class="text-primary font-label-md inline-flex items-center gap-1 hover:underline mt-4" href="#">
+                        Lihat Log Perubahan
+                        <span class="material-symbols-outlined text-[18px]">arrow_forward</span>
+</a>
+</div>
+</div>
+</div>
+</main>
+<!-- FAB for Quick Actions (Suppressed on List Pages but here shown for context if needed, though instruction says suppress on Detail. This is a top-level list, but we follow the UI Goal of focus) -->
+</body></html>

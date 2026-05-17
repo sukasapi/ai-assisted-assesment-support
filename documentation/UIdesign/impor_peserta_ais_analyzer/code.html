@@ -1,0 +1,312 @@
+<!DOCTYPE html>
+
+<html class="light" lang="id"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Hanken+Grotesk:wght@400;600;700&amp;family=Plus+Jakarta+Sans:wght@600;700;800&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    "colors": {
+                        "secondary-fixed-dim": "#bec6e0",
+                        "on-secondary-fixed-variant": "#3f465c",
+                        "surface-dim": "#d8d9e3",
+                        "inverse-surface": "#2e3038",
+                        "surface-variant": "#e1e2ec",
+                        "inverse-primary": "#adc6ff",
+                        "error": "#ba1a1a",
+                        "primary-fixed-dim": "#adc6ff",
+                        "surface-container-high": "#e6e7f2",
+                        "primary-container": "#2170e4",
+                        "tertiary": "#924700",
+                        "surface-container-low": "#f2f3fd",
+                        "on-tertiary-container": "#fffbff",
+                        "on-tertiary": "#ffffff",
+                        "tertiary-container": "#b75b00",
+                        "on-primary-container": "#fefcff",
+                        "on-error": "#ffffff",
+                        "on-secondary": "#ffffff",
+                        "secondary": "#565e74",
+                        "on-tertiary-fixed": "#311400",
+                        "on-surface-variant": "#424754",
+                        "secondary-container": "#dae2fd",
+                        "outline-variant": "#c2c6d6",
+                        "on-secondary-container": "#5c647a",
+                        "primary": "#0058be",
+                        "background": "#f9f9ff",
+                        "on-background": "#191b23",
+                        "surface": "#f9f9ff",
+                        "inverse-on-surface": "#eff0fa",
+                        "surface-container": "#ecedf7",
+                        "on-primary": "#ffffff",
+                        "on-tertiary-fixed-variant": "#723600",
+                        "on-primary-fixed": "#001a42",
+                        "on-secondary-fixed": "#131b2e",
+                        "tertiary-fixed": "#ffdcc6",
+                        "secondary-fixed": "#dae2fd",
+                        "error-container": "#ffdad6",
+                        "on-surface": "#191b23",
+                        "surface-container-highest": "#e1e2ec",
+                        "primary-fixed": "#d8e2ff",
+                        "surface-bright": "#f9f9ff",
+                        "surface-container-lowest": "#ffffff",
+                        "on-primary-fixed-variant": "#004395",
+                        "outline": "#727785",
+                        "on-error-container": "#93000a",
+                        "surface-tint": "#005ac2",
+                        "tertiary-fixed-dim": "#ffb786"
+                    },
+                    "borderRadius": {
+                        "DEFAULT": "0.25rem",
+                        "lg": "0.5rem",
+                        "xl": "0.75rem",
+                        "full": "9999px"
+                    },
+                    "spacing": {
+                        "gutter": "24px",
+                        "stack-sm": "8px",
+                        "base": "4px",
+                        "stack-md": "16px",
+                        "margin-desktop": "40px",
+                        "container-max": "1280px",
+                        "stack-lg": "32px",
+                        "margin-mobile": "16px",
+                        "sidebar_width": "280px"
+                    },
+                    "fontFamily": {
+                        "body-lg": ["Hanken Grotesk"],
+                        "label-md": ["Hanken Grotesk"],
+                        "headline-lg": ["Plus Jakarta Sans"],
+                        "display-lg": ["Plus Jakarta Sans"],
+                        "label-sm": ["Hanken Grotesk"],
+                        "headline-md": ["Plus Jakarta Sans"],
+                        "body-md": ["Hanken Grotesk"]
+                    }
+                }
+            }
+        }
+    </script>
+<style>
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+        .kinetic-card-hover:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1);
+        }
+        .sidebar-active {
+            font-weight: 700;
+        }
+    </style>
+</head>
+<body class="bg-background text-on-background font-body-md min-h-screen">
+<!-- SideNavBar Shell -->
+<aside class="fixed left-0 top-0 h-full w-[280px] bg-surface border-r border-outline-variant flex flex-col py-8 z-50">
+<div class="px-6 mb-10">
+<h1 class="font-display-lg text-headline-md font-semibold text-primary">AIS-ANALYZER</h1>
+<p class="text-label-sm text-on-surface-variant uppercase tracking-wider">Assessment Analysis</p>
+</div>
+<nav class="flex-1 px-4 space-y-2">
+<a class="flex items-center gap-3 px-4 py-3 rounded-lg text-on-surface-variant hover:bg-surface-container-low transition-colors group" href="#">
+<span class="material-symbols-outlined group-hover:text-primary">dashboard</span>
+<span class="font-label-md">Dashboard</span>
+</a>
+<a class="flex items-center gap-3 px-4 py-3 rounded-lg text-on-surface-variant hover:bg-surface-container-low transition-colors group" href="#">
+<span class="material-symbols-outlined group-hover:text-primary">assessment</span>
+<span class="font-label-md">Asesmen</span>
+</a>
+<a class="flex items-center gap-3 px-4 py-3 rounded-lg text-secondary font-bold bg-surface-container-low transition-colors group" href="#">
+<span class="material-symbols-outlined text-primary">database</span>
+<span class="font-label-md">Master Data</span>
+</a>
+<a class="flex items-center gap-3 px-4 py-3 rounded-lg text-on-surface-variant hover:bg-surface-container-low transition-colors group" href="#">
+<span class="material-symbols-outlined group-hover:text-primary">person</span>
+<span class="font-label-md">User Profile</span>
+</a>
+</nav>
+<div class="px-4 mt-auto">
+<button class="w-full py-3 px-4 bg-primary text-on-primary rounded-xl font-label-md flex items-center justify-center gap-2 active:scale-95 transition-transform mb-6">
+<span class="material-symbols-outlined">add</span>
+                Buat Asesmen
+            </button>
+<a class="flex items-center gap-3 px-4 py-3 rounded-lg text-on-surface-variant hover:bg-surface-container-low transition-colors group" href="#">
+<span class="material-symbols-outlined text-error">logout</span>
+<span class="font-label-md">Keluar</span>
+</a>
+</div>
+</aside>
+<!-- Main Content Area -->
+<main class="ml-[280px] min-h-screen">
+<!-- TopAppBar -->
+<header class="h-16 flex justify-between items-center px-gutter bg-background max-w-container-max mx-auto sticky top-0 z-40">
+<div class="flex items-center gap-4">
+<nav class="flex items-center gap-2">
+<span class="text-on-surface-variant text-label-md">Master Data</span>
+<span class="material-symbols-outlined text-outline text-sm">chevron_right</span>
+<span class="text-primary font-bold border-b-2 border-primary text-label-md">Impor Peserta CSV</span>
+</nav>
+</div>
+<div class="flex items-center gap-6">
+<div class="flex gap-4 items-center">
+<span class="material-symbols-outlined text-on-surface-variant cursor-pointer active:opacity-70">notifications</span>
+<span class="material-symbols-outlined text-on-surface-variant cursor-pointer active:opacity-70">help</span>
+</div>
+<div class="flex items-center gap-3 pl-6 border-l border-outline-variant">
+<img alt="User Avatar" class="w-8 h-8 rounded-full object-cover" data-alt="A professional headshot of a corporate manager in a high-tech office setting, soft daylighting, clean lines, professional atmosphere, neutral colors with subtle tech accents." src="https://lh3.googleusercontent.com/aida-public/AB6AXuAHKsKDsoll5FWXwGjiziIJSp8HOD_CwEJc046O6tMgQfqWOYkO-iSAoyfO9838bekbpwmv23r82neMqc3t-OzoDaaIVDEk-Hig83UBczTS_mOXRdufLahuaBjJrQ2mp-fslhWbp_HsuAhPDm6W_NUNurZwUE54UoBMjJE9k-exPXNB9VcSGqT9y5BWDL3u8oUK7v8X4SR7txvzkuO84mOgqAkH4_akmTs988EH413ewofqzpGWjdXFATqLWEz6lSq_Ias2lpvHKEk"/>
+</div>
+</div>
+</header>
+<div class="px-gutter py-stack-lg max-w-container-max mx-auto">
+<!-- Header Section -->
+<div class="mb-stack-lg flex flex-col md:flex-row md:items-end justify-between gap-4">
+<div>
+<h2 class="font-headline-lg text-headline-lg text-on-surface">Impor Peserta Masal</h2>
+<p class="text-body-lg text-on-surface-variant mt-2 max-w-2xl">Unggah berkas CSV untuk mendaftarkan banyak peserta sekaligus ke dalam sistem analisis asesmen.</p>
+</div>
+<button class="flex items-center gap-2 px-6 py-2.5 bg-surface-container-lowest border border-outline-variant text-primary rounded-xl font-label-md kinetic-card-hover transition-all">
+<span class="material-symbols-outlined text-[20px]">download</span>
+                    Unduh Template CSV
+                </button>
+</div>
+<!-- Main Import Layout (Bento Style) -->
+<div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
+<!-- Column 1: Config & Upload (8 Cols) -->
+<div class="lg:col-span-8 space-y-6">
+<!-- Config Card -->
+<div class="bg-surface-container-lowest border border-outline-variant rounded-xl p-8 shadow-md">
+<h3 class="font-headline-md text-headline-md text-on-surface mb-6 flex items-center gap-2">
+<span class="material-symbols-outlined text-primary">settings</span>
+                            Konfigurasi Berkas
+                        </h3>
+<div class="grid grid-cols-1 md:grid-cols-2 gap-8">
+<!-- Delimiter Selection -->
+<div>
+<label class="block font-label-md text-on-surface mb-4">Pemisah Kolom (Delimiter)</label>
+<div class="space-y-3">
+<label class="flex items-center gap-3 p-3 rounded-lg border border-outline-variant hover:border-primary cursor-pointer transition-colors has-[:checked]:bg-primary-container/10 has-[:checked]:border-primary group">
+<input checked="" class="w-4 h-4 text-primary focus:ring-primary border-outline" name="delimiter" type="radio" value="comma"/>
+<div class="flex flex-col">
+<span class="font-label-md text-on-surface">Koma ( , )</span>
+<span class="text-label-sm text-on-surface-variant">Umum digunakan pada file CSV standar internasional</span>
+</div>
+</label>
+<label class="flex items-center gap-3 p-3 rounded-lg border border-outline-variant hover:border-primary cursor-pointer transition-colors has-[:checked]:bg-primary-container/10 has-[:checked]:border-primary group">
+<input class="w-4 h-4 text-primary focus:ring-primary border-outline" name="delimiter" type="radio" value="semicolon"/>
+<div class="flex flex-col">
+<span class="font-label-md text-on-surface">Titik Koma ( ; )</span>
+<span class="text-label-sm text-on-surface-variant">Sering digunakan pada format regional Indonesia/Eropa</span>
+</div>
+</label>
+</div>
+</div>
+<!-- Encoding Info -->
+<div class="bg-surface-container-low rounded-lg p-6 flex flex-col justify-center">
+<div class="flex items-center gap-3 mb-2 text-primary">
+<span class="material-symbols-outlined">info</span>
+<span class="font-label-md">Tips Encoding</span>
+</div>
+<p class="text-body-md text-on-surface-variant">Gunakan encoding <strong>UTF-8</strong> untuk memastikan karakter khusus (seperti aksen atau simbol) terbaca dengan benar oleh sistem.</p>
+</div>
+</div>
+</div>
+<!-- Dropzone Card -->
+<div class="bg-surface-container-lowest border-2 border-dashed border-outline-variant rounded-xl p-12 text-center hover:border-primary hover:bg-primary-container/5 transition-all group flex flex-col items-center justify-center min-h-[320px]">
+<div class="w-20 h-20 bg-primary-container text-on-primary-container rounded-full flex items-center justify-center mb-6 group-hover:scale-110 transition-transform">
+<span class="material-symbols-outlined text-[40px]" style="font-variation-settings: 'FILL' 1;">upload_file</span>
+</div>
+<h4 class="font-headline-md text-headline-md text-on-surface mb-2">Pilih atau Seret Berkas</h4>
+<p class="text-body-md text-on-surface-variant mb-8 max-w-sm mx-auto">Hanya mendukung format .CSV dengan ukuran maksimal 10MB.</p>
+<input class="hidden" id="file-upload" type="file"/>
+<label class="px-8 py-3 bg-primary text-on-primary rounded-xl font-label-md cursor-pointer hover:shadow-lg active:scale-95 transition-all" for="file-upload">
+                            Pilih File dari Komputer
+                        </label>
+</div>
+</div>
+<!-- Column 2: Guidelines (4 Cols) -->
+<div class="lg:col-span-4 space-y-6">
+<div class="bg-surface-container-highest rounded-xl p-6 h-full">
+<h3 class="font-headline-md text-headline-md text-on-surface mb-6 flex items-center gap-2">
+<span class="material-symbols-outlined text-tertiary">list_alt</span>
+                            Panduan Kolom
+                        </h3>
+<div class="space-y-6">
+<!-- Mandatory -->
+<div>
+<span class="text-label-sm font-bold text-on-surface-variant uppercase tracking-widest mb-3 block">Wajib Diisi</span>
+<div class="space-y-3">
+<div class="flex items-start gap-3 bg-surface-container-lowest p-3 rounded-lg border-l-4 border-error">
+<div class="flex-1">
+<p class="font-label-md text-on-surface">nama_lengkap</p>
+<p class="text-label-sm text-on-surface-variant">Teks sesuai identitas resmi.</p>
+</div>
+</div>
+<div class="flex items-start gap-3 bg-surface-container-lowest p-3 rounded-lg border-l-4 border-error">
+<div class="flex-1">
+<p class="font-label-md text-on-surface">email</p>
+<p class="text-label-sm text-on-surface-variant">Format email aktif (unik).</p>
+</div>
+</div>
+<div class="flex items-start gap-3 bg-surface-container-lowest p-3 rounded-lg border-l-4 border-error">
+<div class="flex-1">
+<p class="font-label-md text-on-surface">nomor_induk</p>
+<p class="text-label-sm text-on-surface-variant">ID karyawan atau pelajar.</p>
+</div>
+</div>
+</div>
+</div>
+<!-- Optional -->
+<div>
+<span class="text-label-sm font-bold text-on-surface-variant uppercase tracking-widest mb-3 block">Opsional</span>
+<div class="space-y-3">
+<div class="flex items-start gap-3 bg-surface-container-lowest/60 p-3 rounded-lg border-l-4 border-outline-variant">
+<div class="flex-1">
+<p class="font-label-md text-on-surface">departemen</p>
+<p class="text-label-sm text-on-surface-variant">Nama divisi atau unit kerja.</p>
+</div>
+</div>
+<div class="flex items-start gap-3 bg-surface-container-lowest/60 p-3 rounded-lg border-l-4 border-outline-variant">
+<div class="flex-1">
+<p class="font-label-md text-on-surface">posisi_saat_ini</p>
+<p class="text-label-sm text-on-surface-variant">Jabatan terakhir peserta.</p>
+</div>
+</div>
+</div>
+</div>
+</div>
+<div class="mt-10 p-4 bg-tertiary-container/10 rounded-lg border border-tertiary-container/30">
+<p class="text-label-sm text-on-tertiary-fixed-variant leading-relaxed">
+<span class="material-symbols-outlined text-sm align-middle">warning</span>
+                                Pastikan baris pertama (header) sama persis dengan nama kolom di atas.
+                            </p>
+</div>
+</div>
+</div>
+</div>
+<!-- Footer Action Section -->
+<div class="mt-10 pt-8 border-t border-outline-variant flex flex-col md:flex-row items-center justify-between gap-6">
+<div class="flex items-center gap-4 text-on-surface-variant">
+<span class="material-symbols-outlined text-primary">security</span>
+<p class="text-body-md">Data Anda diproses secara aman dan tidak akan dibagikan ke pihak ketiga.</p>
+</div>
+<div class="flex gap-4">
+<button class="px-8 py-3 bg-surface-container-lowest border border-outline text-on-surface font-label-md rounded-xl kinetic-card-hover transition-all">
+                        Batal
+                    </button>
+<button class="px-10 py-3 bg-primary text-on-primary font-label-md rounded-xl shadow-lg active:scale-95 transition-all opacity-50 cursor-not-allowed">
+                        Proses Impor
+                    </button>
+</div>
+</div>
+</div>
+</main>
+<!-- Background Pattern Decoration -->
+<div class="fixed inset-0 pointer-events-none -z-10 opacity-30">
+<div class="absolute top-0 right-0 w-[600px] h-[600px] bg-gradient-to-bl from-primary-container/20 to-transparent rounded-full blur-3xl"></div>
+<div class="absolute bottom-0 left-[280px] w-[400px] h-[400px] bg-gradient-to-tr from-secondary-container/20 to-transparent rounded-full blur-3xl"></div>
+</div>
+</body></html>
