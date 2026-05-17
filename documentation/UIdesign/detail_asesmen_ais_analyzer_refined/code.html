@@ -1,0 +1,484 @@
+<!DOCTYPE html>
+
+<html class="light" lang="id"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Hanken+Grotesk:wght@400;500;600;700;800&amp;family=Plus+Jakarta+Sans:wght@400;500;600;700;800&amp;family=JetBrains+Mono&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+      tailwind.config = {
+        darkMode: "class",
+        theme: {
+          extend: {
+            "colors": {
+                "tertiary-fixed": "#ffdcc6",
+                "outline-variant": "#c2c6d6",
+                "surface": "#f9f9ff",
+                "on-surface-variant": "#424754",
+                "on-tertiary": "#ffffff",
+                "surface-tint": "#005ac2",
+                "outline": "#727785",
+                "on-error-container": "#93000a",
+                "on-primary": "#ffffff",
+                "surface-container-low": "#f2f3fd",
+                "on-error": "#ffffff",
+                "surface-variant": "#e1e2ec",
+                "on-tertiary-fixed-variant": "#723600",
+                "on-primary-fixed": "#001a42",
+                "error": "#ba1a1a",
+                "on-surface": "#191b23",
+                "on-tertiary-container": "#fffbff",
+                "tertiary-fixed-dim": "#ffb786",
+                "background": "#f9f9ff",
+                "secondary-container": "#dae2fd",
+                "surface-container-highest": "#e1e2ec",
+                "tertiary": "#924700",
+                "secondary-fixed": "#dae2fd",
+                "on-secondary-container": "#5c647a",
+                "secondary-fixed-dim": "#bec6e0",
+                "surface-container-high": "#e6e7f2",
+                "on-secondary-fixed-variant": "#3f465c",
+                "on-primary-container": "#fefcff",
+                "primary-fixed-dim": "#adc6ff",
+                "primary-fixed": "#d8e2ff",
+                "surface-container-lowest": "#ffffff",
+                "inverse-surface": "#2e3038",
+                "on-secondary-fixed": "#131b2e",
+                "on-tertiary-fixed": "#311400",
+                "on-background": "#191b23",
+                "error-container": "#ffdad6",
+                "surface-dim": "#d8d9e3",
+                "tertiary-container": "#b75b00",
+                "primary-container": "#0058be",
+                "on-primary-fixed-variant": "#004395",
+                "primary": "#0058be",
+                "secondary": "#565e74",
+                "surface-container": "#ecedf7",
+                "surface-bright": "#f9f9ff",
+                "on-secondary": "#ffffff",
+                "inverse-primary": "#adc6ff",
+                "inverse-on-surface": "#eff0fa"
+            },
+            "borderRadius": {
+                "DEFAULT": "0.25rem",
+                "lg": "0.5rem",
+                "xl": "0.75rem",
+                "full": "9999px"
+            },
+            "spacing": {
+                "container-max": "1280px",
+                "stack-sm": "8px",
+                "base": "4px",
+                "gutter": "24px",
+                "margin-desktop": "40px",
+                "stack-md": "16px",
+                "margin-mobile": "16px",
+                "stack-lg": "32px",
+                "sidebar_width": "72px"
+            },
+            "fontFamily": {
+                "display": ["Plus Jakarta Sans"],
+                "body-base": ["Hanken Grotesk"],
+                "body-muted": ["Hanken Grotesk"],
+                "label": ["Hanken Grotesk"],
+                "section-header": ["Plus Jakarta Sans"],
+                "code": ["JetBrains Mono"]
+            },
+            "fontSize": {
+                "label": ["12px", {"lineHeight": "16px", "fontWeight": "600"}],
+                "body-muted": ["14px", {"lineHeight": "20px", "fontWeight": "400"}],
+                "display": ["24px", {"lineHeight": "32px", "fontWeight": "700"}],
+                "body-base": ["16px", {"lineHeight": "24px", "fontWeight": "400"}],
+                "code": ["13px", {"lineHeight": "18px", "fontWeight": "400"}],
+                "section-header": ["14px", {"lineHeight": "20px", "letterSpacing": "0.02em", "fontWeight": "700"}]
+            }
+          },
+        },
+      }
+    </script>
+<style>
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+        body {
+            background-color: #f9f9ff;
+            font-family: 'Hanken Grotesk', sans-serif;
+        }
+        .ai-accent-bg {
+            background-color: #f5f3ff;
+            border-color: #ddd6fe;
+            color: #5b21b6;
+        }
+        .card-depth {
+            box-shadow: 0 4px 20px -2px rgba(0, 0, 0, 0.05), 0 2px 8px -2px rgba(0, 0, 0, 0.03);
+            border: 1px solid rgba(226, 232, 240, 0.8);
+        }
+        .sticky-col {
+            position: sticky;
+            left: 0;
+            background: white;
+            z-index: 10;
+        }
+        .sticky-col-header {
+            position: sticky;
+            left: 0;
+            z-index: 20;
+        }
+    </style>
+</head>
+<body class="font-body-base text-on-surface">
+<!-- Sidebar Navigation -->
+<aside class="fixed left-0 top-0 h-full w-sidebar_width bg-white border-r border-outline-variant flex flex-col py-stack_md z-50">
+<div class="flex flex-col items-center gap-10">
+<div class="text-primary">
+<span class="material-symbols-outlined" style="font-size: 32px; font-variation-settings: 'FILL' 1;">analytics</span>
+</div>
+<nav class="flex flex-col items-center gap-6 w-full px-2">
+<div class="group relative flex items-center justify-center w-full h-12">
+<span class="material-symbols-outlined text-on-surface-variant hover:text-primary hover:bg-surface-container-low transition-all p-2 rounded-xl cursor-pointer">dashboard</span>
+</div>
+<div class="group relative flex items-center justify-center w-full h-12">
+<span class="material-symbols-outlined text-primary bg-primary-fixed/30 p-2 rounded-xl cursor-pointer">assessment</span>
+<div class="absolute left-[-8px] w-1.5 h-8 bg-primary rounded-r-full"></div>
+</div>
+<div class="group relative flex items-center justify-center w-full h-12">
+<span class="material-symbols-outlined text-on-surface-variant hover:text-primary hover:bg-surface-container-low transition-all p-2 rounded-xl cursor-pointer">database</span>
+</div>
+<div class="group relative flex items-center justify-center w-full h-12">
+<span class="material-symbols-outlined text-on-surface-variant hover:text-primary hover:bg-surface-container-low transition-all p-2 rounded-xl cursor-pointer">person</span>
+</div>
+</nav>
+</div>
+<div class="mt-auto flex flex-col items-center gap-6 mb-4">
+<span class="material-symbols-outlined text-on-surface-variant hover:text-error transition-colors p-2 rounded-xl cursor-pointer">logout</span>
+</div>
+</aside>
+<!-- Main Content Area -->
+<main class="ml-sidebar_width min-h-screen bg-surface">
+<!-- Top App Bar -->
+<header class="bg-white/80 backdrop-blur-md h-16 border-b border-outline-variant/30 flex justify-between items-center w-full px-gutter sticky top-0 z-40">
+<div class="flex items-center gap-4">
+<button class="flex items-center gap-2 text-on-surface-variant hover:text-primary transition-colors font-section-header text-section-header">
+<span class="material-symbols-outlined">arrow_back</span>
+                Kembali ke Daftar
+            </button>
+</div>
+<div class="flex items-center gap-6">
+<div class="flex items-center gap-4">
+<button class="text-on-surface-variant hover:text-primary relative">
+<span class="material-symbols-outlined">notifications</span>
+<span class="absolute top-0 right-0 w-2 h-2 bg-error rounded-full border-2 border-white"></span>
+</button>
+<button class="text-on-surface-variant hover:text-primary">
+<span class="material-symbols-outlined">help</span>
+</button>
+</div>
+<div class="h-9 w-9 rounded-full ring-2 ring-primary-fixed overflow-hidden border border-white">
+<img alt="User Avatar" class="w-full h-full object-cover" src="https://lh3.googleusercontent.com/aida-public/AB6AXuBzkYSE19HcNjHJznNAN4gAYzLD5_wjcN5jidSHMa9u6OeQxmvYa_wyrGqV-qJlfQ53QSHbvTq9XoSCJpTVStEoEvE737OeFRKs150t_U5leDeR1WQnXpwIxKKRGGvl_8dxoU96KYc0tujJ1qPUzPH9skpUUhYENvBEB3h2mF74ny5fAeR-0AAwDPqRH3cp3E5eXWlDtkHm30-7KHFismXgBsfK8v40my8M8zpaxtqwQgteml8N-4HBuepXfP28Dyto3vWlxBjSpq0"/>
+</div>
+</div>
+</header>
+<div class="max-w-container-max mx-auto px-gutter py-8 space-y-8">
+<!-- Section A: Header Info -->
+<section class="bg-white card-depth rounded-xl p-6 md:p-8 flex flex-col md:flex-row justify-between items-start md:items-center gap-6">
+<div>
+<h1 class="font-display text-3xl md:text-4xl text-on-surface tracking-tight">Budi Darmawan</h1>
+<div class="flex flex-wrap items-center gap-3 mt-4">
+<span class="text-on-surface-variant bg-surface-container-low px-3 py-1.5 rounded-lg flex items-center gap-2 border border-outline-variant/50">
+<span class="material-symbols-outlined text-sm">grid_view</span>
+<span class="text-sm font-semibold">Matrix: Managerial Level II</span>
+</span>
+<span class="px-3 py-1.5 bg-zinc-100 text-zinc-600 rounded-lg text-label border border-zinc-200">Tanpa INTRAY</span>
+</div>
+</div>
+<div class="flex flex-col items-end gap-1">
+<p class="text-label font-label text-on-surface-variant/60 uppercase tracking-widest">ID Asesmen</p>
+<p class="font-code text-primary font-bold">#ASM-2024-0892</p>
+</div>
+</section>
+<!-- Section B: Status & Summary Grid -->
+<section class="grid grid-cols-1 lg:grid-cols-12 gap-6">
+<!-- Progress Card -->
+<div class="lg:col-span-4 bg-white card-depth rounded-xl p-6 flex flex-col h-full">
+<p class="text-section-header text-on-surface-variant uppercase mb-6">Status Progress</p>
+<div class="flex items-center justify-between mb-8">
+<span class="px-4 py-1.5 bg-amber-50 text-amber-700 border border-amber-200 rounded-full text-sm font-bold flex items-center gap-2">
+<span class="material-symbols-outlined text-sm" style="font-variation-settings: 'FILL' 1;">pending</span> Draft
+                    </span>
+<span class="text-body-base font-semibold text-on-surface">85% Selesai</span>
+</div>
+<div class="mt-auto">
+<button class="w-full py-3.5 bg-primary hover:bg-blue-700 text-white rounded-xl font-bold transition-all shadow-lg shadow-blue-500/20 flex items-center justify-center gap-2">
+<span class="material-symbols-outlined">check_circle</span>
+                        Finalisasi Asesmen
+                    </button>
+</div>
+</div>
+<!-- Competency Card -->
+<div class="lg:col-span-8 bg-white card-depth rounded-xl p-6 h-full flex flex-col">
+<div class="flex justify-between items-center mb-6">
+<p class="text-section-header text-on-surface-variant uppercase">Cakupan Kompetensi</p>
+<span class="flex items-center gap-2 text-amber-700 text-label font-bold bg-amber-50 px-3 py-1.5 rounded-lg border border-amber-100">
+<span class="material-symbols-outlined text-sm">warning</span> Belum Lengkap
+                    </span>
+</div>
+<div class="grid grid-cols-2 sm:grid-cols-4 gap-4 flex-grow">
+<div class="p-4 bg-surface-container-lowest rounded-xl border border-outline-variant/30 flex flex-col justify-center text-center">
+<p class="text-label text-on-surface-variant mb-3">Strategic Thinking</p>
+<div class="h-2 w-full bg-zinc-100 rounded-full overflow-hidden">
+<div class="h-full bg-emerald-500 w-full"></div>
+</div>
+</div>
+<div class="p-4 bg-surface-container-lowest rounded-xl border border-outline-variant/30 flex flex-col justify-center text-center">
+<p class="text-label text-on-surface-variant mb-3">Empowering Others</p>
+<div class="h-2 w-full bg-zinc-100 rounded-full overflow-hidden">
+<div class="h-full bg-emerald-500 w-[75%]"></div>
+</div>
+</div>
+<div class="p-4 bg-surface-container-lowest rounded-xl border border-outline-variant/30 flex flex-col justify-center text-center">
+<p class="text-label text-on-surface-variant mb-3">Result Oriented</p>
+<div class="h-2 w-full bg-zinc-100 rounded-full overflow-hidden">
+<div class="h-full bg-amber-500 w-[40%]"></div>
+</div>
+</div>
+<div class="p-4 bg-surface-container-lowest rounded-xl border border-outline-variant/30 flex flex-col justify-center text-center">
+<p class="text-label text-on-surface-variant mb-3">Integrity</p>
+<div class="h-2 w-full bg-zinc-100 rounded-full overflow-hidden">
+<div class="h-full bg-zinc-200 w-0"></div>
+</div>
+</div>
+</div>
+</div>
+</section>
+<!-- Section C & D: Method & Assessors Row -->
+<section class="grid grid-cols-1 md:grid-cols-2 gap-6">
+<div class="bg-white card-depth rounded-xl p-6">
+<p class="text-section-header text-on-surface-variant uppercase mb-6">Metode Pengumpulan Bukti</p>
+<div class="flex p-1.5 bg-surface-container-low rounded-xl w-fit mb-4">
+<button class="px-8 py-2 bg-white shadow-sm rounded-lg text-body-base font-bold text-primary">Manual</button>
+<button class="px-8 py-2 text-body-base text-on-surface-variant hover:text-on-surface transition-colors">Otomatis</button>
+</div>
+<p class="text-sm text-on-surface-variant/70 italic leading-relaxed">Bukti akan diinput secara manual oleh asesor melalui alat penilaian yang ditentukan.</p>
+</div>
+<div class="bg-white card-depth rounded-xl p-6">
+<p class="text-section-header text-on-surface-variant uppercase mb-6">Tim Asesor</p>
+<div class="flex items-center gap-4">
+<div class="flex -space-x-3">
+<div class="h-12 w-12 rounded-full border-2 border-white bg-zinc-200 overflow-hidden ring-1 ring-zinc-100" title="Asesor Utama">
+<img alt="Asesor 1" class="w-full h-full object-cover" src="https://lh3.googleusercontent.com/aida-public/AB6AXuCnWXyzJG61t4X7pob-3QlYIQ_1VWrhrmF6zVna2uk6WaBE2NI6pMVlQ6aJUQ3vuens6GJkx7ok2THEp1zaLKNk1MgVO1BJ8KnpmO_K7IBOZAyCLqYfjeyhOGKC4HRW2BDm1N-tUv7w_jLR1J8Dsl7y2rc4KGsvqIQcZ-EYdxLejQ6OoXQKT-1-4sNFuTwq2ZdFpxwElOgmH5Ju3e0cPDrlUtb_QRiOWUIyPi6Etz00sR_rgBKnh1PnnB68R7qyjRpmXoXJD-ad60I"/>
+</div>
+<div class="h-12 w-12 rounded-full border-2 border-white bg-zinc-200 overflow-hidden ring-1 ring-zinc-100" title="Asesor Pendamping">
+<img alt="Asesor 2" class="w-full h-full object-cover" src="https://lh3.googleusercontent.com/aida-public/AB6AXuA_4QbZA7BWJHQU5KHYYX36NdJ0LqvSOBSWA1y2-d6gLJtOVHlsPxdsV2-1vEZoitNcH0Z-3diNshDi1dKPTqxDbrZhLeumwhuNarFmolrD_KcxOtSyb6bzmtNLZexOu16K80XhN8rrMZq1rfsHex4jFjHbPB9kcQAsTucz_5RZ2DdbjXlhfY9hrVzBfoCH4l5epB5eayAlIbfHeovucSogYWC4RRkJXb6JdV4EIkKdEAfOi5YbzFqBM3CRjJrmhFGmPp0lc-UvY14"/>
+</div>
+<button class="h-12 w-12 rounded-full border-2 border-dashed border-zinc-300 bg-zinc-50 flex items-center justify-center text-zinc-400 hover:text-primary hover:border-primary transition-all">
+<span class="material-symbols-outlined text-base">add</span>
+</button>
+</div>
+<span class="text-sm font-semibold text-on-surface-variant">2 Asesor Ditugaskan</span>
+</div>
+</div>
+</section>
+<!-- Section E: Alat Penilaian Preset -->
+<section class="bg-white card-depth rounded-xl overflow-hidden">
+<details class="group" open="">
+<summary class="p-6 md:p-8 cursor-pointer flex justify-between items-center hover:bg-surface-container-lowest transition-colors list-none">
+<div class="flex items-center gap-4">
+<span class="material-symbols-outlined text-primary group-open:rotate-180 transition-transform">expand_more</span>
+<span class="text-section-header text-on-surface uppercase tracking-wide">Alat Penilaian Preset</span>
+</div>
+<span class="text-sm font-bold text-on-surface-variant bg-surface-container px-3 py-1 rounded-lg">3 Alat Terpilih</span>
+</summary>
+<div class="px-6 md:px-8 pb-8 border-t border-outline-variant/30 pt-4">
+<div class="overflow-x-auto">
+<table class="w-full text-left border-separate border-spacing-0">
+<thead>
+<tr class="bg-surface-container-low/50">
+<th class="px-6 py-4 font-section-header text-on-surface uppercase text-xs sticky-col-header bg-surface-container-low/50">Nama Alat</th>
+<th class="px-6 py-4 font-section-header text-on-surface uppercase text-xs">Kompetensi yang Diukur</th>
+<th class="px-6 py-4 font-section-header text-on-surface uppercase text-xs">Status Bukti</th>
+</tr>
+</thead>
+<tbody class="divide-y divide-outline-variant/20">
+<tr class="hover:bg-surface-container-lowest transition-colors group">
+<td class="px-6 py-5 text-body-base font-bold text-on-surface sticky-col border-r border-outline-variant/10 group-hover:bg-surface-container-lowest">LGD (Leaderless Group Discussion)</td>
+<td class="px-6 py-5 text-body-muted text-on-surface-variant">Strategic Thinking, Empowering Others</td>
+<td class="px-6 py-5">
+<span class="text-emerald-600 flex items-center gap-2 text-sm font-bold">
+<span class="material-symbols-outlined text-sm font-bold">check</span> Terisi
+                                        </span>
+</td>
+</tr>
+<tr class="hover:bg-surface-container-lowest transition-colors group">
+<td class="px-6 py-5 text-body-base font-bold text-on-surface sticky-col border-r border-outline-variant/10 group-hover:bg-surface-container-lowest">BEI (Behavioral Event Interview)</td>
+<td class="px-6 py-5 text-body-muted text-on-surface-variant">Integrity, Result Oriented, Resilience</td>
+<td class="px-6 py-5">
+<span class="text-amber-600 flex items-center gap-2 text-sm font-bold">
+<span class="material-symbols-outlined text-sm font-bold">edit</span> Belum Lengkap
+                                        </span>
+</td>
+</tr>
+<tr class="hover:bg-surface-container-lowest transition-colors group">
+<td class="px-6 py-5 text-body-base font-bold text-on-surface sticky-col border-r border-outline-variant/10 group-hover:bg-surface-container-lowest">Presentation Skill</td>
+<td class="px-6 py-5 text-body-muted text-on-surface-variant">Communication Excellence</td>
+<td class="px-6 py-5">
+<span class="text-zinc-400 flex items-center gap-2 text-sm">
+<span class="material-symbols-outlined text-sm">radio_button_unchecked</span> Kosong
+                                        </span>
+</td>
+</tr>
+</tbody>
+</table>
+</div>
+</div>
+</details>
+</section>
+<!-- Section F: Bukti Penilaian (Manual) -->
+<section class="space-y-6">
+<div class="flex items-center justify-between">
+<h2 class="font-display text-2xl text-on-surface">Bukti Penilaian</h2>
+<button class="text-on-surface-variant hover:text-primary transition-colors">
+<span class="material-symbols-outlined">settings</span>
+</button>
+</div>
+<!-- LGD Evidence Card -->
+<div class="bg-white card-depth rounded-xl overflow-hidden">
+<div class="bg-surface-container-low/50 px-6 md:px-8 py-5 border-b border-outline-variant/30 flex justify-between items-center">
+<div class="flex items-center gap-3">
+<span class="material-symbols-outlined text-primary" style="font-variation-settings: 'FILL' 1;">groups</span>
+<h3 class="font-bold text-on-surface">LGD - Catatan Observasi</h3>
+</div>
+<button class="flex items-center gap-2 px-5 py-2 bg-primary text-white rounded-full font-bold text-sm hover:bg-blue-700 transition-all shadow-md shadow-blue-500/10">
+<span class="material-symbols-outlined text-sm">psychology</span>
+                        Analisis AI
+                    </button>
+</div>
+<div class="p-6 md:p-8 space-y-8">
+<!-- AI Insight Section -->
+<div class="ai-accent-bg p-6 rounded-xl border-l-4 relative shadow-sm">
+<div class="flex items-center gap-2 mb-3">
+<span class="material-symbols-outlined text-lg" style="font-variation-settings: 'FILL' 1;">auto_awesome</span>
+<span class="text-xs font-bold uppercase tracking-widest">Wawasan AI</span>
+</div>
+<p class="text-[15px] leading-relaxed font-medium italic">"Peserta menunjukkan dominasi positif dalam diskusi. Secara konsisten mengarahkan kelompok kembali ke topik utama ketika mulai melenceng. Strategi yang diusulkan mempertimbangkan efisiensi biaya sebesar 20%."</p>
+</div>
+<!-- Manual Input Section -->
+<div class="space-y-4">
+<div class="flex items-center justify-between">
+<label class="text-xs font-bold text-on-surface-variant uppercase tracking-wider">Catatan Asesor (Input Manual)</label>
+<span class="text-xs text-on-surface-variant/60">Terakhir disimpan: 10:45 AM</span>
+</div>
+<div class="min-h-[160px] p-6 bg-surface-container-lowest border border-outline-variant/40 rounded-xl text-on-surface-variant/50 italic text-[15px] leading-relaxed shadow-inner focus-within:border-primary/50 transition-colors cursor-text">
+                            Tuliskan bukti observasi di sini... (Quill Editor Placeholder)
+                        </div>
+</div>
+</div>
+</div>
+<!-- BEI Evidence Card (Empty State) -->
+<div class="bg-white card-depth rounded-xl overflow-hidden opacity-90">
+<div class="bg-surface-container-low/30 px-6 md:px-8 py-5 border-b border-outline-variant/20 flex justify-between items-center">
+<div class="flex items-center gap-3 text-on-surface-variant">
+<span class="material-symbols-outlined">forum</span>
+<h3 class="font-bold">BEI - Transkrip Wawancara</h3>
+</div>
+<button class="flex items-center gap-2 px-5 py-2 bg-zinc-200 text-zinc-500 rounded-full font-bold text-sm cursor-not-allowed">
+<span class="material-symbols-outlined text-sm">psychology</span>
+                        Analisis AI
+                    </button>
+</div>
+<div class="p-8">
+<div class="min-h-[140px] p-8 bg-surface-container-lowest border-2 border-dashed border-outline-variant/50 rounded-xl flex flex-col items-center justify-center text-on-surface-variant/60 gap-3 hover:bg-surface-container-low/30 transition-colors cursor-pointer group">
+<span class="material-symbols-outlined text-4xl group-hover:text-primary transition-colors">upload_file</span>
+<p class="text-[15px] font-medium">Unggah transkrip atau rekam suara untuk memulai analisis</p>
+<p class="text-[10px] uppercase tracking-widest text-zinc-400 font-bold">PDF, MP3, atau DOCX</p>
+</div>
+</div>
+</div>
+</section>
+<!-- Section G: Perilaku Kunci -->
+<section class="space-y-6 pb-20">
+<h2 class="font-display text-2xl text-on-surface">Mapping Perilaku Kunci</h2>
+<div class="bg-white card-depth rounded-xl overflow-hidden">
+<div class="overflow-x-auto">
+<table class="w-full text-left min-w-[1000px] border-collapse">
+<thead>
+<tr class="bg-on-surface text-white">
+<th class="px-6 py-5 font-section-header uppercase text-xs w-32">Alat</th>
+<th class="px-6 py-5 font-section-header uppercase text-xs w-56">Kompetensi</th>
+<th class="px-6 py-5 font-section-header uppercase text-xs w-24 text-center">Lvl</th>
+<th class="px-6 py-5 font-section-header uppercase text-xs">Indikator Perilaku &amp; Reasoning</th>
+<th class="px-6 py-5 font-section-header uppercase text-xs w-40 text-right">Aksi</th>
+</tr>
+</thead>
+<tbody class="divide-y divide-outline-variant/10">
+<tr class="hover:bg-surface-container-lowest transition-colors">
+<td class="px-6 py-8 align-top">
+<span class="text-[10px] font-bold text-on-surface-variant bg-surface-container px-2 py-1 rounded uppercase tracking-tighter">LGD</span>
+</td>
+<td class="px-6 py-8 align-top">
+<p class="font-bold text-on-surface">Strategic Thinking</p>
+<p class="text-xs text-on-surface-variant mt-1">Analysis &amp; Planning</p>
+</td>
+<td class="px-6 py-8 align-middle text-center">
+<span class="inline-flex items-center justify-center h-10 w-10 bg-surface-container text-on-surface font-bold rounded-lg border border-outline-variant/30 text-lg">3</span>
+</td>
+<td class="px-6 py-8 align-top space-y-5">
+<div class="space-y-2">
+<p class="font-bold text-on-surface leading-tight text-lg">Mampu melihat gambaran besar dan implikasi jangka panjang.</p>
+<p class="text-[15px] text-on-surface-variant leading-relaxed">Peserta membedah case study dengan mengidentifikasi risiko operasional dalam 5 tahun ke depan.</p>
+</div>
+<div class="p-4 bg-surface-container-low border-l-4 border-primary/50 rounded-r-lg italic text-on-surface-variant text-[15px] shadow-sm">
+                                        "Jika kita tidak memotong budget logistik sekarang, ekspansi ke regional timur akan terhambat oleh masalah cashflow."
+                                    </div>
+</td>
+<td class="px-6 py-8 align-middle text-right">
+<div class="flex justify-end gap-2">
+<button class="p-2.5 text-on-surface-variant hover:text-primary transition-all bg-surface-container hover:bg-blue-50 rounded-lg" title="Edit">
+<span class="material-symbols-outlined text-[20px]">edit</span>
+</button>
+<button class="p-2.5 text-on-surface-variant hover:text-error transition-all bg-surface-container hover:bg-red-50 rounded-lg" title="Hapus">
+<span class="material-symbols-outlined text-[20px]">delete</span>
+</button>
+</div>
+</td>
+</tr>
+<tr class="bg-blue-50/20">
+<td class="px-6 py-8 align-top">
+<span class="text-[10px] font-bold text-primary bg-primary-fixed/40 px-2 py-1 rounded uppercase tracking-tighter">AI-GEN</span>
+</td>
+<td class="px-6 py-8 align-top">
+<p class="font-bold text-primary">Empowering Others</p>
+<p class="text-xs text-primary/70 mt-1">Collaboration</p>
+</td>
+<td class="px-6 py-8 align-middle text-center">
+<span class="inline-flex items-center justify-center h-10 w-10 bg-primary text-white font-bold rounded-lg shadow-md text-lg">2</span>
+</td>
+<td class="px-6 py-8 align-top space-y-5">
+<div class="space-y-2">
+<p class="font-bold text-on-surface leading-tight text-lg">Memberikan kesempatan kepada anggota tim untuk berpendapat.</p>
+<p class="text-[15px] text-on-surface-variant leading-relaxed">Mendorong peserta yang pasif untuk memberikan masukan terkait aspek teknis.</p>
+</div>
+<div class="p-4 bg-blue-50/80 border-l-4 border-primary rounded-r-lg italic text-primary font-medium text-[15px] shadow-sm">
+                                        "Budi, sebagai tim teknis, bagaimana pandangan Anda mengenai implementasi server ini?"
+                                    </div>
+</td>
+<td class="px-6 py-8 align-middle text-right">
+<div class="flex flex-col gap-2 min-w-[120px]">
+<button class="w-full px-4 py-2 bg-primary text-white text-sm font-bold rounded-lg hover:bg-blue-700 transition-all shadow-sm">Terima</button>
+<button class="w-full px-4 py-2 border border-primary/30 text-primary text-sm font-bold rounded-lg hover:bg-white transition-all bg-white/50">Edit</button>
+</div>
+</td>
+</tr>
+</tbody>
+</table>
+</div>
+<div class="p-6 bg-surface-container-low/30 border-t border-outline-variant/20 flex justify-center">
+<button class="flex items-center gap-3 px-6 py-2.5 rounded-full bg-white border border-outline-variant hover:border-primary text-on-surface-variant hover:text-primary transition-all text-sm font-bold group shadow-sm">
+<span class="material-symbols-outlined group-hover:scale-110 transition-transform">add_circle</span> Tambah Mapping Perilaku
+                    </button>
+</div>
+</div>
+</section>
+</div>
+</main>
+</body></html>

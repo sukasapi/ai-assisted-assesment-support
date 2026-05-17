@@ -1,0 +1,447 @@
+<!DOCTYPE html>
+
+<html class="light" lang="id"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Hanken+Grotesk:wght@400;500;600;700;800&amp;family=JetBrains+Mono&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+      tailwind.config = {
+        darkMode: "class",
+        theme: {
+          extend: {
+            "colors": {
+                    "on-primary-fixed-variant": "#47464a",
+                    "primary-fixed": "#e4e1e6",
+                    "on-background": "#1a1b22",
+                    "secondary-fixed": "#eaddff",
+                    "on-primary-fixed": "#1b1b1e",
+                    "surface-container-low": "#f4f2fd",
+                    "surface-container": "#eeedf7",
+                    "outline": "#77767b",
+                    "primary-container": "#1b1b1e",
+                    "surface-variant": "#e3e1ec",
+                    "surface-container-lowest": "#ffffff",
+                    "on-secondary-fixed": "#25005a",
+                    "on-tertiary-fixed-variant": "#005137",
+                    "secondary-fixed-dim": "#d2bbff",
+                    "error-container": "#ffdad6",
+                    "tertiary-container": "#002114",
+                    "surface-dim": "#dad9e3",
+                    "primary-fixed-dim": "#c8c5ca",
+                    "inverse-on-surface": "#f1effa",
+                    "outline-variant": "#c8c5cb",
+                    "inverse-primary": "#c8c5ca",
+                    "tertiary-fixed": "#85f8c4",
+                    "surface-container-highest": "#e3e1ec",
+                    "surface-tint": "#5f5e61",
+                    "on-surface": "#1a1b22",
+                    "inverse-surface": "#2f3038",
+                    "on-secondary-fixed-variant": "#5a00c6",
+                    "tertiary": "#000000",
+                    "on-error": "#ffffff",
+                    "error": "#ba1a1a",
+                    "on-secondary": "#ffffff",
+                    "on-tertiary-container": "#069669",
+                    "secondary": "#712ae2",
+                    "on-surface-variant": "#47464b",
+                    "on-secondary-container": "#fffbff",
+                    "on-tertiary-fixed": "#002114",
+                    "on-primary": "#ffffff",
+                    "surface-container-high": "#e8e7f1",
+                    "on-tertiary": "#ffffff",
+                    "background": "#fbf8ff",
+                    "secondary-container": "#8a4cfc",
+                    "on-primary-container": "#858387",
+                    "tertiary-fixed-dim": "#68dba9",
+                    "on-error-container": "#93000a",
+                    "primary": "#000000",
+                    "surface-bright": "#fbf8ff",
+                    "surface": "#fbf8ff"
+            },
+            "borderRadius": {
+                    "DEFAULT": "0.125rem",
+                    "lg": "0.25rem",
+                    "xl": "0.5rem",
+                    "full": "0.75rem"
+            },
+            "spacing": {
+                    "gutter": "24px",
+                    "sidebar_width": "64px",
+                    "stack_sm": "8px",
+                    "stack_md": "16px",
+                    "container_max_width": "1152px"
+            },
+            "fontFamily": {
+                    "label": ["Hanken Grotesk"],
+                    "body-muted": ["Hanken Grotesk"],
+                    "display": ["Hanken Grotesk"],
+                    "body-base": ["Hanken Grotesk"],
+                    "code": ["JetBrains Mono"],
+                    "section-header": ["Hanken Grotesk"]
+            },
+            "fontSize": {
+                    "label": ["12px", {"lineHeight": "16px", "fontWeight": "500"}],
+                    "body-muted": ["14px", {"lineHeight": "20px", "fontWeight": "400"}],
+                    "display": ["24px", {"lineHeight": "32px", "fontWeight": "600"}],
+                    "body-base": ["14px", {"lineHeight": "20px", "fontWeight": "400"}],
+                    "code": ["13px", {"lineHeight": "18px", "fontWeight": "400"}],
+                    "section-header": ["14px", {"lineHeight": "20px", "letterSpacing": "0.05em", "fontWeight": "600"}]
+            }
+          },
+        },
+      }
+    </script>
+<style>
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+        body {
+            background-color: #f8fafc; /* Zinc-50 equivalent from style guidance */
+        }
+        .ai-accent-bg {
+            background-color: #f5f3ff; /* Violet-50 */
+            border-color: #c4b5fd; /* Violet-300 */
+            color: #4c1d95; /* Violet-900 */
+        }
+    </style>
+</head>
+<body class="font-body-base text-on-surface">
+<!-- Sidebar Navigation -->
+<aside class="fixed left-0 top-0 h-full w-sidebar_width bg-surface dark:bg-surface-container border-r border-outline-variant dark:border-outline flex flex-col h-full py-stack_md z-50">
+<div class="flex flex-col items-center gap-8">
+<div class="font-display text-display font-semibold text-primary dark:text-primary-fixed">
+<span class="material-symbols-outlined" style="font-size: 32px;">analytics</span>
+</div>
+<nav class="flex flex-col items-center gap-6 w-full">
+<div class="group relative flex items-center justify-center w-full">
+<span class="material-symbols-outlined text-on-surface-variant hover:bg-surface-container-low transition-colors p-2 rounded-lg cursor-pointer">dashboard</span>
+</div>
+<div class="group relative flex items-center justify-center w-full">
+<span class="material-symbols-outlined text-secondary dark:text-secondary-fixed-dim font-bold p-2 rounded-lg cursor-pointer">assessment</span>
+<div class="absolute left-0 w-1 h-6 bg-secondary rounded-r-full"></div>
+</div>
+<div class="group relative flex items-center justify-center w-full">
+<span class="material-symbols-outlined text-on-surface-variant hover:bg-surface-container-low transition-colors p-2 rounded-lg cursor-pointer">database</span>
+</div>
+<div class="group relative flex items-center justify-center w-full">
+<span class="material-symbols-outlined text-on-surface-variant hover:bg-surface-container-low transition-colors p-2 rounded-lg cursor-pointer">person</span>
+</div>
+</nav>
+</div>
+<div class="mt-auto flex flex-col items-center gap-6">
+<span class="material-symbols-outlined text-on-surface-variant hover:bg-surface-container-low transition-colors p-2 rounded-lg cursor-pointer">logout</span>
+</div>
+</aside>
+<!-- Main Content Area -->
+<main class="ml-sidebar_width min-h-screen">
+<!-- Top App Bar -->
+<header class="bg-background dark:bg-background h-16 border-b border-outline-variant/30 flex justify-between items-center w-full px-gutter max-w-container_max_width mx-auto sticky top-0 z-40">
+<div class="flex items-center gap-4">
+<button class="flex items-center gap-2 text-on-surface-variant hover:text-primary transition-colors font-section-header text-section-header">
+<span class="material-symbols-outlined">arrow_back</span>
+                    Kembali ke Daftar
+                </button>
+</div>
+<div class="flex items-center gap-6">
+<div class="flex items-center gap-2">
+<span class="material-symbols-outlined text-on-surface-variant">notifications</span>
+<span class="material-symbols-outlined text-on-surface-variant">help</span>
+</div>
+<div class="h-8 w-8 rounded-full bg-zinc-200 overflow-hidden border border-outline-variant">
+<img alt="User Avatar" class="w-full h-full object-cover" src="https://lh3.googleusercontent.com/aida-public/AB6AXuBzkYSE19HcNjHJznNAN4gAYzLD5_wjcN5jidSHMa9u6OeQxmvYa_wyrGqV-qJlfQ53QSHbvTq9XoSCJpTVStEoEvE737OeFRKs150t_U5leDeR1WQnXpwIxKKRGGvl_8dxoU96KYc0tujJ1qPUzPH9skpUUhYENvBEB3h2mF74ny5fAeR-0AAwDPqRH3cp3E5eXWlDtkHm30-7KHFismXgBsfK8v40my8M8zpaxtqwQgteml8N-4HBuepXfP28Dyto3vWlxBjSpq0"/>
+</div>
+</div>
+</header>
+<div class="max-w-6xl mx-auto px-gutter py-8 space-y-8">
+<!-- Section A: Header Info -->
+<section class="bg-white border border-zinc-200 rounded-xl p-6 shadow-sm flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+<div>
+<h1 class="font-display text-display text-primary">Budi Darmawan</h1>
+<div class="flex flex-wrap items-center gap-3 mt-2">
+<span class="text-body-muted text-zinc-500 flex items-center gap-1">
+<span class="material-symbols-outlined text-sm">grid_view</span> Matrix: Managerial Level II
+                        </span>
+<span class="px-2 py-0.5 bg-zinc-100 text-zinc-600 rounded text-label font-label border border-zinc-200">Tanpa INTRAY</span>
+</div>
+</div>
+<div class="flex items-center gap-3">
+<div class="text-right hidden sm:block">
+<p class="text-label font-label text-zinc-500 uppercase tracking-wider">ID Asesmen</p>
+<p class="font-code text-code">#ASM-2024-0892</p>
+</div>
+</div>
+</section>
+<!-- Section B: Status & Summary -->
+<section class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+<div class="lg:col-span-1 bg-white border border-zinc-200 rounded-xl p-6 shadow-sm flex flex-col justify-between">
+<div>
+<p class="text-section-header font-section-header text-zinc-500 mb-4">Status Progress</p>
+<div class="flex items-center gap-3 mb-6">
+<span class="px-3 py-1 bg-amber-50 text-amber-700 border border-amber-200 rounded-full text-label font-bold flex items-center gap-1">
+<span class="material-symbols-outlined text-sm" style="font-variation-settings: 'FILL' 1;">pending</span> Draft
+                            </span>
+<span class="text-body-base text-zinc-600">85% Selesai</span>
+</div>
+</div>
+<button class="w-full py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg font-section-header transition-colors flex items-center justify-center gap-2">
+<span class="material-symbols-outlined">check_circle</span>
+                        Finalisasi Asesmen
+                    </button>
+</div>
+<div class="lg:col-span-2 bg-white border border-zinc-200 rounded-xl p-6 shadow-sm">
+<div class="flex justify-between items-center mb-4">
+<p class="text-section-header font-section-header text-zinc-500">Cakupan Kompetensi</p>
+<span class="flex items-center gap-1 text-amber-600 text-label font-label bg-amber-50 px-2 py-1 rounded border border-amber-100">
+<span class="material-symbols-outlined text-sm">warning</span> Belum Lengkap
+                        </span>
+</div>
+<div class="grid grid-cols-2 sm:grid-cols-4 gap-4">
+<div class="p-3 bg-zinc-50 rounded-lg border border-zinc-100 text-center">
+<p class="text-label text-zinc-500 mb-1">Strategic Thinking</p>
+<div class="h-1.5 w-full bg-zinc-200 rounded-full overflow-hidden">
+<div class="h-full bg-emerald-500 w-full"></div>
+</div>
+</div>
+<div class="p-3 bg-zinc-50 rounded-lg border border-zinc-100 text-center">
+<p class="text-label text-zinc-500 mb-1">Empowering Others</p>
+<div class="h-1.5 w-full bg-zinc-200 rounded-full overflow-hidden">
+<div class="h-full bg-emerald-500 w-[75%]"></div>
+</div>
+</div>
+<div class="p-3 bg-zinc-50 rounded-lg border border-zinc-100 text-center">
+<p class="text-label text-zinc-500 mb-1">Result Oriented</p>
+<div class="h-1.5 w-full bg-zinc-200 rounded-full overflow-hidden">
+<div class="h-full bg-amber-500 w-[40%]"></div>
+</div>
+</div>
+<div class="p-3 bg-zinc-50 rounded-lg border border-zinc-100 text-center">
+<p class="text-label text-zinc-500 mb-1">Integrity</p>
+<div class="h-1.5 w-full bg-zinc-200 rounded-full overflow-hidden">
+<div class="h-full bg-zinc-300 w-0"></div>
+</div>
+</div>
+</div>
+</div>
+</section>
+<!-- Section C & D: Method & Assessors -->
+<section class="grid grid-cols-1 md:grid-cols-2 gap-6">
+<div class="bg-white border border-zinc-200 rounded-xl p-6 shadow-sm">
+<p class="text-section-header font-section-header text-zinc-500 mb-4">Metode Pengumpulan Bukti</p>
+<div class="flex p-1 bg-zinc-100 rounded-lg w-fit">
+<button class="px-6 py-1.5 bg-white shadow-sm rounded-md text-body-base font-bold text-primary">Manual</button>
+<button class="px-6 py-1.5 text-body-base text-zinc-500 hover:text-zinc-700 transition-colors">Otomatis</button>
+</div>
+<p class="mt-3 text-label text-zinc-400 italic">Bukti akan diinput secara manual oleh asesor melalui alat penilaian yang ditentukan.</p>
+</div>
+<div class="bg-white border border-zinc-200 rounded-xl p-6 shadow-sm">
+<p class="text-section-header font-section-header text-zinc-500 mb-4">Asesor</p>
+<div class="flex -space-x-2">
+<div class="h-10 w-10 rounded-full border-2 border-white bg-zinc-200 overflow-hidden" title="Asesor Utama">
+<img alt="Asesor 1" class="w-full h-full object-cover" src="https://lh3.googleusercontent.com/aida-public/AB6AXuCnWXyzJG61t4X7pob-3QlYIQ_1VWrhrmF6zVna2uk6WaBE2NI6pMVlQ6aJUQ3vuens6GJkx7ok2THEp1zaLKNk1MgVO1BJ8KnpmO_K7IBOZAyCLqYfjeyhOGKC4HRW2BDm1N-tUv7w_jLR1J8Dsl7y2rc4KGsvqIQcZ-EYdxLejQ6OoXQKT-1-4sNFuTwq2ZdFpxwElOgmH5Ju3e0cPDrlUtb_QRiOWUIyPi6Etz00sR_rgBKnh1PnnB68R7qyjRpmXoXJD-ad60I"/>
+</div>
+<div class="h-10 w-10 rounded-full border-2 border-white bg-zinc-200 overflow-hidden" title="Asesor Pendamping">
+<img alt="Asesor 2" class="w-full h-full object-cover" src="https://lh3.googleusercontent.com/aida-public/AB6AXuA_4QbZA7BWJHQU5KHYYX36NdJ0LqvSOBSWA1y2-d6gLJtOVHlsPxdsV2-1vEZoitNcH0Z-3diNshDi1dKPTqxDbrZhLeumwhuNarFmolrD_KcxOtSyb6bzmtNLZexOu16K80XhN8rrMZq1rfsHex4jFjHbPB9kcQAsTucz_5RZ2DdbjXlhfY9hrVzBfoCH4l5epB5eayAlIbfHeovucSogYWC4RRkJXb6JdV4EIkKdEAfOi5YbzFqBM3CRjJrmhFGmPp0lc-UvY14"/>
+</div>
+<button class="h-10 w-10 rounded-full border-2 border-dashed border-zinc-300 bg-zinc-50 flex items-center justify-center text-zinc-400 hover:text-zinc-600 hover:border-zinc-400 transition-colors">
+<span class="material-symbols-outlined text-sm">add</span>
+</button>
+</div>
+</div>
+</section>
+<!-- Section E: Alat Penilaian Preset -->
+<section class="bg-white border border-zinc-200 rounded-xl shadow-sm overflow-hidden">
+<details class="group" open="">
+<summary class="p-6 cursor-pointer flex justify-between items-center hover:bg-zinc-50 transition-colors list-none">
+<div class="flex items-center gap-3">
+<span class="material-symbols-outlined text-zinc-400 group-open:rotate-180 transition-transform">expand_more</span>
+<span class="text-section-header font-section-header text-zinc-900 uppercase tracking-wide">Alat Penilaian Preset</span>
+</div>
+<span class="text-label font-label text-zinc-500">3 Alat Terpilih</span>
+</summary>
+<div class="px-6 pb-6 border-t border-zinc-100 pt-4">
+<div class="overflow-x-auto">
+<table class="w-full text-left">
+<thead>
+<tr class="bg-zinc-50 border-y border-zinc-200">
+<th class="px-4 py-3 font-section-header text-section-header text-zinc-900">Nama Alat</th>
+<th class="px-4 py-3 font-section-header text-section-header text-zinc-900">Kompetensi yang Diukur</th>
+<th class="px-4 py-3 font-section-header text-section-header text-zinc-900">Status Bukti</th>
+</tr>
+</thead>
+<tbody class="divide-y divide-zinc-100">
+<tr>
+<td class="px-4 py-3 text-body-base font-bold">LGD (Leaderless Group Discussion)</td>
+<td class="px-4 py-3 text-body-muted text-zinc-600">Strategic Thinking, Empowering Others</td>
+<td class="px-4 py-3">
+<span class="text-emerald-600 flex items-center gap-1 text-label">
+<span class="material-symbols-outlined text-sm">check</span> Terisi
+                                            </span>
+</td>
+</tr>
+<tr>
+<td class="px-4 py-3 text-body-base font-bold">BEI (Behavioral Event Interview)</td>
+<td class="px-4 py-3 text-body-muted text-zinc-600">Integrity, Result Oriented, Resilience</td>
+<td class="px-4 py-3">
+<span class="text-amber-600 flex items-center gap-1 text-label">
+<span class="material-symbols-outlined text-sm">edit</span> Belum Lengkap
+                                            </span>
+</td>
+</tr>
+<tr>
+<td class="px-4 py-3 text-body-base font-bold">Presentation Skill</td>
+<td class="px-4 py-3 text-body-muted text-zinc-600">Communication Excellence</td>
+<td class="px-4 py-3">
+<span class="text-zinc-400 flex items-center gap-1 text-label">
+<span class="material-symbols-outlined text-sm">radio_button_unchecked</span> Kosong
+                                            </span>
+</td>
+</tr>
+</tbody>
+</table>
+</div>
+</div>
+</details>
+</section>
+<!-- Section F: Bukti Penilaian (Manual) -->
+<section class="space-y-6">
+<div class="flex items-center justify-between">
+<h2 class="font-display text-display text-primary">Bukti Penilaian</h2>
+<span class="material-symbols-outlined text-zinc-400 cursor-pointer">settings</span>
+</div>
+<!-- LGD Evidence Card -->
+<div class="bg-white border border-zinc-200 rounded-xl shadow-sm overflow-hidden">
+<div class="bg-zinc-50 px-6 py-4 border-b border-zinc-200 flex justify-between items-center">
+<div class="flex items-center gap-3">
+<span class="material-symbols-outlined text-zinc-500">groups</span>
+<h3 class="font-bold text-body-base">LGD - Catatan Observasi</h3>
+</div>
+<button class="flex items-center gap-2 px-4 py-1.5 ai-accent-bg rounded-full font-section-header text-sm hover:opacity-90 transition-opacity">
+<span class="material-symbols-outlined text-sm">psychology</span>
+                            Analisis AI
+                        </button>
+</div>
+<div class="p-6 space-y-4">
+<div class="ai-accent-bg p-4 rounded-lg border border-violet-200 text-sm italic relative">
+<div class="absolute -top-3 left-4 bg-violet-600 text-white text-[10px] px-2 py-0.5 rounded-full font-bold uppercase tracking-tighter">Hasil AI</div>
+                            "Peserta menunjukkan dominasi positif dalam diskusi. Secara konsisten mengarahkan kelompok kembali ke topik utama ketika mulai melenceng. Strategi yang diusulkan mempertimbangkan efisiensi biaya sebesar 20%."
+                        </div>
+<div class="space-y-2">
+<label class="text-label font-label text-zinc-500">Catatan Asesor (Manual Input)</label>
+<div class="min-h-[120px] p-4 bg-zinc-50 border border-zinc-200 rounded-lg text-zinc-400 italic font-body-base">
+                                Tuliskan bukti observasi di sini... (Quill Editor Placeholder)
+                            </div>
+</div>
+</div>
+</div>
+<!-- BEI Evidence Card -->
+<div class="bg-white border border-zinc-200 rounded-xl shadow-sm overflow-hidden opacity-80">
+<div class="bg-zinc-50 px-6 py-4 border-b border-zinc-200 flex justify-between items-center">
+<div class="flex items-center gap-3">
+<span class="material-symbols-outlined text-zinc-500">forum</span>
+<h3 class="font-bold text-body-base">BEI - Transkrip Wawancara</h3>
+</div>
+<button class="flex items-center gap-2 px-4 py-1.5 ai-accent-bg rounded-full font-section-header text-sm opacity-50 cursor-not-allowed">
+<span class="material-symbols-outlined text-sm">psychology</span>
+                            Analisis AI
+                        </button>
+</div>
+<div class="p-6">
+<div class="min-h-[120px] p-4 bg-zinc-50 border border-dashed border-zinc-300 rounded-lg flex flex-col items-center justify-center text-zinc-400 gap-2">
+<span class="material-symbols-outlined text-3xl">upload_file</span>
+<p class="text-body-muted">Unggah transkrip atau rekam suara untuk memulai analisis</p>
+</div>
+</div>
+</div>
+</section>
+<!-- Section G: Perilaku Kunci -->
+<section class="space-y-6 pb-12">
+<h2 class="font-display text-display text-primary">Mapping Perilaku Kunci</h2>
+<div class="bg-white border border-zinc-200 rounded-xl shadow-sm overflow-hidden">
+<div class="overflow-x-auto">
+<table class="w-full text-left min-w-[1000px]">
+<thead>
+<tr class="bg-zinc-900 text-white">
+<th class="px-4 py-4 font-section-header text-section-header w-32">Alat</th>
+<th class="px-4 py-4 font-section-header text-section-header w-48">Kompetensi</th>
+<th class="px-4 py-4 font-section-header text-section-header w-16 text-center">Lvl</th>
+<th class="px-4 py-4 font-section-header text-section-header">Indikator Perilaku &amp; Reasoning</th>
+<th class="px-4 py-4 font-section-header text-section-header w-24">Aksi</th>
+</tr>
+</thead>
+<tbody class="divide-y divide-zinc-100">
+<tr>
+<td class="px-4 py-6 align-top">
+<span class="text-label font-bold text-zinc-400 uppercase tracking-tighter">LGD</span>
+</td>
+<td class="px-4 py-6 align-top">
+<p class="font-bold text-body-base">Strategic Thinking</p>
+<p class="text-label text-zinc-400">Analysis &amp; Planning</p>
+</td>
+<td class="px-4 py-6 align-top text-center">
+<span class="bg-zinc-100 text-zinc-900 font-bold px-2 py-1 rounded">3</span>
+</td>
+<td class="px-4 py-6 align-top space-y-4">
+<div class="space-y-1">
+<p class="font-bold text-zinc-900">Mampu melihat gambaran besar dan implikasi jangka panjang.</p>
+<p class="text-body-muted text-zinc-600">Peserta membedah case study dengan mengidentifikasi risiko operasional dalam 5 tahun ke depan.</p>
+</div>
+<div class="p-3 bg-zinc-50 border-l-4 border-zinc-300 italic text-zinc-500 text-sm">
+                                            "Jika kita tidak memotong budget logistik sekarang, ekspansi ke regional timur akan terhambat oleh masalah cashflow."
+                                        </div>
+</td>
+<td class="px-4 py-6 align-top">
+<div class="flex gap-2">
+<button class="p-2 text-zinc-400 hover:text-primary transition-colors">
+<span class="material-symbols-outlined text-sm">edit</span>
+</button>
+<button class="p-2 text-zinc-400 hover:text-error transition-colors">
+<span class="material-symbols-outlined text-sm">delete</span>
+</button>
+</div>
+</td>
+</tr>
+<tr class="bg-violet-50/30">
+<td class="px-4 py-6 align-top">
+<span class="text-label font-bold text-violet-400 uppercase tracking-tighter">AI-GEN</span>
+</td>
+<td class="px-4 py-6 align-top">
+<p class="font-bold text-violet-900">Empowering Others</p>
+<p class="text-label text-violet-400">Collaboration</p>
+</td>
+<td class="px-4 py-6 align-top text-center">
+<span class="bg-violet-100 text-violet-900 font-bold px-2 py-1 rounded">2</span>
+</td>
+<td class="px-4 py-6 align-top space-y-4">
+<div class="space-y-1">
+<p class="font-bold text-violet-900">Memberikan kesempatan kepada anggota tim untuk berpendapat.</p>
+<p class="text-body-muted text-violet-700">Mendorong peserta yang pasif untuk memberikan masukan terkait aspek teknis.</p>
+</div>
+<div class="p-3 bg-violet-100/50 border-l-4 border-violet-300 italic text-violet-800 text-sm">
+                                            "Budi, sebagai tim teknis, bagaimana pandangan Anda mengenai implementasi server ini?"
+                                        </div>
+</td>
+<td class="px-4 py-6 align-top">
+<div class="flex gap-2">
+<button class="px-3 py-1 bg-violet-600 text-white text-xs rounded-md hover:bg-violet-700 transition-colors">Terima</button>
+<button class="px-3 py-1 border border-violet-300 text-violet-700 text-xs rounded-md hover:bg-violet-50 transition-colors">Edit</button>
+</div>
+</td>
+</tr>
+</tbody>
+</table>
+</div>
+<div class="p-4 bg-zinc-50 border-t border-zinc-100 flex justify-center">
+<button class="flex items-center gap-2 text-zinc-500 hover:text-zinc-900 transition-colors text-body-base font-bold">
+<span class="material-symbols-outlined">add_circle</span> Tambah Mapping Perilaku
+                        </button>
+</div>
+</div>
+</section>
+</div>
+</main>
+<!-- Contextual FAB (Only for Home/Dashboard, Hidden here as per suppression rule, but included for code structure reference if needed) -->
+<!-- Suppression rule applied: Suppressed on Details screen -->
+</body></html>

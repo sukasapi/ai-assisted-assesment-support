@@ -1,0 +1,422 @@
+<!DOCTYPE html>
+
+<html class="light" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>AIS-ANALYZER - Daftar Alat Penilaian</title>
+<!-- Fonts -->
+<link href="https://fonts.googleapis.com" rel="preconnect"/>
+<link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect"/>
+<link href="https://fonts.googleapis.com/css2?family=Hanken+Grotesk:ital,wght@0,100..900;1,100..900&amp;family=Plus+Jakarta+Sans:ital,wght@0,200..800;1,200..800&amp;display=swap" rel="stylesheet"/>
+<!-- Icons -->
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<!-- Tailwind -->
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    "colors": {
+                        "secondary-fixed-dim": "#bec6e0",
+                        "on-secondary-fixed-variant": "#3f465c",
+                        "surface-dim": "#d8d9e3",
+                        "inverse-surface": "#2e3038",
+                        "surface-variant": "#e1e2ec",
+                        "inverse-primary": "#adc6ff",
+                        "error": "#ba1a1a",
+                        "primary-fixed-dim": "#adc6ff",
+                        "surface-container-high": "#e6e7f2",
+                        "primary-container": "#2170e4",
+                        "tertiary": "#924700",
+                        "surface-container-low": "#f2f3fd",
+                        "on-tertiary-container": "#fffbff",
+                        "on-tertiary": "#ffffff",
+                        "tertiary-container": "#b75b00",
+                        "on-primary-container": "#fefcff",
+                        "on-error": "#ffffff",
+                        "on-secondary": "#ffffff",
+                        "secondary": "#565e74",
+                        "on-tertiary-fixed": "#311400",
+                        "on-surface-variant": "#424754",
+                        "secondary-container": "#dae2fd",
+                        "outline-variant": "#c2c6d6",
+                        "on-secondary-container": "#5c647a",
+                        "primary": "#0058be",
+                        "background": "#f9f9ff",
+                        "on-background": "#191b23",
+                        "surface": "#f9f9ff",
+                        "inverse-on-surface": "#eff0fa",
+                        "surface-container": "#ecedf7",
+                        "on-primary": "#ffffff",
+                        "on-tertiary-fixed-variant": "#723600",
+                        "on-primary-fixed": "#001a42",
+                        "on-secondary-fixed": "#131b2e",
+                        "tertiary-fixed": "#ffdcc6",
+                        "secondary-fixed": "#dae2fd",
+                        "error-container": "#ffdad6",
+                        "on-surface": "#191b23",
+                        "surface-container-highest": "#e1e2ec",
+                        "primary-fixed": "#d8e2ff",
+                        "surface-bright": "#f9f9ff",
+                        "surface-container-lowest": "#ffffff",
+                        "on-primary-fixed-variant": "#004395",
+                        "outline": "#727785",
+                        "on-error-container": "#93000a",
+                        "surface-tint": "#005ac2",
+                        "tertiary-fixed-dim": "#ffb786"
+                    },
+                    "borderRadius": {
+                        "DEFAULT": "0.25rem",
+                        "lg": "0.5rem",
+                        "xl": "0.75rem",
+                        "full": "9999px"
+                    },
+                    "spacing": {
+                        "gutter": "24px",
+                        "stack-sm": "8px",
+                        "base": "4px",
+                        "stack-md": "16px",
+                        "margin-desktop": "40px",
+                        "container-max": "1280px",
+                        "stack-lg": "32px",
+                        "margin-mobile": "16px",
+                        "sidebar_width": "280px"
+                    },
+                    "fontFamily": {
+                        "body-lg": ["Hanken Grotesk"],
+                        "label-md": ["Hanken Grotesk"],
+                        "headline-lg-mobile": ["Plus Jakarta Sans"],
+                        "headline-lg": ["Plus Jakarta Sans"],
+                        "display-lg": ["Plus Jakarta Sans"],
+                        "label-sm": ["Hanken Grotesk"],
+                        "headline-md": ["Plus Jakarta Sans"],
+                        "body-md": ["Hanken Grotesk"]
+                    },
+                    "fontSize": {
+                        "body-lg": ["18px", {"lineHeight": "1.6", "fontWeight": "400"}],
+                        "label-md": ["14px", {"lineHeight": "1.4", "letterSpacing": "0.01em", "fontWeight": "600"}],
+                        "headline-lg-mobile": ["28px", {"lineHeight": "1.2", "fontWeight": "700"}],
+                        "headline-lg": ["32px", {"lineHeight": "1.2", "letterSpacing": "-0.01em", "fontWeight": "700"}],
+                        "display-lg": ["48px", {"lineHeight": "1.1", "letterSpacing": "-0.02em", "fontWeight": "800"}],
+                        "label-sm": ["12px", {"lineHeight": "1.2", "fontWeight": "700"}],
+                        "headline-md": ["24px", {"lineHeight": "1.3", "fontWeight": "600"}],
+                        "body-md": ["16px", {"lineHeight": "1.5", "fontWeight": "400"}]
+                    }
+                }
+            }
+        }
+    </script>
+<style>
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+        .sidebar-active {
+            font-weight: 700;
+        }
+        .shadow-soft {
+            box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
+        }
+        .accent-gradient {
+            background: linear-gradient(135deg, #0058be 0%, #2170e4 100%);
+        }
+        .table-row-hover:hover {
+            background-color: #f2f3fd;
+            transition: background-color 0.2s ease;
+        }
+    </style>
+</head>
+<body class="bg-background text-on-background font-body-md selection:bg-primary-fixed selection:text-on-primary-fixed">
+<!-- Sidebar Navigation -->
+<aside class="fixed left-0 top-0 h-full w-sidebar_width bg-surface border-r border-outline-variant flex flex-col py-stack_md z-50">
+<div class="px-6 mb-stack_lg">
+<h1 class="font-display-lg text-headline-md font-semibold text-primary">AIS-ANALYZER</h1>
+<p class="text-label-sm text-on-surface-variant tracking-wider uppercase">Assessment Analysis</p>
+</div>
+<nav class="flex-1 px-4 space-y-2">
+<!-- Navigation Items Mapping -->
+<a class="flex items-center gap-3 px-4 py-3 rounded-xl text-on-surface-variant hover:bg-surface-container-low transition-colors group" href="#">
+<span class="material-symbols-outlined">dashboard</span>
+<span class="font-label-md">Dashboard</span>
+</a>
+<a class="flex items-center gap-3 px-4 py-3 rounded-xl text-on-surface-variant hover:bg-surface-container-low transition-colors group" href="#">
+<span class="material-symbols-outlined">assessment</span>
+<span class="font-label-md">Asesmen</span>
+</a>
+<!-- Active State for "Master Data" -->
+<a class="flex items-center gap-3 px-4 py-3 rounded-xl bg-surface-container-low text-secondary font-bold transition-colors group" href="#">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">database</span>
+<span class="font-label-md">Master Data</span>
+</a>
+<a class="flex items-center gap-3 px-4 py-3 rounded-xl text-on-surface-variant hover:bg-surface-container-low transition-colors group" href="#">
+<span class="material-symbols-outlined">person</span>
+<span class="font-label-md">User Profile</span>
+</a>
+</nav>
+<div class="px-4 mt-auto">
+<button class="w-full mb-stack_md py-3 px-4 rounded-xl accent-gradient text-on-primary font-label-md shadow-soft active:scale-95 transition-transform flex items-center justify-center gap-2">
+<span class="material-symbols-outlined text-[20px]">add</span>
+                Buat Asesmen
+            </button>
+<a class="flex items-center gap-3 px-4 py-3 rounded-xl text-on-surface-variant hover:bg-surface-container-low transition-colors" href="#">
+<span class="material-symbols-outlined">logout</span>
+<span class="font-label-md">Keluar</span>
+</a>
+</div>
+</aside>
+<!-- Top App Bar -->
+<header class="fixed top-0 right-0 left-sidebar_width h-16 bg-background/80 backdrop-blur-md flex items-center justify-between px-gutter z-40">
+<div class="flex items-center gap-4">
+<h2 class="font-headline-md text-on-surface">Alat Penilaian</h2>
+<nav class="hidden md:flex items-center gap-6 ml-6">
+<a class="text-primary font-label-md border-b-2 border-primary pb-1" href="#">Dashboard</a>
+</nav>
+</div>
+<div class="flex items-center gap-stack_md">
+<div class="flex items-center gap-2">
+<button class="p-2 text-on-surface-variant hover:bg-surface-container-low rounded-full transition-colors relative">
+<span class="material-symbols-outlined">notifications</span>
+<span class="absolute top-2 right-2 w-2 h-2 bg-error rounded-full"></span>
+</button>
+<button class="p-2 text-on-surface-variant hover:bg-surface-container-low rounded-full transition-colors">
+<span class="material-symbols-outlined">help</span>
+</button>
+</div>
+<div class="h-8 w-[1px] bg-outline-variant"></div>
+<div class="flex items-center gap-3 cursor-pointer hover:opacity-80 transition-opacity active:opacity-70">
+<div class="text-right hidden sm:block">
+<p class="font-label-md text-on-surface">Admin Utama</p>
+<p class="text-[10px] text-on-surface-variant uppercase tracking-tighter">Superadmin</p>
+</div>
+<img alt="User Avatar" class="w-10 h-10 rounded-full border-2 border-primary-container object-cover" data-alt="A professional headshot of a person with a friendly expression, captured with high-end photography gear. The lighting is soft and flattering, creating a premium light-mode feel. The background is a clean, minimalist corporate environment with subtle blurs, maintaining the sophisticated blue and white brand colors of the assessment platform." src="https://lh3.googleusercontent.com/aida-public/AB6AXuBg5mi8nIZxKAUr2f1Ql87aIm2zqa6LMHL4hRKiMztBXYqz2Omis5UKBudM29srZfJbcxbIG3ZkuwfkCMiEa1rEot6WM4xdjgxhLJUqM81-058EQ64bcP85D4y6-Nr86XsmP3EZc8FfCOEetmM37ihNHdhgVoZbeeW8f6gdx2VV141B17oog_3XhTUze3wFH1qr5F8YoiCsAAo0WpYSfXcddhmX78YqVQ72kQ0bmjYWw8vhq83BZN7q_37G93-QVnKGmz-Ja-MhUHo"/>
+</div>
+</div>
+</header>
+<!-- Main Content Canvas -->
+<main class="ml-sidebar_width pt-20 p-gutter min-h-screen">
+<div class="max-w-container-max mx-auto space-y-stack_lg">
+<!-- Breadcrumbs and Stats Grid -->
+<div class="flex flex-col md:flex-row md:items-end justify-between gap-stack_md">
+<div class="space-y-1">
+<div class="flex items-center gap-2 text-on-surface-variant font-label-sm">
+<span>Master Data</span>
+<span class="material-symbols-outlined text-[16px]">chevron_right</span>
+<span class="text-primary">Alat Penilaian</span>
+</div>
+<h3 class="font-headline-lg text-on-surface">Daftar Alat Penilaian</h3>
+</div>
+<button class="px-6 py-3 rounded-xl accent-gradient text-on-primary font-label-md shadow-md hover:-translate-y-0.5 transition-all flex items-center gap-2">
+<span class="material-symbols-outlined">add_circle</span>
+                    Tambah Alat
+                </button>
+</div>
+<!-- Dashboard Style Cards (Bento Mini) -->
+<div class="grid grid-cols-1 md:grid-cols-4 gap-stack_md">
+<div class="bg-surface-container-lowest p-6 rounded-xl border border-outline-variant shadow-soft flex items-center gap-4">
+<div class="w-12 h-12 rounded-lg bg-primary-container/10 flex items-center justify-center text-primary">
+<span class="material-symbols-outlined">analytics</span>
+</div>
+<div>
+<p class="text-on-surface-variant font-label-sm">Total Alat</p>
+<p class="text-headline-md text-on-surface font-bold">12</p>
+</div>
+</div>
+<div class="bg-surface-container-lowest p-6 rounded-xl border border-outline-variant shadow-soft flex items-center gap-4">
+<div class="w-12 h-12 rounded-lg bg-tertiary-container/10 flex items-center justify-center text-tertiary">
+<span class="material-symbols-outlined">check_circle</span>
+</div>
+<div>
+<p class="text-on-surface-variant font-label-sm">Aktif</p>
+<p class="text-headline-md text-on-surface font-bold">10</p>
+</div>
+</div>
+<div class="bg-surface-container-lowest p-6 rounded-xl border border-outline-variant shadow-soft flex items-center gap-4">
+<div class="w-12 h-12 rounded-lg bg-error-container/10 flex items-center justify-center text-error">
+<span class="material-symbols-outlined">cancel</span>
+</div>
+<div>
+<p class="text-on-surface-variant font-label-sm">Non-aktif</p>
+<p class="text-headline-md text-on-surface font-bold">2</p>
+</div>
+</div>
+<div class="bg-surface-container-lowest p-6 rounded-xl border border-outline-variant shadow-soft flex items-center gap-4">
+<div class="w-12 h-12 rounded-lg bg-secondary-container/20 flex items-center justify-center text-secondary">
+<span class="material-symbols-outlined">history</span>
+</div>
+<div>
+<p class="text-on-surface-variant font-label-sm">Pembaruan</p>
+<p class="text-headline-md text-on-surface font-bold">2 Hari</p>
+</div>
+</div>
+</div>
+<!-- Table Container -->
+<div class="bg-surface-container-lowest rounded-xl border border-outline-variant shadow-soft overflow-hidden">
+<!-- Search & Filters -->
+<div class="p-6 border-b border-outline-variant flex flex-col sm:flex-row gap-4 justify-between items-center bg-surface-container-low/50">
+<div class="relative w-full max-w-sm">
+<span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-on-surface-variant text-[20px]">search</span>
+<input class="w-full pl-10 pr-4 py-2 bg-surface rounded-lg border border-outline focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none text-body-md transition-all" placeholder="Cari alat atau deskripsi..." type="text"/>
+</div>
+<div class="flex gap-2 w-full sm:w-auto">
+<button class="flex-1 sm:flex-none flex items-center justify-center gap-2 px-4 py-2 rounded-lg border border-outline text-on-surface-variant hover:bg-surface-container transition-colors">
+<span class="material-symbols-outlined text-[20px]">filter_list</span>
+                            Filter
+                        </button>
+<button class="flex-1 sm:flex-none flex items-center justify-center gap-2 px-4 py-2 rounded-lg border border-outline text-on-surface-variant hover:bg-surface-container transition-colors">
+<span class="material-symbols-outlined text-[20px]">download</span>
+                            Ekspor
+                        </button>
+</div>
+</div>
+<!-- Actual Table -->
+<div class="overflow-x-auto">
+<table class="w-full text-left border-collapse">
+<thead>
+<tr class="bg-surface-container border-b border-outline-variant">
+<th class="px-6 py-4 font-label-md text-on-surface-variant uppercase tracking-wider">Kode</th>
+<th class="px-6 py-4 font-label-md text-on-surface-variant uppercase tracking-wider">Nama</th>
+<th class="px-6 py-4 font-label-md text-on-surface-variant uppercase tracking-wider">Deskripsi</th>
+<th class="px-6 py-4 font-label-md text-on-surface-variant uppercase tracking-wider text-center">Urutan</th>
+<th class="px-6 py-4 font-label-md text-on-surface-variant uppercase tracking-wider">Status Aktif</th>
+<th class="px-6 py-4 font-label-md text-on-surface-variant uppercase tracking-wider text-right">Aksi</th>
+</tr>
+</thead>
+<tbody class="divide-y divide-outline-variant">
+<!-- Row 1 -->
+<tr class="table-row-hover group">
+<td class="px-6 py-5">
+<span class="px-2 py-1 rounded-md bg-secondary-container text-on-secondary-container font-label-sm">AIS-CP-01</span>
+</td>
+<td class="px-6 py-5 font-bold text-on-surface">Cognitive Profile</td>
+<td class="px-6 py-5 text-on-surface-variant max-w-xs truncate">Alat ukur potensi kognitif dasar untuk seleksi awal karyawan.</td>
+<td class="px-6 py-5 text-center">
+<span class="font-body-md">1</span>
+</td>
+<td class="px-6 py-5">
+<span class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-green-100 text-green-700 text-label-sm">
+<span class="w-1.5 h-1.5 rounded-full bg-green-600"></span>
+                                        Aktif
+                                    </span>
+</td>
+<td class="px-6 py-5 text-right space-x-1">
+<button class="p-2 text-on-surface-variant hover:text-primary hover:bg-primary/5 rounded-lg transition-colors">
+<span class="material-symbols-outlined">edit</span>
+</button>
+<button class="p-2 text-on-surface-variant hover:text-error hover:bg-error/5 rounded-lg transition-colors">
+<span class="material-symbols-outlined">delete</span>
+</button>
+</td>
+</tr>
+<!-- Row 2 -->
+<tr class="table-row-hover group">
+<td class="px-6 py-5">
+<span class="px-2 py-1 rounded-md bg-secondary-container text-on-secondary-container font-label-sm">AIS-PQ-02</span>
+</td>
+<td class="px-6 py-5 font-bold text-on-surface">Personality Quotient</td>
+<td class="px-6 py-5 text-on-surface-variant max-w-xs truncate">Analisis kecenderungan perilaku dan kepribadian profesional.</td>
+<td class="px-6 py-5 text-center">
+<span class="font-body-md">2</span>
+</td>
+<td class="px-6 py-5">
+<span class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-green-100 text-green-700 text-label-sm">
+<span class="w-1.5 h-1.5 rounded-full bg-green-600"></span>
+                                        Aktif
+                                    </span>
+</td>
+<td class="px-6 py-5 text-right space-x-1">
+<button class="p-2 text-on-surface-variant hover:text-primary hover:bg-primary/5 rounded-lg transition-colors">
+<span class="material-symbols-outlined">edit</span>
+</button>
+<button class="p-2 text-on-surface-variant hover:text-error hover:bg-error/5 rounded-lg transition-colors">
+<span class="material-symbols-outlined">delete</span>
+</button>
+</td>
+</tr>
+<!-- Row 3 -->
+<tr class="table-row-hover group">
+<td class="px-6 py-5">
+<span class="px-2 py-1 rounded-md bg-secondary-container text-on-secondary-container font-label-sm">AIS-LD-03</span>
+</td>
+<td class="px-6 py-5 font-bold text-on-surface">Leadership Index</td>
+<td class="px-6 py-5 text-on-surface-variant max-w-xs truncate">Penilaian kompetensi kepemimpinan dan manajerial strategis.</td>
+<td class="px-6 py-5 text-center">
+<span class="font-body-md">3</span>
+</td>
+<td class="px-6 py-5">
+<span class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-surface-variant text-on-surface-variant text-label-sm">
+<span class="w-1.5 h-1.5 rounded-full bg-outline"></span>
+                                        Non-aktif
+                                    </span>
+</td>
+<td class="px-6 py-5 text-right space-x-1">
+<button class="p-2 text-on-surface-variant hover:text-primary hover:bg-primary/5 rounded-lg transition-colors">
+<span class="material-symbols-outlined">edit</span>
+</button>
+<button class="p-2 text-on-surface-variant hover:text-error hover:bg-error/5 rounded-lg transition-colors">
+<span class="material-symbols-outlined">delete</span>
+</button>
+</td>
+</tr>
+<!-- Row 4 -->
+<tr class="table-row-hover group">
+<td class="px-6 py-5">
+<span class="px-2 py-1 rounded-md bg-secondary-container text-on-secondary-container font-label-sm">AIS-EQ-04</span>
+</td>
+<td class="px-6 py-5 font-bold text-on-surface">Emotional Quotient</td>
+<td class="px-6 py-5 text-on-surface-variant max-w-xs truncate">Pengukuran kecerdasan emosional dalam lingkungan kerja tim.</td>
+<td class="px-6 py-5 text-center">
+<span class="font-body-md">4</span>
+</td>
+<td class="px-6 py-5">
+<span class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-green-100 text-green-700 text-label-sm">
+<span class="w-1.5 h-1.5 rounded-full bg-green-600"></span>
+                                        Aktif
+                                    </span>
+</td>
+<td class="px-6 py-5 text-right space-x-1">
+<button class="p-2 text-on-surface-variant hover:text-primary hover:bg-primary/5 rounded-lg transition-colors">
+<span class="material-symbols-outlined">edit</span>
+</button>
+<button class="p-2 text-on-surface-variant hover:text-error hover:bg-error/5 rounded-lg transition-colors">
+<span class="material-symbols-outlined">delete</span>
+</button>
+</td>
+</tr>
+</tbody>
+</table>
+</div>
+<!-- Pagination -->
+<div class="px-6 py-4 flex flex-col sm:flex-row items-center justify-between gap-4 border-t border-outline-variant bg-surface-container-low/30">
+<p class="text-label-sm text-on-surface-variant">Menampilkan 1-4 dari 12 alat</p>
+<div class="flex items-center gap-1">
+<button class="p-2 rounded-lg border border-outline hover:bg-surface-container transition-colors disabled:opacity-30" disabled="">
+<span class="material-symbols-outlined">chevron_left</span>
+</button>
+<button class="w-10 h-10 rounded-lg bg-primary text-on-primary font-bold">1</button>
+<button class="w-10 h-10 rounded-lg border border-outline hover:bg-surface-container transition-colors text-on-surface">2</button>
+<button class="w-10 h-10 rounded-lg border border-outline hover:bg-surface-container transition-colors text-on-surface">3</button>
+<button class="p-2 rounded-lg border border-outline hover:bg-surface-container transition-colors">
+<span class="material-symbols-outlined">chevron_right</span>
+</button>
+</div>
+</div>
+</div>
+<!-- Contextual Help Card -->
+<div class="relative overflow-hidden rounded-2xl bg-primary text-on-primary p-8 shadow-xl flex flex-col md:flex-row items-center justify-between gap-6">
+<div class="relative z-10 max-w-xl text-center md:text-left">
+<h4 class="font-headline-md mb-2">Butuh Bantuan Mengatur Alat Penilaian?</h4>
+<p class="text-body-md opacity-90">Pelajari cara mengonfigurasi skema penilaian, pembobotan, dan kategori untuk hasil analisis yang lebih akurat.</p>
+</div>
+<div class="relative z-10">
+<button class="px-8 py-3 rounded-full bg-white text-primary font-bold shadow-lg hover:bg-opacity-90 active:scale-95 transition-all">
+                        Baca Dokumentasi
+                    </button>
+</div>
+<!-- Abstract Design Pattern -->
+<div class="absolute -right-10 -bottom-10 w-64 h-64 bg-white/10 rounded-full blur-3xl"></div>
+<div class="absolute -top-20 -left-20 w-80 h-80 bg-white/5 rounded-full blur-3xl"></div>
+</div>
+</div>
+</main>
+</body></html>

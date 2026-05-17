@@ -3,28 +3,28 @@
 @section('title', 'Masuk — '.config('app.name'))
 
 @section('content')
-    <div class="mx-auto max-w-md rounded-xl border border-zinc-200 bg-white p-8 shadow-sm">
-        <h1 class="text-xl font-semibold text-zinc-900">Masuk</h1>
-        <p class="mt-1 text-sm text-zinc-600">AI Assessment Support</p>
+    <div class="w-full max-w-md animate-in fade-in">
+        <div class="card-depth p-8">
+            <div class="mb-8 text-center">
+                <div class="mx-auto mb-4 flex size-14 items-center justify-center rounded-xl accent-gradient shadow-lg shadow-primary/20">
+                    <span class="material-symbols-outlined text-[32px] text-on-primary" style="font-variation-settings: 'FILL' 1;">analytics</span>
+                </div>
+                <h1 class="font-display text-xl font-bold text-on-surface">Masuk</h1>
+                <p class="mt-1 text-sm text-on-surface-variant">AI Assessment Support</p>
+            </div>
 
-        <form method="POST" action="{{ route('login.store') }}" class="mt-6 space-y-4">
-            @csrf
-            <div>
-                <label for="email" class="block text-sm font-medium text-zinc-700">Email</label>
-                <input id="email" name="email" type="email" value="{{ old('email') }}" required autofocus
-                    class="mt-1 w-full rounded-md border border-zinc-300 px-3 py-2 text-sm shadow-sm focus:border-zinc-900 focus:outline-none focus:ring-1 focus:ring-zinc-900">
-            </div>
-            <div>
-                <label for="password" class="block text-sm font-medium text-zinc-700">Kata sandi</label>
-                <input id="password" name="password" type="password" required
-                    class="mt-1 w-full rounded-md border border-zinc-300 px-3 py-2 text-sm shadow-sm focus:border-zinc-900 focus:outline-none focus:ring-1 focus:ring-zinc-900">
-            </div>
-            <label class="flex items-center gap-2 text-sm text-zinc-700">
-                <input type="checkbox" name="remember" value="1" class="rounded border-zinc-300">
-                Ingat saya
-            </label>
-            <button type="submit"
-                class="w-full rounded-md bg-zinc-900 py-2 text-sm font-medium text-white hover:bg-zinc-800">Masuk</button>
-        </form>
+            <form method="POST" action="{{ route('login.store') }}" class="space-y-4">
+                @csrf
+                <x-ui.form-input label="Email" name="email" type="email" value="{{ old('email') }}" required autofocus />
+                <x-ui.form-input label="Kata sandi" name="password" type="password" required />
+                <label class="flex items-center gap-2 text-sm text-on-surface-variant">
+                    <input type="checkbox" name="remember" value="1" class="size-4 rounded border-outline-variant text-primary focus:ring-primary/20">
+                    Ingat saya
+                </label>
+                <x-ui.button type="submit" variant="primary" class="w-full">
+                    Masuk
+                </x-ui.button>
+            </form>
+        </div>
     </div>
 @endsection

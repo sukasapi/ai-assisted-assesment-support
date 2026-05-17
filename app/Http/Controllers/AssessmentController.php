@@ -129,7 +129,7 @@ class AssessmentController extends Controller
             'evidenceItems.tool',
             'evidenceItems.competency',
             'keyBehaviors.tool',
-            'keyBehaviors.competency',
+            'keyBehaviors.competency.group',
             'keyBehaviors.evidence',
             'keyBehaviors.competencyLevel',
             'toolPayloads.tool',
@@ -186,6 +186,12 @@ class AssessmentController extends Controller
 
         $punyaKompetensiUntukMatriks = Competency::query()->whereNull('dihapus_pada')->exists();
         $ringkasanFinalisasi = $this->ringkasanCakupanKompetensiWajib($asesmen);
+        $gridCakupanKompetensi = $this->gridCakupanKompetensi($asesmen, $ringkasanFinalisasi);
+        $ringkasanAlatPreset = $this->ringkasanAlatPreset($asesmen, $pemilihanAlatPreset, $pemetaanKompetensiAlat);
+        $buktiPerAlat = $asesmen->evidenceItems->groupBy('id_alat_penilaian');
+        $persenProgress = $ringkasanFinalisasi['total_wajib'] > 0
+            ? (int) round(($ringkasanFinalisasi['total_terpenuhi'] / $ringkasanFinalisasi['total_wajib']) * 100)
+            : 0;
 
         return view('assessments.show', [
             'asesmen' => $asesmen,
@@ -197,6 +203,10 @@ class AssessmentController extends Controller
             'pemetaanKompetensiAlat' => $pemetaanKompetensiAlat,
             'punyaKompetensiUntukMatriks' => $punyaKompetensiUntukMatriks,
             'ringkasanFinalisasi' => $ringkasanFinalisasi,
+            'gridCakupanKompetensi' => $gridCakupanKompetensi,
+            'ringkasanAlatPreset' => $ringkasanAlatPreset,
+            'buktiPerAlat' => $buktiPerAlat,
+            'persenProgress' => $persenProgress,
         ]);
     }
 
@@ -581,5 +591,131 @@ class AssessmentController extends Controller
             'total_kompetensi_kurang' => $idKompetensiKurang->count(),
             'kompetensi_kurang' => $kompetensiKurang,
         ];
+    }
+
+    /**
+     * @return list<array{nama: string, kode: string, persen: int}>
+     */
+    private function gridCakupanKompetensi(Assessment $asesmen, array $ringkasan): array
+    {
+        if ($ringkasan['total_wajib'] === 0) {
+            return [];
+        }
+
+        $alatAktif = AssessmentToolSelection::query()
+            ->where('id_asesmen', $asesmen->id)
+            ->where('aktif', true)
+            ->pluck('id_alat_penilaian')
+            ->all();
+
+        $mapWajib = CompetencyToolMapping::query()
+            ->where('id_versi_matriks', $asesmen->id_versi_matriks)
+            ->whereIn('id_alat_penilaian', $alatAktif)
+            ->where(function ($query): void {
+                $query->where('aktif', true)->orWhereNull('aktif');
+            })
+            ->where('wajib', true)
+            ->with('competency')
+            ->get();
+
+        $kompetensiWajib = $mapWajib
+            ->pluck('competency')
+            ->filter()
+            ->unique('id')
+            ->sortBy('kode_kompetensi')
+            ->values();
+
+        $idTerpenuhi = KeyBehavior::query()
+            ->where('id_asesmen', $asesmen->id)
+            ->whereNotNull('id_tingkat_kompetensi')
+            ->pluck('id_kompetensi')
+            ->flip();
+
+        $idAdaPk = KeyBehavior::query()
+            ->where('id_asesmen', $asesmen->id)
+            ->pluck('id_kompetensi')
+            ->flip();
+
+        $grid = [];
+        foreach ($kompetensiWajib->take(8) as $c) {
+            $terpenuhi = $idTerpenuhi->has($c->id);
+            $adaPk = $idAdaPk->has($c->id);
+            $persen = $terpenuhi ? 100 : ($adaPk ? 40 : 0);
+            $grid[] = [
+                'nama' => (string) $c->nama,
+                'kode' => (string) $c->kode_kompetensi,
+                'persen' => $persen,
+            ];
+        }
+
+        return $grid;
+    }
+
+    /**
+     * @return list<array{
+     *   kode: string,
+     *   nama: string,
+     *   kompetensi_label: string,
+     *   status: string,
+     *   status_kelas: string,
+     * }>
+     */
+    private function ringkasanAlatPreset(Assessment $asesmen, $pemilihanAlatPreset, $pemetaanKompetensiAlat): array
+    {
+        $rows = [];
+        $pkByKompetensi = $asesmen->keyBehaviors
+            ->whereNotNull('id_tingkat_kompetensi')
+            ->pluck('id_kompetensi')
+            ->unique()
+            ->flip();
+
+        foreach ($pemilihanAlatPreset->where('aktif', true) as $sel) {
+            $tool = $sel->tool;
+            if ($tool === null) {
+                continue;
+            }
+
+            $idAlat = (int) $sel->id_alat_penilaian;
+            $kompetensiIds = $pemetaanKompetensiAlat
+                ->filter(fn (CompetencyToolMapping $m): bool => (int) $m->id_alat_penilaian === $idAlat)
+                ->pluck('id_kompetensi')
+                ->unique();
+
+            $kompetensi = Competency::query()
+                ->whereIn('id', $kompetensiIds->all())
+                ->orderBy('kode_kompetensi')
+                ->get();
+
+            $label = $kompetensi->pluck('nama')->join(', ') ?: '—';
+
+            $adaBukti = $asesmen->evidenceItems->contains(fn ($e): bool => (int) $e->id_alat_penilaian === $idAlat);
+            $semuaTerpenuhi = $kompetensiIds->isNotEmpty() && $kompetensiIds->every(
+                fn (int $idK): bool => $pkByKompetensi->has($idK)
+            );
+
+            if (! $adaBukti && $kompetensiIds->isEmpty()) {
+                $status = 'kosong';
+                $statusKelas = 'text-on-surface-variant/70';
+            } elseif ($semuaTerpenuhi) {
+                $status = 'terisi';
+                $statusKelas = 'text-emerald-600';
+            } elseif ($adaBukti) {
+                $status = 'belum_lengkap';
+                $statusKelas = 'text-amber-600';
+            } else {
+                $status = 'kosong';
+                $statusKelas = 'text-on-surface-variant/70';
+            }
+
+            $rows[] = [
+                'kode' => (string) $tool->kode,
+                'nama' => (string) $tool->nama,
+                'kompetensi_label' => $label,
+                'status' => $status,
+                'status_kelas' => $statusKelas,
+            ];
+        }
+
+        return $rows;
     }
 }
