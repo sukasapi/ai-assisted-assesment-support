@@ -28,6 +28,7 @@ use App\Services\Ai\BulkToolPayloadAiAnalyzer;
 use App\Services\Ai\EvidenceAiAnalyzer;
 use App\Services\Assessment\AlatAsesmenPreset;
 use App\Services\Assessment\AssessmentToolAvailabilityDiagnostic;
+use App\Support\AiFeature;
 use App\Support\CatatAktivitas;
 use App\Support\EvidenceTextNormalizer;
 use Illuminate\Http\JsonResponse;
@@ -190,6 +191,8 @@ class AssessmentController extends Controller
             'ringkasanAlatPreset' => $ringkasanAlatPreset,
             'buktiPerAlat' => $buktiPerAlat,
             'persenProgress' => $persenProgress,
+            'aiFiturAktif' => AiFeature::aktif(),
+            'aiPesanNonaktif' => AiFeature::pesanNonaktif(),
         ]);
     }
 
@@ -402,10 +405,26 @@ class AssessmentController extends Controller
             ->with('status', 'Payload alat disimpan. Anda dapat menjalankan analisis AI bulk.');
     }
 
+    public function redirectToolPayloadAiGet(Assessment $asesmen): RedirectResponse
+    {
+        $this->authorize('view', $asesmen);
+
+        return redirect()
+            ->route('asesmen.show', $asesmen)
+            ->withErrors([
+                'ai' => 'Analisis AI bulk harus dipicu dari tombol pada halaman asesmen (bukan membuka URL ini langsung di browser).',
+            ]);
+    }
+
     public function analyzeToolPayloadAi(Assessment $asesmen, AssessmentToolPayload $payload): RedirectResponse
     {
         $this->authorize('update', $asesmen);
-        abort_unless($payload->id_asesmen === $asesmen->id, 404);
+
+        if ($payload->id_asesmen !== $asesmen->id) {
+            return redirect()
+                ->route('asesmen.show', $asesmen)
+                ->withErrors(['ai' => 'Payload tidak termasuk asesmen ini.']);
+        }
 
         if ($asesmen->metode_koleksi_bukti !== AssessmentEvidenceCollectionMode::PayloadAlat) {
             return redirect()

@@ -49,21 +49,25 @@ Route::middleware('auth')->group(function () {
         Route::get('asesmen/buat', [AssessmentController::class, 'create'])->name('asesmen.create');
         Route::post('asesmen', [AssessmentController::class, 'store'])->name('asesmen.store');
         Route::get('asesmen/{asesmen}/diagnostik-alat', [AssessmentController::class, 'toolDiagnostic'])->name('asesmen.diagnostik-alat');
-        Route::get('asesmen/{asesmen}', [AssessmentController::class, 'show'])->name('asesmen.show');
         Route::patch('asesmen/{asesmen}/metode-koleksi-bukti', [AssessmentController::class, 'updateEvidenceCollectionMode'])->name('asesmen.metode-koleksi-bukti.update');
         Route::post('asesmen/{asesmen}/bukti', [AssessmentController::class, 'storeEvidence'])->name('asesmen.bukti.store');
         Route::post('asesmen/{asesmen}/bukti/{bukti}/analisis-ai', [AssessmentController::class, 'analyzeEvidenceAi'])
             ->middleware('throttle:ai-analysis-trigger')
             ->name('asesmen.bukti.analisis-ai');
         Route::post('asesmen/{asesmen}/payload-alat', [AssessmentController::class, 'storeToolPayload'])->name('asesmen.payload-alat.store');
+        Route::get('asesmen/{asesmen}/payload-alat/{payload}/analisis-ai', [AssessmentController::class, 'redirectToolPayloadAiGet'])
+            ->scopeBindings()
+            ->name('asesmen.payload-alat.analisis-ai.get');
         Route::post('asesmen/{asesmen}/payload-alat/{payload}/analisis-ai', [AssessmentController::class, 'analyzeToolPayloadAi'])
             ->middleware('throttle:ai-analysis-trigger')
+            ->scopeBindings()
             ->name('asesmen.payload-alat.analisis-ai');
         Route::patch('asesmen/{asesmen}/finalisasi', [AssessmentController::class, 'finalize'])->name('asesmen.finalisasi');
         Route::patch('asesmen/{asesmen}/batal-finalisasi', [AssessmentController::class, 'unfinalize'])->name('asesmen.batal-finalisasi');
         Route::post('asesmen/{asesmen}/perilaku-kunci', [AssessmentController::class, 'storeKeyBehavior'])->name('asesmen.perilaku.store');
         Route::get('asesmen/{asesmen}/perilaku-kunci/{perilaku}/ubah', [AssessmentController::class, 'editKeyBehavior'])->name('asesmen.perilaku.edit');
         Route::patch('asesmen/{asesmen}/perilaku-kunci/{perilaku}', [AssessmentController::class, 'updateKeyBehavior'])->name('asesmen.perilaku.update');
+        Route::get('asesmen/{asesmen}', [AssessmentController::class, 'show'])->name('asesmen.show');
     });
 
     Route::middleware('role:admin')->group(function () {
