@@ -24,12 +24,14 @@ use App\Models\KeyBehavior;
 use App\Models\MatrixVersion;
 use App\Models\Participant;
 use App\Models\User;
-use App\Services\Ai\BulkToolPayloadAiAnalyzer;
+use App\Services\Ai\AiAnalysisDispatcher;
+use App\Support\AiModelCatalog;
 use App\Services\Ai\EvidenceAiAnalyzer;
 use App\Services\Assessment\AlatAsesmenPreset;
 use App\Services\Assessment\AssessmentToolAvailabilityDiagnostic;
 use App\Support\AiFeature;
 use App\Support\CatatAktivitas;
+use App\Support\BulkTextNormalizer;
 use App\Support\EvidenceTextNormalizer;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
@@ -193,6 +195,9 @@ class AssessmentController extends Controller
             'persenProgress' => $persenProgress,
             'aiFiturAktif' => AiFeature::aktif(),
             'aiPesanNonaktif' => AiFeature::pesanNonaktif(),
+            'aiModelOptions' => AiModelCatalog::daftarModel(),
+            'aiModelDefault' => AiModelCatalog::modelDefault(),
+            'aiAntrianAsync' => AiAnalysisDispatcher::antrianAsyncAktif(),
         ]);
     }
 
@@ -387,9 +392,12 @@ class AssessmentController extends Controller
         $this->authorize('update', $asesmen);
         $teksMuatan = $request->string('teks_muatan')->toString();
         $teksMuatanRich = $request->filled('teks_muatan_rich') ? $request->string('teks_muatan_rich')->toString() : null;
-        $teksMuatanNormalized = EvidenceTextNormalizer::normalize(
+        $plainMuatan = EvidenceTextNormalizer::toPlainText(
             $teksMuatanRich,
             $request->input('teks_muatan_normalized', $teksMuatan)
+        );
+        $teksMuatanNormalized = BulkTextNormalizer::normalizeForStorage(
+            $plainMuatan !== '' ? $plainMuatan : $teksMuatan
         );
 
         $asesmen->toolPayloads()->create([
@@ -420,7 +428,7 @@ class AssessmentController extends Controller
     {
         $this->authorize('update', $asesmen);
 
-        if ($payload->id_asesmen !== $asesmen->id) {
+        if ((int) $payload->id_asesmen !== (int) $asesmen->id) {
             return redirect()
                 ->route('asesmen.show', $asesmen)
                 ->withErrors(['ai' => 'Payload tidak termasuk asesmen ini.']);
@@ -437,12 +445,23 @@ class AssessmentController extends Controller
                 ->withErrors(['ai' => 'Fitur AI tidak aktif (AI_AKTIF=false).']);
         }
 
-        $hasil = app(BulkToolPayloadAiAnalyzer::class)->analisisPayload($payload, request()->user());
+        $namaModel = request()->input('nama_model');
+        $hasil = app(AiAnalysisDispatcher::class)->analisisPayloadBulk(
+            $payload,
+            request()->user(),
+            is_string($namaModel) ? $namaModel : null,
+        );
 
-        if (! $hasil['berhasil']) {
+        if (! ($hasil['berhasil'] ?? false)) {
             return redirect()
                 ->route('asesmen.show', $asesmen)
                 ->withErrors(['ai' => $hasil['pesan'] ?? 'Analisis AI bulk gagal.']);
+        }
+
+        if ($hasil['diantrian'] ?? false) {
+            return redirect()
+                ->route('asesmen.show', $asesmen)
+                ->with('status', $hasil['pesan'] ?? 'Analisis AI bulk dijadwalkan.');
         }
 
         CatatAktivitas::catat(

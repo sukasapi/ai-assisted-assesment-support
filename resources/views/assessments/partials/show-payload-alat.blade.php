@@ -48,6 +48,9 @@
                                 :payload="$p"
                                 :ai-aktif="$aiFiturAktif ?? false"
                                 :ai-pesan-nonaktif="$aiPesanNonaktif ?? ''"
+                                :ai-model-options="$aiModelOptions ?? []"
+                                :ai-model-default="$aiModelDefault ?? ''"
+                                :ai-antrian-async="$aiAntrianAsync ?? false"
                             />
                         </div>
                         <p class="mt-2 line-clamp-3 text-sm text-on-surface-variant">{{ \Illuminate\Support\Str::limit($p->teks_muatan, 240) }}</p>

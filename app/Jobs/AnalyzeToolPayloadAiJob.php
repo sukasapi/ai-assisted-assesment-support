@@ -33,6 +33,7 @@ class AnalyzeToolPayloadAiJob implements ShouldQueue
     public function __construct(
         private readonly int $idPayload,
         private readonly int $idPenggunaPemicu,
+        private readonly ?string $namaModel = null,
     ) {
         $this->tries = max(1, (int) config('ai.queue.coba_maks', 3));
         $this->timeout = max(30, (int) config('ai.queue.batas_waktu_detik', 120));
@@ -58,7 +59,7 @@ class AnalyzeToolPayloadAiJob implements ShouldQueue
             return;
         }
 
-        $hasil = $analyzer->analisisPayload($payload, $pengguna);
+        $hasil = $analyzer->analisisPayload($payload, $pengguna, $this->namaModel);
         if (! ($hasil['berhasil'] ?? false)) {
             $pesan = (string) ($hasil['pesan'] ?? 'Analisis AI bulk gagal.');
             if ($this->layakRetry($pesan)) {

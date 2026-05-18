@@ -149,6 +149,128 @@ class AiQueueAndSchemaTest extends TestCase
         $this->assertStringContainsString('format yang tidak valid', (string) ($hasil['pesan'] ?? ''));
     }
 
+    public function test_bulk_menerima_kutipan_dengan_tanda_baca_curly(): void
+    {
+        $this->seed(DatabaseSeeder::class);
+        config([
+            'ai.aktif' => true,
+            'ai.openrouter.kunci_api' => 'kunci-uji',
+            'ai.openrouter.url_dasar' => 'https://openrouter.ai/api/v1',
+        ]);
+
+        $admin = User::query()->where('alamat_surel', 'admin@example.com')->firstOrFail();
+        $asesmen = $this->buatAsesmenDenganSatuBukti($admin);
+        $alat = AssessmentTool::query()->where('kode', 'BEI')->firstOrFail();
+
+        /** @var AssessmentToolPayload $payload */
+        $payload = $asesmen->toolPayloads()->create([
+            'id_alat_penilaian' => $alat->id,
+            'teks_muatan' => 'Log: KUTIPAN BULK tes perilaku.',
+            'teks_muatan_normalized' => 'Log: KUTIPAN BULK tes perilaku.',
+            'id_pengguna_pengunggah' => $admin->id,
+        ]);
+
+        $asesmen->update(['metode_koleksi_bukti' => 'payload_alat']);
+        $kodeKompetensi = Competency::query()->orderBy('id')->firstOrFail()->kode_kompetensi;
+        $isiModel = json_encode([
+            'usulan' => [[
+                'kode_kompetensi' => $kodeKompetensi,
+                'ringkasan' => 'Ringkas.',
+                'kutipan' => 'Log: KUTIPAN BULK tes perilaku.',
+                'alasan' => 'Alasan bulk.',
+                'keyakinan' => 0.75,
+                'tingkat' => 2,
+                'teks_perilaku' => 'Teks perilaku bulk.',
+                'konfirmatori' => 'Kutipan bulk mendukung indikator level 2.',
+            ]],
+        ], JSON_THROW_ON_ERROR);
+
+        $this->jalankanBulkFakeDanAssertBerhasil($admin, $asesmen, $payload, $isiModel);
+    }
+
+    public function test_bulk_menerima_kutipan_model_dengan_curly_quote(): void
+    {
+        $this->seed(DatabaseSeeder::class);
+        config([
+            'ai.aktif' => true,
+            'ai.openrouter.kunci_api' => 'kunci-uji',
+            'ai.openrouter.url_dasar' => 'https://openrouter.ai/api/v1',
+        ]);
+
+        $admin = User::query()->where('alamat_surel', 'admin@example.com')->firstOrFail();
+        $asesmen = $this->buatAsesmenDenganSatuBukti($admin);
+        $alat = AssessmentTool::query()->where('kode', 'BEI')->firstOrFail();
+
+        /** @var AssessmentToolPayload $payload */
+        $payload = $asesmen->toolPayloads()->create([
+            'id_alat_penilaian' => $alat->id,
+            'teks_muatan' => 'Peserta berkata "siap" menjalankan tugas.',
+            'teks_muatan_normalized' => 'Peserta berkata "siap" menjalankan tugas.',
+            'id_pengguna_pengunggah' => $admin->id,
+        ]);
+
+        $asesmen->update(['metode_koleksi_bukti' => 'payload_alat']);
+        $kodeKompetensi = Competency::query()->orderBy('id')->firstOrFail()->kode_kompetensi;
+        $isiModel = json_encode([
+            'usulan' => [[
+                'kode_kompetensi' => $kodeKompetensi,
+                'ringkasan' => 'Ringkas.',
+                'kutipan' => 'Peserta berkata “siap” menjalankan tugas.',
+                'alasan' => 'Alasan bulk.',
+                'keyakinan' => 0.75,
+                'tingkat' => 2,
+                'teks_perilaku' => 'Teks perilaku bulk.',
+                'konfirmatori' => 'Kutipan bulk mendukung indikator level 2.',
+            ]],
+        ], JSON_THROW_ON_ERROR);
+
+        $this->jalankanBulkFakeDanAssertBerhasil($admin, $asesmen, $payload, $isiModel);
+    }
+
+    public function test_bulk_menerima_json_dibungkus_markdown(): void
+    {
+        $this->seed(DatabaseSeeder::class);
+        config([
+            'ai.aktif' => true,
+            'ai.openrouter.kunci_api' => 'kunci-uji',
+            'ai.openrouter.url_dasar' => 'https://openrouter.ai/api/v1',
+        ]);
+
+        $admin = User::query()->where('alamat_surel', 'admin@example.com')->firstOrFail();
+        $asesmen = $this->buatAsesmenDenganSatuBukti($admin);
+        $alat = AssessmentTool::query()->where('kode', 'BEI')->firstOrFail();
+
+        /** @var AssessmentToolPayload $payload */
+        $payload = $asesmen->toolPayloads()->create([
+            'id_alat_penilaian' => $alat->id,
+            'teks_muatan' => 'KUTIPAN BULK tes perilaku.',
+            'id_pengguna_pengunggah' => $admin->id,
+        ]);
+
+        $asesmen->update(['metode_koleksi_bukti' => 'payload_alat']);
+        $kodeKompetensi = Competency::query()->orderBy('id')->firstOrFail()->kode_kompetensi;
+        $isiModel = "```json\n".json_encode([
+            'usulan' => [[
+                'kode_kompetensi' => $kodeKompetensi,
+                'ringkasan' => 'Ringkas.',
+                'kutipan' => 'KUTIPAN BULK',
+                'alasan' => 'Alasan bulk.',
+                'keyakinan' => 0.75,
+                'tingkat' => 2,
+                'teks_perilaku' => 'Teks perilaku bulk.',
+                'konfirmatori' => 'Kutipan bulk mendukung indikator level 2.',
+            ]],
+        ], JSON_THROW_ON_ERROR)."\n```";
+
+        Http::fake([
+            'https://openrouter.ai/api/v1/chat/completions' => Http::response([
+                'choices' => [['message' => ['content' => $isiModel]]],
+            ], 200),
+        ]);
+
+        $this->jalankanBulkFakeDanAssertBerhasil($admin, $asesmen, $payload, $isiModel);
+    }
+
     public function test_schema_bulk_tidak_lengkap_ditolak(): void
     {
         $this->seed(DatabaseSeeder::class);
@@ -191,6 +313,22 @@ class AiQueueAndSchemaTest extends TestCase
 
         $this->assertFalse($hasil['berhasil']);
         $this->assertStringContainsString('usulan bulk tidak valid', (string) ($hasil['pesan'] ?? ''));
+    }
+
+    private function jalankanBulkFakeDanAssertBerhasil(User $admin, Assessment $asesmen, AssessmentToolPayload $payload, string $isiModel): void
+    {
+        Http::fake([
+            'https://openrouter.ai/api/v1/chat/completions' => Http::response([
+                'choices' => [['message' => ['content' => $isiModel]]],
+            ], 200),
+        ]);
+
+        $this->actingAs($admin)
+            ->post(route('asesmen.payload-alat.analisis-ai', [$asesmen, $payload]))
+            ->assertRedirect(route('asesmen.show', $asesmen));
+
+        $payload->refresh();
+        $this->assertNotNull($payload->diproses_pada);
     }
 
     private function buatAsesmenDenganSatuBukti(User $admin): Assessment

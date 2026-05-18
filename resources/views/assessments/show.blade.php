@@ -361,6 +361,9 @@
                 'punyaAlatTersediaInput' => $punyaAlatTersediaInput,
                 'aiFiturAktif' => $aiFiturAktif ?? false,
                 'aiPesanNonaktif' => $aiPesanNonaktif ?? '',
+                'aiModelOptions' => $aiModelOptions ?? [],
+                'aiModelDefault' => $aiModelDefault ?? '',
+                'aiAntrianAsync' => $aiAntrianAsync ?? false,
             ])
         @endif
 
