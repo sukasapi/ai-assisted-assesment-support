@@ -62,6 +62,7 @@
     --color-surface-variant: #e1e2ec;
 
     --spacing-sidebar-width: 4.5rem;
+    --spacing-sidebar-expanded: 14rem;
     --spacing-container-max: 80rem;
     --spacing-gutter: 1.5rem;
     --spacing-stack-sm: 0.5rem;

@@ -135,6 +135,49 @@ class AssessmentEvidenceCollectionModeTest extends TestCase
             ->assertSessionHasErrors('id_alat_penilaian');
     }
 
+    public function test_get_analisis_ai_bulk_redirects_to_show_with_message(): void
+    {
+        $this->seed(DatabaseSeeder::class);
+        $admin = User::query()->where('alamat_surel', 'admin@example.com')->firstOrFail();
+        $asesmen = $this->buatAsesmen($admin, 'payload_alat');
+        $alat = AssessmentTool::query()->where('kode', 'BEI')->firstOrFail();
+
+        $payload = $asesmen->toolPayloads()->create([
+            'id_alat_penilaian' => $alat->id,
+            'teks_muatan' => 'Teks uji GET redirect.',
+            'id_pengguna_pengunggah' => $admin->id,
+        ]);
+
+        $this->actingAs($admin)
+            ->get(route('asesmen.payload-alat.analisis-ai.get', [$asesmen, $payload]))
+            ->assertRedirect(route('asesmen.show', $asesmen))
+            ->assertSessionHasErrors('ai');
+    }
+
+    public function test_show_payload_mode_menampilkan_tombol_analisis_ai_bulk(): void
+    {
+        $this->seed(DatabaseSeeder::class);
+        config(['ai.aktif' => true]);
+
+        $admin = User::query()->where('alamat_surel', 'admin@example.com')->firstOrFail();
+        $asesmen = $this->buatAsesmen($admin, 'payload_alat');
+        $alat = AssessmentTool::query()->where('kode', 'BEI')->firstOrFail();
+
+        $this->actingAs($admin)
+            ->from(route('asesmen.show', $asesmen))
+            ->post(route('asesmen.payload-alat.store', $asesmen), [
+                'id_alat_penilaian' => $alat->id,
+                'teks_muatan' => 'Teks muatan uji bulk.',
+            ])
+            ->assertRedirect(route('asesmen.show', $asesmen));
+
+        $this->actingAs($admin)
+            ->get(route('asesmen.show', $asesmen))
+            ->assertOk()
+            ->assertSee('Analisis AI bulk', false)
+            ->assertSee('data-ai-mode="bulk"', false);
+    }
+
     private function buatAsesmen(User $admin, string $metode): Assessment
     {
         $peserta = Participant::query()->where('kode_peserta', 'DEMO-001')->firstOrFail();

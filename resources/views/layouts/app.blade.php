@@ -24,7 +24,7 @@
 
 @auth
     @include('layouts.partials.sidebar')
-    <div class="ml-sidebar-width flex min-h-screen min-w-0 flex-col">
+    <div class="ml-sidebar-width flex min-h-screen min-w-0 flex-col md:ml-sidebar-expanded">
         @include('layouts.partials.topbar')
         <main class="flex-1 overflow-y-auto px-4 py-8 lg:px-gutter">
             <div class="mx-auto max-w-container-max">

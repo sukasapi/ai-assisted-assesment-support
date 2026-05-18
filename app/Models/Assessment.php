@@ -85,4 +85,16 @@ class Assessment extends Model
     {
         return $this->hasMany(AssessmentToolPayload::class, 'id_asesmen')->orderByDesc('id');
     }
+
+    /**
+     * Scoped binding: {payload} pada route nested asesmen/{asesmen}/payload-alat/{payload}.
+     */
+    public function resolveChildRouteBinding($childType, $value, $field): ?Model
+    {
+        if ($childType === 'payload') {
+            return $this->toolPayloads()->whereKey($value)->first();
+        }
+
+        return parent::resolveChildRouteBinding($childType, $value, $field);
+    }
 }
