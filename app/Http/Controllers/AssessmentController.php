@@ -9,8 +9,8 @@ use App\Http\Requests\StoreAssessmentRequest;
 use App\Http\Requests\StoreAssessmentToolPayloadRequest;
 use App\Http\Requests\StoreEvidenceRequest;
 use App\Http\Requests\StoreKeyBehaviorRequest;
-use App\Http\Requests\UpdateKeyBehaviorRequest;
 use App\Http\Requests\UpdateAssessmentEvidenceCollectionModeRequest;
+use App\Http\Requests\UpdateKeyBehaviorRequest;
 use App\Models\Assessment;
 use App\Models\AssessmentAssessor;
 use App\Models\AssessmentToolPayload;
@@ -27,8 +27,10 @@ use App\Models\User;
 use App\Services\Ai\BulkToolPayloadAiAnalyzer;
 use App\Services\Ai\EvidenceAiAnalyzer;
 use App\Services\Assessment\AlatAsesmenPreset;
+use App\Services\Assessment\AssessmentToolAvailabilityDiagnostic;
 use App\Support\CatatAktivitas;
 use App\Support\EvidenceTextNormalizer;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Support\Facades\DB;
 use Illuminate\View\View;
@@ -161,28 +163,9 @@ class AssessmentController extends Controller
             })
             ->values();
 
-        $pemetaanKompetensiAlat = CompetencyToolMapping::query()
-            ->where('id_versi_matriks', $asesmen->id_versi_matriks)
-            ->where(function ($query): void {
-                $query->where('aktif', true)->orWhereNull('aktif');
-            })
-            ->get()
-            ->keyBy(fn (CompetencyToolMapping $m) => $m->id_kompetensi.'-'.$m->id_alat_penilaian);
-
-        $idAlatTerpakaiMatriks = $pemetaanKompetensiAlat
-            ->pluck('id_alat_penilaian')
-            ->unique()
-            ->values()
-            ->all();
-        $alatTersediaInput = $asesmen->toolSelections
-            ->where('aktif', true)
-            ->filter(fn ($sel): bool => in_array((int) $sel->id_alat_penilaian, $idAlatTerpakaiMatriks, true))
-            ->sortBy(function ($s): array {
-                $t = $s->tool;
-
-                return [(int) ($t->urutan ?? 9999), $t->kode ?? ''];
-            })
-            ->values();
+        $ketersediaanAlat = AssessmentToolAvailabilityDiagnostic::collectionsForShow($asesmen);
+        $pemetaanKompetensiAlat = $ketersediaanAlat['pemetaanKompetensiAlat'];
+        $alatTersediaInput = $ketersediaanAlat['alatTersediaInput'];
 
         $punyaKompetensiUntukMatriks = Competency::query()->whereNull('dihapus_pada')->exists();
         $ringkasanFinalisasi = $this->ringkasanCakupanKompetensiWajib($asesmen);
@@ -208,6 +191,18 @@ class AssessmentController extends Controller
             'buktiPerAlat' => $buktiPerAlat,
             'persenProgress' => $persenProgress,
         ]);
+    }
+
+    public function toolDiagnostic(Assessment $asesmen): JsonResponse
+    {
+        $this->authorize('view', $asesmen);
+
+        return response()->json(
+            AssessmentToolAvailabilityDiagnostic::for($asesmen),
+            200,
+            [],
+            JSON_UNESCAPED_UNICODE,
+        );
     }
 
     public function updateEvidenceCollectionMode(UpdateAssessmentEvidenceCollectionModeRequest $request, Assessment $asesmen): RedirectResponse
