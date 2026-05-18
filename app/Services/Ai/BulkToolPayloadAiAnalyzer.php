@@ -6,8 +6,12 @@ use App\Models\AiLog;
 use App\Models\AssessmentToolPayload;
 use App\Models\Competency;
 use App\Models\CompetencyLevel;
+use App\Models\CompetencyToolMapping;
 use App\Models\KeyBehavior;
 use App\Models\User;
+use App\Support\AiModelCatalog;
+use App\Support\BulkTextNormalizer;
+use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 
@@ -20,7 +24,7 @@ class BulkToolPayloadAiAnalyzer
     /**
      * @return array{berhasil: bool, pesan?: string, jumlah_perilaku_kunci?: int}
      */
-    public function analisisPayload(AssessmentToolPayload $payload, User $pengguna): array
+    public function analisisPayload(AssessmentToolPayload $payload, User $pengguna, ?string $namaModel = null): array
     {
         if (! config('ai.aktif', false)) {
             return ['berhasil' => false, 'pesan' => 'Fitur AI tidak aktif (AI_AKTIF=false).'];
@@ -28,10 +32,22 @@ class BulkToolPayloadAiAnalyzer
 
         $payload->loadMissing(['assessment.matrixVersion', 'tool']);
 
-        $kompetensi = Competency::query()->where('aktif', true)->orderBy('kode_kompetensi')->get(['id', 'kode_kompetensi', 'nama']);
+        $namaModel = AiModelCatalog::selesaikan($namaModel);
+        $kompetensi = $this->kompetensiDiperbolehkan($payload);
+        if ($kompetensi->isEmpty()) {
+            return ['berhasil' => false, 'pesan' => 'Tidak ada kompetensi aktif pada pemetaan matriks untuk alat payload ini.'];
+        }
         $daftarKode = $kompetensi->map(fn (Competency $c): string => $c->kode_kompetensi.' — '.$c->nama)->implode("\n");
 
-        $teks = $payload->teks_muatan_normalized ?: $payload->teks_muatan;
+        $teksMentah = (string) ($payload->teks_muatan ?? '');
+        $teksTersimpan = BulkTextNormalizer::normalizeForStorage(
+            (string) ($payload->teks_muatan_normalized ?: $teksMentah)
+        );
+        $sumberTeks = array_values(array_unique(array_filter([
+            $teksTersimpan,
+            BulkTextNormalizer::normalizeForStorage($teksMentah),
+        ])));
+        $teks = $sumberTeks[0] ?? '';
         $sistem = <<<'SYS'
 Anda adalah seorang konsultan dan psikolog handal yang membantu asesor memetakan SATU dump teks (mis. salinan log alat) ke beberapa potong usulan per kompetensi.
 Aturan wajib:
@@ -55,7 +71,6 @@ SYS;
             ."Daftar kode kompetensi yang diperbolehkan:\n{$daftarKode}\n\n"
             ."Teks muatan:\n---\n{$teks}\n---";
 
-        $namaModel = (string) config('ai.openrouter.nama_model');
         $logBaru = new AiLog([
             'id_pengguna' => $pengguna->id,
             'id_asesmen' => $payload->id_asesmen,
@@ -68,14 +83,22 @@ SYS;
         ]);
 
         try {
-            ['response' => $response, 'latency_ms' => $latency] = $this->client->chatCompletion([
-                ['role' => 'system', 'content' => $sistem],
-                ['role' => 'user', 'content' => $penggunaMsg],
-            ]);
+            $hasilApi = $this->client->chatCompletionDenganFallback(
+                [
+                    ['role' => 'system', 'content' => $sistem],
+                    ['role' => 'user', 'content' => $penggunaMsg],
+                ],
+                $namaModel,
+                config('ai.openrouter.maks_token_keluaran_bulk'),
+            );
+            $response = $hasilApi['response'];
+            $latency = $hasilApi['latency_ms'];
+            $namaModel = $hasilApi['nama_model'];
+            $logBaru->nama_model = $namaModel;
         } catch (\Throwable $e) {
             $logBaru->fill([
                 'pesan_kesalahan' => $e->getMessage(),
-                'metadata' => ['latency_ms' => null],
+                'metadata' => ['latency_ms' => null, 'dicoba_model' => AiModelCatalog::rantaiFallback($namaModel)],
             ]);
             $logBaru->dibuat_pada = now();
             $logBaru->save();
@@ -89,6 +112,8 @@ SYS;
         $logBaru->metadata = array_filter([
             'latency_ms' => $latency,
             'usage' => $usage,
+            'dicoba_model' => $hasilApi['dicoba_model'] ?? [$namaModel],
+            'model_berhasil' => $namaModel,
         ], static fn ($v) => $v !== null);
 
         if (! $response->successful()) {
@@ -100,9 +125,13 @@ SYS;
         }
 
         $jsonStr = OpenRouterClient::ekstrakIsiJson($response);
-        $parsed = $this->parseJsonObjek($jsonStr);
-        if ($parsed === null || ! isset($parsed['usulan']) || ! is_array($parsed['usulan'])) {
+        $parsed = AiModelJsonParser::parseObjek($jsonStr);
+        $daftarUsulan = $parsed !== null ? AiModelJsonParser::ekstrakArrayUsulanBulk($parsed) : null;
+        if ($daftarUsulan === null) {
             $logBaru->pesan_kesalahan = 'JSON model tidak valid (wajib kunci usulan berupa array).';
+            $logBaru->metadata = array_merge($logBaru->metadata ?? [], [
+                'cuplikan_respons' => mb_substr($jsonStr, 0, 500),
+            ]);
             $logBaru->dibuat_pada = now();
             $logBaru->save();
 
@@ -112,7 +141,7 @@ SYS;
         $byKode = $kompetensi->keyBy('kode_kompetensi');
         $kodeValid = $kompetensi->pluck('kode_kompetensi')->all();
         $dibersihkan = [];
-        foreach ($parsed['usulan'] as $item) {
+        foreach ($daftarUsulan as $item) {
             if (! is_array($item)) {
                 continue;
             }
@@ -129,13 +158,15 @@ SYS;
             if ($kode === '' || $kutipan === '' || ! in_array($kode, $kodeValid, true)) {
                 continue;
             }
-            if (! $this->kutipanAdaDiTeks($teks, $kutipan)) {
+            $kutipanDitemukan = BulkTextNormalizer::selesaikanKutipan($sumberTeks, $kutipan);
+            if ($kutipanDitemukan === null) {
                 $logBaru->pesan_kesalahan = 'Salah satu kutipan usulan tidak verbatim di teks muatan.';
                 $logBaru->dibuat_pada = now();
                 $logBaru->save();
 
                 return ['berhasil' => false, 'pesan' => 'Kutipan dalam usulan bulk tidak cocok dengan teks muatan (wajib substring verbatim).'];
             }
+            [, $kutipan] = $kutipanDitemukan;
 
             $tingkatAngka = isset($item['tingkat']) && is_numeric($item['tingkat']) ? (int) $item['tingkat'] : null;
             if ($tingkatAngka !== null && ($tingkatAngka < 1 || $tingkatAngka > 6)) {
@@ -275,30 +306,50 @@ SYS;
     }
 
     /**
-     * @return array<string, mixed>|null
+     * Kompetensi yang dipetakan ke alat + versi matriks asesmen (lebih ringan daripada seluruh kamus).
+     *
+     * @return Collection<int, Competency>
      */
-    private function parseJsonObjek(string $json): ?array
+    private function kompetensiDiperbolehkan(AssessmentToolPayload $payload): Collection
     {
-        $trim = trim($json);
-        if ($trim === '') {
-            return null;
-        }
-        try {
-            $decoded = json_decode($trim, true, 512, JSON_THROW_ON_ERROR);
-        } catch (\JsonException) {
-            return null;
-        }
+        $idVersi = $payload->assessment?->id_versi_matriks;
+        $idAlat = (int) $payload->id_alat_penilaian;
 
-        return is_array($decoded) ? $decoded : null;
-    }
-
-    private function kutipanAdaDiTeks(string $mentah, string $kutipan): bool
-    {
-        if (str_contains($mentah, $kutipan)) {
-            return true;
+        if ($idVersi === null) {
+            return Competency::query()
+                ->where('aktif', true)
+                ->orderBy('kode_kompetensi')
+                ->get(['id', 'kode_kompetensi', 'nama']);
         }
 
-        return mb_stripos($mentah, $kutipan) !== false;
+        $idKompetensi = CompetencyToolMapping::query()
+            ->where('id_versi_matriks', $idVersi)
+            ->where('id_alat_penilaian', $idAlat)
+            ->where('aktif', true)
+            ->whereNull('dihapus_pada')
+            ->pluck('id_kompetensi')
+            ->unique()
+            ->values();
+
+        if ($idKompetensi->isEmpty()) {
+            $idKompetensi = CompetencyToolMapping::query()
+                ->where('id_versi_matriks', $idVersi)
+                ->where('aktif', true)
+                ->whereNull('dihapus_pada')
+                ->pluck('id_kompetensi')
+                ->unique()
+                ->values();
+        }
+
+        if ($idKompetensi->isEmpty()) {
+            return new Collection;
+        }
+
+        return Competency::query()
+            ->whereIn('id', $idKompetensi)
+            ->where('aktif', true)
+            ->orderBy('kode_kompetensi')
+            ->get(['id', 'kode_kompetensi', 'nama']);
     }
 
     /**
@@ -356,19 +407,19 @@ SYS;
                 return 'Kunci wajib usulan hilang: '.$kunci;
             }
         }
-        if (! is_string($item['kode_kompetensi']) || trim($item['kode_kompetensi']) === '') {
+        if ($this->nilaiStringWajib($item['kode_kompetensi']) === '') {
             return 'kode_kompetensi wajib string non-kosong.';
         }
-        if (! is_string($item['kutipan']) || trim($item['kutipan']) === '') {
+        if ($this->nilaiStringWajib($item['kutipan']) === '') {
             return 'kutipan wajib string non-kosong.';
         }
-        if (! is_string($item['alasan']) || trim($item['alasan']) === '') {
+        if ($this->nilaiStringWajib($item['alasan']) === '') {
             return 'alasan wajib string non-kosong.';
         }
-        if (! is_string($item['teks_perilaku']) || trim($item['teks_perilaku']) === '') {
+        if ($this->nilaiStringWajib($item['teks_perilaku']) === '') {
             return 'teks_perilaku wajib string non-kosong.';
         }
-        if (! is_string($item['konfirmatori']) || trim($item['konfirmatori']) === '') {
+        if ($this->nilaiStringWajib($item['konfirmatori']) === '') {
             return 'konfirmatori wajib string non-kosong.';
         }
         if (! is_numeric($item['keyakinan'])) {
@@ -379,6 +430,18 @@ SYS;
         }
 
         return null;
+    }
+
+    private function nilaiStringWajib(mixed $nilai): string
+    {
+        if (is_string($nilai)) {
+            return trim($nilai);
+        }
+        if (is_int($nilai) || is_float($nilai)) {
+            return trim((string) $nilai);
+        }
+
+        return '';
     }
 
     /**

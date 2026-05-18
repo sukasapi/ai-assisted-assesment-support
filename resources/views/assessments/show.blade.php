@@ -184,6 +184,15 @@
                         Bukti dikumpulkan lewat payload alat dan diproses dengan analisis AI bulk.
                     @endif
                 </p>
+                @if ($metodeBukti === \App\Enums\AssessmentEvidenceCollectionMode::Manual)
+                    <div class="mt-4 flex gap-3 rounded-xl border border-primary/25 bg-primary-fixed/40 px-4 py-3 text-sm text-on-surface">
+                        <span class="material-symbols-outlined shrink-0 text-primary">info</span>
+                        <p>
+                            Tombol <strong>Analisis AI bulk</strong> ada pada metode <strong>Otomatis</strong>.
+                            Ubah toggle di atas, simpan payload alat, lalu gunakan tombol bulk pada setiap payload tersimpan.
+                        </p>
+                    </div>
+                @endif
             </div>
 
             <div class="card-depth rounded-xl bg-surface-container-lowest p-8">
@@ -350,6 +359,11 @@
                 'asesmen' => $asesmen,
                 'alatTersediaInput' => $alatTersediaInput,
                 'punyaAlatTersediaInput' => $punyaAlatTersediaInput,
+                'aiFiturAktif' => $aiFiturAktif ?? false,
+                'aiPesanNonaktif' => $aiPesanNonaktif ?? '',
+                'aiModelOptions' => $aiModelOptions ?? [],
+                'aiModelDefault' => $aiModelDefault ?? '',
+                'aiAntrianAsync' => $aiAntrianAsync ?? false,
             ])
         @endif
 

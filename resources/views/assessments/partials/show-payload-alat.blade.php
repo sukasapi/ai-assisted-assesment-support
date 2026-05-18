@@ -5,6 +5,13 @@
     <div class="card-depth rounded-xl bg-surface-container-lowest p-8">
         <p class="text-sm text-on-surface-variant">Tempel teks mentah dari alat, simpan payload, lalu jalankan <strong>Analisis AI bulk</strong>. Hasil wajib direview asesor.</p>
 
+        @if (! ($aiFiturAktif ?? false))
+            <div class="mt-4 rounded-xl border border-amber-200/80 bg-amber-50 px-4 py-3 text-sm text-amber-950">
+                <p class="font-semibold">Fitur AI belum siap dipakai</p>
+                <p class="mt-1">{{ $aiPesanNonaktif ?? '' }}</p>
+            </div>
+        @endif
+
         @can('update', $asesmen)
             <form method="POST" action="{{ route('asesmen.payload-alat.store', $asesmen) }}" class="mt-6 space-y-4 border-t border-outline-variant/20 pt-6">
                 @csrf
@@ -28,24 +35,23 @@
             </form>
         @endcan
 
+        <h3 class="mt-8 text-section-header uppercase text-on-surface-variant">Payload tersimpan</h3>
+
         @if ($asesmen->toolPayloads->isNotEmpty())
-            <h3 class="mt-8 text-section-header uppercase text-on-surface-variant">Payload tersimpan</h3>
             <ul class="mt-4 space-y-4">
                 @foreach ($asesmen->toolPayloads as $p)
                     <li class="rounded-xl border border-outline-variant/30 bg-surface-container-low/50 p-5">
-                        <div class="flex flex-wrap items-start justify-between gap-2">
+                        <div class="flex flex-wrap items-start justify-between gap-3">
                             <span class="font-bold text-on-surface">#{{ $p->id }} · {{ $p->tool?->kode }}</span>
-                            @can('update', $asesmen)
-                                @if (config('ai.aktif'))
-                                    <form method="POST" action="{{ route('asesmen.payload-alat.analisis-ai', [$asesmen, $p]) }}" class="js-ai-processing-form shrink-0" data-ai-mode="bulk">
-                                        @csrf
-                                        <button type="submit" class="flex items-center gap-2 rounded-full bg-primary px-5 py-2 text-sm font-bold text-white hover:opacity-90">
-                                            <span class="material-symbols-outlined text-sm">psychology</span>
-                                            Analisis AI bulk
-                                        </button>
-                                    </form>
-                                @endif
-                            @endcan
+                            <x-ui.btn-analisis-ai-bulk
+                                :asesmen="$asesmen"
+                                :payload="$p"
+                                :ai-aktif="$aiFiturAktif ?? false"
+                                :ai-pesan-nonaktif="$aiPesanNonaktif ?? ''"
+                                :ai-model-options="$aiModelOptions ?? []"
+                                :ai-model-default="$aiModelDefault ?? ''"
+                                :ai-antrian-async="$aiAntrianAsync ?? false"
+                            />
                         </div>
                         <p class="mt-2 line-clamp-3 text-sm text-on-surface-variant">{{ \Illuminate\Support\Str::limit($p->teks_muatan, 240) }}</p>
                         @if ($p->diproses_pada && is_array($p->hasil_analisis_ai))
@@ -57,6 +63,10 @@
                     </li>
                 @endforeach
             </ul>
+        @else
+            <p class="mt-4 text-sm text-on-surface-variant">
+                Belum ada payload. Setelah Anda menekan <strong>Simpan payload</strong>, tombol <strong>Analisis AI bulk</strong> akan tampil di samping setiap entri di daftar ini.
+            </p>
         @endif
     </div>
 </section>

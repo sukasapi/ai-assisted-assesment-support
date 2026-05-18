@@ -9,8 +9,8 @@ use App\Http\Requests\StoreAssessmentRequest;
 use App\Http\Requests\StoreAssessmentToolPayloadRequest;
 use App\Http\Requests\StoreEvidenceRequest;
 use App\Http\Requests\StoreKeyBehaviorRequest;
-use App\Http\Requests\UpdateKeyBehaviorRequest;
 use App\Http\Requests\UpdateAssessmentEvidenceCollectionModeRequest;
+use App\Http\Requests\UpdateKeyBehaviorRequest;
 use App\Models\Assessment;
 use App\Models\AssessmentAssessor;
 use App\Models\AssessmentToolPayload;
@@ -24,11 +24,16 @@ use App\Models\KeyBehavior;
 use App\Models\MatrixVersion;
 use App\Models\Participant;
 use App\Models\User;
-use App\Services\Ai\BulkToolPayloadAiAnalyzer;
+use App\Services\Ai\AiAnalysisDispatcher;
+use App\Support\AiModelCatalog;
 use App\Services\Ai\EvidenceAiAnalyzer;
 use App\Services\Assessment\AlatAsesmenPreset;
+use App\Services\Assessment\AssessmentToolAvailabilityDiagnostic;
+use App\Support\AiFeature;
 use App\Support\CatatAktivitas;
+use App\Support\BulkTextNormalizer;
 use App\Support\EvidenceTextNormalizer;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Support\Facades\DB;
 use Illuminate\View\View;
@@ -161,28 +166,9 @@ class AssessmentController extends Controller
             })
             ->values();
 
-        $pemetaanKompetensiAlat = CompetencyToolMapping::query()
-            ->where('id_versi_matriks', $asesmen->id_versi_matriks)
-            ->where(function ($query): void {
-                $query->where('aktif', true)->orWhereNull('aktif');
-            })
-            ->get()
-            ->keyBy(fn (CompetencyToolMapping $m) => $m->id_kompetensi.'-'.$m->id_alat_penilaian);
-
-        $idAlatTerpakaiMatriks = $pemetaanKompetensiAlat
-            ->pluck('id_alat_penilaian')
-            ->unique()
-            ->values()
-            ->all();
-        $alatTersediaInput = $asesmen->toolSelections
-            ->where('aktif', true)
-            ->filter(fn ($sel): bool => in_array((int) $sel->id_alat_penilaian, $idAlatTerpakaiMatriks, true))
-            ->sortBy(function ($s): array {
-                $t = $s->tool;
-
-                return [(int) ($t->urutan ?? 9999), $t->kode ?? ''];
-            })
-            ->values();
+        $ketersediaanAlat = AssessmentToolAvailabilityDiagnostic::collectionsForShow($asesmen);
+        $pemetaanKompetensiAlat = $ketersediaanAlat['pemetaanKompetensiAlat'];
+        $alatTersediaInput = $ketersediaanAlat['alatTersediaInput'];
 
         $punyaKompetensiUntukMatriks = Competency::query()->whereNull('dihapus_pada')->exists();
         $ringkasanFinalisasi = $this->ringkasanCakupanKompetensiWajib($asesmen);
@@ -207,7 +193,24 @@ class AssessmentController extends Controller
             'ringkasanAlatPreset' => $ringkasanAlatPreset,
             'buktiPerAlat' => $buktiPerAlat,
             'persenProgress' => $persenProgress,
+            'aiFiturAktif' => AiFeature::aktif(),
+            'aiPesanNonaktif' => AiFeature::pesanNonaktif(),
+            'aiModelOptions' => AiModelCatalog::daftarModel(),
+            'aiModelDefault' => AiModelCatalog::modelDefault(),
+            'aiAntrianAsync' => AiAnalysisDispatcher::antrianAsyncAktif(),
         ]);
+    }
+
+    public function toolDiagnostic(Assessment $asesmen): JsonResponse
+    {
+        $this->authorize('view', $asesmen);
+
+        return response()->json(
+            AssessmentToolAvailabilityDiagnostic::for($asesmen),
+            200,
+            [],
+            JSON_UNESCAPED_UNICODE,
+        );
     }
 
     public function updateEvidenceCollectionMode(UpdateAssessmentEvidenceCollectionModeRequest $request, Assessment $asesmen): RedirectResponse
@@ -389,9 +392,12 @@ class AssessmentController extends Controller
         $this->authorize('update', $asesmen);
         $teksMuatan = $request->string('teks_muatan')->toString();
         $teksMuatanRich = $request->filled('teks_muatan_rich') ? $request->string('teks_muatan_rich')->toString() : null;
-        $teksMuatanNormalized = EvidenceTextNormalizer::normalize(
+        $plainMuatan = EvidenceTextNormalizer::toPlainText(
             $teksMuatanRich,
             $request->input('teks_muatan_normalized', $teksMuatan)
+        );
+        $teksMuatanNormalized = BulkTextNormalizer::normalizeForStorage(
+            $plainMuatan !== '' ? $plainMuatan : $teksMuatan
         );
 
         $asesmen->toolPayloads()->create([
@@ -407,10 +413,26 @@ class AssessmentController extends Controller
             ->with('status', 'Payload alat disimpan. Anda dapat menjalankan analisis AI bulk.');
     }
 
+    public function redirectToolPayloadAiGet(Assessment $asesmen): RedirectResponse
+    {
+        $this->authorize('view', $asesmen);
+
+        return redirect()
+            ->route('asesmen.show', $asesmen)
+            ->withErrors([
+                'ai' => 'Analisis AI bulk harus dipicu dari tombol pada halaman asesmen (bukan membuka URL ini langsung di browser).',
+            ]);
+    }
+
     public function analyzeToolPayloadAi(Assessment $asesmen, AssessmentToolPayload $payload): RedirectResponse
     {
         $this->authorize('update', $asesmen);
-        abort_unless($payload->id_asesmen === $asesmen->id, 404);
+
+        if ((int) $payload->id_asesmen !== (int) $asesmen->id) {
+            return redirect()
+                ->route('asesmen.show', $asesmen)
+                ->withErrors(['ai' => 'Payload tidak termasuk asesmen ini.']);
+        }
 
         if ($asesmen->metode_koleksi_bukti !== AssessmentEvidenceCollectionMode::PayloadAlat) {
             return redirect()
@@ -423,12 +445,23 @@ class AssessmentController extends Controller
                 ->withErrors(['ai' => 'Fitur AI tidak aktif (AI_AKTIF=false).']);
         }
 
-        $hasil = app(BulkToolPayloadAiAnalyzer::class)->analisisPayload($payload, request()->user());
+        $namaModel = request()->input('nama_model');
+        $hasil = app(AiAnalysisDispatcher::class)->analisisPayloadBulk(
+            $payload,
+            request()->user(),
+            is_string($namaModel) ? $namaModel : null,
+        );
 
-        if (! $hasil['berhasil']) {
+        if (! ($hasil['berhasil'] ?? false)) {
             return redirect()
                 ->route('asesmen.show', $asesmen)
                 ->withErrors(['ai' => $hasil['pesan'] ?? 'Analisis AI bulk gagal.']);
+        }
+
+        if ($hasil['diantrian'] ?? false) {
+            return redirect()
+                ->route('asesmen.show', $asesmen)
+                ->with('status', $hasil['pesan'] ?? 'Analisis AI bulk dijadwalkan.');
         }
 
         CatatAktivitas::catat(
