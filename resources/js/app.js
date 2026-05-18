@@ -215,7 +215,10 @@ function bindWysiwygEditors() {
 
                 const html = quill.root.innerHTML || '';
                 const plainText = quill.getText().replace(/\u00a0/g, ' ').trimEnd();
-                const normalized = normalizeEvidenceHtml(html, plainText);
+                const isBulkMuatan = textarea.name === 'teks_muatan';
+                const normalized = isBulkMuatan
+                    ? normalizeBulkHtml(html, plainText)
+                    : normalizeEvidenceHtml(html, plainText);
                 textarea.value = normalized;
                 richInput.value = html;
                 normalizedInput.value = normalized;
@@ -241,7 +244,9 @@ function bindWysiwygEditors() {
                 const previewText =
                     normalized.length > 2000 ? `${normalized.slice(0, 2000)}\n...(dipotong)` : normalized;
                 window.Swal.fire({
-                    title: 'Preview normalisasi evidence',
+                    title: isBulkMuatan
+                        ? 'Preview normalisasi teks muatan'
+                        : 'Preview normalisasi evidence',
                     html: `<div class="max-h-72 overflow-auto rounded bg-zinc-100 p-3 text-left text-xs whitespace-pre-wrap">${escapeHtml(previewText || '(kosong)')}</div>`,
                     showCancelButton: true,
                     confirmButtonText: 'Gunakan hasil normalisasi',
@@ -257,6 +262,99 @@ function bindWysiwygEditors() {
             });
         }
     });
+}
+
+function normalizeBulkHtml(html, plainFallback = '') {
+    const raw = String(html || '').trim();
+    if (!raw) {
+        return normalizePlainBulk(plainFallback);
+    }
+    if (!raw.includes('<')) {
+        return normalizePlainBulk(raw);
+    }
+
+    const parser = new DOMParser();
+    const doc = parser.parseFromString(raw, 'text/html');
+    const tables = Array.from(doc.querySelectorAll('table'));
+    tables.forEach((table) => {
+        const rows = Array.from(table.querySelectorAll('tr')).map((tr) => {
+            const cells = Array.from(tr.querySelectorAll('th,td'))
+                .map((cell) => normalizePlainBulk(cell.textContent || ''))
+                .filter(Boolean);
+            return cells.join(' | ');
+        });
+        const replacement = doc.createTextNode(`\n${rows.filter(Boolean).join('\n')}\n`);
+        table.replaceWith(replacement);
+    });
+
+    const text = doc.body ? domNodeToPlainBulk(doc.body) : plainFallback;
+    return normalizePlainBulk(text.trim());
+}
+
+const bulkBlockTags = new Set([
+    'p',
+    'motion',
+    'motion',
+    'motion',
+    'motion',
+    'motion',
+    'motion',
+    'motion',
+    'motion',
+    'motion',
+    'motion',
+    'div',
+    'li',
+    'h1',
+    'h2',
+    'h3',
+    'h4',
+    'h5',
+    'h6',
+    'blockquote',
+    'pre',
+    'tr',
+    'section',
+    'article',
+]);
+
+function domNodeToPlainBulk(node) {
+    if (node.nodeType === Node.TEXT_NODE) {
+        return String(node.textContent || '').replace(/\u00a0/g, ' ');
+    }
+    if (node.nodeType !== Node.ELEMENT_NODE) {
+        return '';
+    }
+    const tag = node.tagName.toLowerCase();
+    if (tag === 'br') {
+        return '\n';
+    }
+    let inner = '';
+    node.childNodes.forEach((child) => {
+        inner += domNodeToPlainBulk(child);
+    });
+    if (bulkBlockTags.has(tag)) {
+        const trimmed = inner.replace(/\n+$/u, '');
+        return trimmed === '' ? '\n\n' : `${trimmed}\n\n`;
+    }
+    return inner;
+}
+
+/** Tanda baca bermasalah + batas paragraf (\n\n); spasi dalam baris tidak diubah. */
+function normalizePlainBulk(text) {
+    return normalizeParagraphBreaksBulk(
+        String(text || '')
+            .replace(/\u00a0/g, ' ')
+            .replace(/[\u200B-\u200D\uFEFF\u00AD]/g, '')
+            .replace(/[\u201C\u201D\u201E\u00AB\u00BB]/g, '"')
+            .replace(/[\u2018\u2019\u201A\u2032]/g, "'")
+            .replace(/[\u2013\u2014\u2212]/g, '-')
+            .replace(/\u2026/g, '...')
+    );
+}
+
+function normalizeParagraphBreaksBulk(text) {
+    return String(text || '').replace(/\r\n?/g, '\n').replace(/\n{3,}/g, '\n\n');
 }
 
 function normalizeEvidenceHtml(html, plainFallback = '') {

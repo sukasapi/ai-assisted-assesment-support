@@ -107,7 +107,7 @@ SYS;
         }
 
         $jsonStr = OpenRouterClient::ekstrakIsiJson($response);
-        $parsed = $this->parseJsonObjek($jsonStr);
+        $parsed = AiModelJsonParser::parseObjek($jsonStr);
         if ($parsed === null) {
             $logBaru->pesan_kesalahan = 'JSON model tidak valid.';
             $logBaru->dibuat_pada = now();
@@ -185,24 +185,6 @@ SYS;
         });
 
         return ['berhasil' => true];
-    }
-
-    /**
-     * @return array<string, mixed>|null
-     */
-    private function parseJsonObjek(string $json): ?array
-    {
-        $trim = trim($json);
-        if ($trim === '') {
-            return null;
-        }
-        try {
-            $decoded = json_decode($trim, true, 512, JSON_THROW_ON_ERROR);
-        } catch (\JsonException) {
-            return null;
-        }
-
-        return is_array($decoded) ? $decoded : null;
     }
 
     private function kutipanAdaDiTeksMentah(string $mentah, string $kutipan): bool

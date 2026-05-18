@@ -84,7 +84,30 @@ class OpenRouterClient
         $message = $first['message'] ?? [];
         $content = $message['content'] ?? '';
 
-        return is_string($content) ? $content : '';
+        if (is_string($content)) {
+            return $content;
+        }
+
+        if (! is_array($content)) {
+            return '';
+        }
+
+        $bagian = [];
+        foreach ($content as $potong) {
+            if (is_string($potong)) {
+                $bagian[] = $potong;
+
+                continue;
+            }
+            if (is_array($potong)) {
+                $teks = $potong['text'] ?? $potong['content'] ?? null;
+                if (is_string($teks) && $teks !== '') {
+                    $bagian[] = $teks;
+                }
+            }
+        }
+
+        return implode("\n", $bagian);
     }
 
     /**

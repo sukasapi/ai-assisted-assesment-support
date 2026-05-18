@@ -8,6 +8,7 @@ use App\Models\Competency;
 use App\Models\CompetencyLevel;
 use App\Models\KeyBehavior;
 use App\Models\User;
+use App\Support\BulkTextNormalizer;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 
@@ -31,7 +32,15 @@ class BulkToolPayloadAiAnalyzer
         $kompetensi = Competency::query()->where('aktif', true)->orderBy('kode_kompetensi')->get(['id', 'kode_kompetensi', 'nama']);
         $daftarKode = $kompetensi->map(fn (Competency $c): string => $c->kode_kompetensi.' — '.$c->nama)->implode("\n");
 
-        $teks = $payload->teks_muatan_normalized ?: $payload->teks_muatan;
+        $teksMentah = (string) ($payload->teks_muatan ?? '');
+        $teksTersimpan = BulkTextNormalizer::normalizeForStorage(
+            (string) ($payload->teks_muatan_normalized ?: $teksMentah)
+        );
+        $sumberTeks = array_values(array_unique(array_filter([
+            $teksTersimpan,
+            BulkTextNormalizer::normalizeForStorage($teksMentah),
+        ])));
+        $teks = $sumberTeks[0] ?? '';
         $sistem = <<<'SYS'
 Anda adalah seorang konsultan dan psikolog handal yang membantu asesor memetakan SATU dump teks (mis. salinan log alat) ke beberapa potong usulan per kompetensi.
 Aturan wajib:
@@ -100,9 +109,13 @@ SYS;
         }
 
         $jsonStr = OpenRouterClient::ekstrakIsiJson($response);
-        $parsed = $this->parseJsonObjek($jsonStr);
-        if ($parsed === null || ! isset($parsed['usulan']) || ! is_array($parsed['usulan'])) {
+        $parsed = AiModelJsonParser::parseObjek($jsonStr);
+        $daftarUsulan = $parsed !== null ? AiModelJsonParser::ekstrakArrayUsulanBulk($parsed) : null;
+        if ($daftarUsulan === null) {
             $logBaru->pesan_kesalahan = 'JSON model tidak valid (wajib kunci usulan berupa array).';
+            $logBaru->metadata = array_merge($logBaru->metadata ?? [], [
+                'cuplikan_respons' => mb_substr($jsonStr, 0, 500),
+            ]);
             $logBaru->dibuat_pada = now();
             $logBaru->save();
 
@@ -112,7 +125,7 @@ SYS;
         $byKode = $kompetensi->keyBy('kode_kompetensi');
         $kodeValid = $kompetensi->pluck('kode_kompetensi')->all();
         $dibersihkan = [];
-        foreach ($parsed['usulan'] as $item) {
+        foreach ($daftarUsulan as $item) {
             if (! is_array($item)) {
                 continue;
             }
@@ -129,13 +142,15 @@ SYS;
             if ($kode === '' || $kutipan === '' || ! in_array($kode, $kodeValid, true)) {
                 continue;
             }
-            if (! $this->kutipanAdaDiTeks($teks, $kutipan)) {
+            $kutipanDitemukan = BulkTextNormalizer::selesaikanKutipan($sumberTeks, $kutipan);
+            if ($kutipanDitemukan === null) {
                 $logBaru->pesan_kesalahan = 'Salah satu kutipan usulan tidak verbatim di teks muatan.';
                 $logBaru->dibuat_pada = now();
                 $logBaru->save();
 
                 return ['berhasil' => false, 'pesan' => 'Kutipan dalam usulan bulk tidak cocok dengan teks muatan (wajib substring verbatim).'];
             }
+            [, $kutipan] = $kutipanDitemukan;
 
             $tingkatAngka = isset($item['tingkat']) && is_numeric($item['tingkat']) ? (int) $item['tingkat'] : null;
             if ($tingkatAngka !== null && ($tingkatAngka < 1 || $tingkatAngka > 6)) {
@@ -275,33 +290,6 @@ SYS;
     }
 
     /**
-     * @return array<string, mixed>|null
-     */
-    private function parseJsonObjek(string $json): ?array
-    {
-        $trim = trim($json);
-        if ($trim === '') {
-            return null;
-        }
-        try {
-            $decoded = json_decode($trim, true, 512, JSON_THROW_ON_ERROR);
-        } catch (\JsonException) {
-            return null;
-        }
-
-        return is_array($decoded) ? $decoded : null;
-    }
-
-    private function kutipanAdaDiTeks(string $mentah, string $kutipan): bool
-    {
-        if (str_contains($mentah, $kutipan)) {
-            return true;
-        }
-
-        return mb_stripos($mentah, $kutipan) !== false;
-    }
-
-    /**
      * Satu baris per kode_kompetensi; prioritas: keyakinan lebih tinggi, lalu tingkat, lalu alasan lebih panjang.
      *
      * @param  array<int, array<string, mixed>>  $rows
@@ -356,19 +344,19 @@ SYS;
                 return 'Kunci wajib usulan hilang: '.$kunci;
             }
         }
-        if (! is_string($item['kode_kompetensi']) || trim($item['kode_kompetensi']) === '') {
+        if ($this->nilaiStringWajib($item['kode_kompetensi']) === '') {
             return 'kode_kompetensi wajib string non-kosong.';
         }
-        if (! is_string($item['kutipan']) || trim($item['kutipan']) === '') {
+        if ($this->nilaiStringWajib($item['kutipan']) === '') {
             return 'kutipan wajib string non-kosong.';
         }
-        if (! is_string($item['alasan']) || trim($item['alasan']) === '') {
+        if ($this->nilaiStringWajib($item['alasan']) === '') {
             return 'alasan wajib string non-kosong.';
         }
-        if (! is_string($item['teks_perilaku']) || trim($item['teks_perilaku']) === '') {
+        if ($this->nilaiStringWajib($item['teks_perilaku']) === '') {
             return 'teks_perilaku wajib string non-kosong.';
         }
-        if (! is_string($item['konfirmatori']) || trim($item['konfirmatori']) === '') {
+        if ($this->nilaiStringWajib($item['konfirmatori']) === '') {
             return 'konfirmatori wajib string non-kosong.';
         }
         if (! is_numeric($item['keyakinan'])) {
@@ -379,6 +367,18 @@ SYS;
         }
 
         return null;
+    }
+
+    private function nilaiStringWajib(mixed $nilai): string
+    {
+        if (is_string($nilai)) {
+            return trim($nilai);
+        }
+        if (is_int($nilai) || is_float($nilai)) {
+            return trim((string) $nilai);
+        }
+
+        return '';
     }
 
     /**

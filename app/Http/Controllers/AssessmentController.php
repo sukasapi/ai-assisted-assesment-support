@@ -30,6 +30,7 @@ use App\Services\Assessment\AlatAsesmenPreset;
 use App\Services\Assessment\AssessmentToolAvailabilityDiagnostic;
 use App\Support\AiFeature;
 use App\Support\CatatAktivitas;
+use App\Support\BulkTextNormalizer;
 use App\Support\EvidenceTextNormalizer;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
@@ -387,9 +388,12 @@ class AssessmentController extends Controller
         $this->authorize('update', $asesmen);
         $teksMuatan = $request->string('teks_muatan')->toString();
         $teksMuatanRich = $request->filled('teks_muatan_rich') ? $request->string('teks_muatan_rich')->toString() : null;
-        $teksMuatanNormalized = EvidenceTextNormalizer::normalize(
+        $plainMuatan = EvidenceTextNormalizer::toPlainText(
             $teksMuatanRich,
             $request->input('teks_muatan_normalized', $teksMuatan)
+        );
+        $teksMuatanNormalized = BulkTextNormalizer::normalizeForStorage(
+            $plainMuatan !== '' ? $plainMuatan : $teksMuatan
         );
 
         $asesmen->toolPayloads()->create([
@@ -420,7 +424,7 @@ class AssessmentController extends Controller
     {
         $this->authorize('update', $asesmen);
 
-        if ($payload->id_asesmen !== $asesmen->id) {
+        if ((int) $payload->id_asesmen !== (int) $asesmen->id) {
             return redirect()
                 ->route('asesmen.show', $asesmen)
                 ->withErrors(['ai' => 'Payload tidak termasuk asesmen ini.']);
