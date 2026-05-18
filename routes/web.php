@@ -48,6 +48,7 @@ Route::middleware('auth')->group(function () {
         Route::get('asesmen', [AssessmentController::class, 'index'])->name('asesmen.index');
         Route::get('asesmen/buat', [AssessmentController::class, 'create'])->name('asesmen.create');
         Route::post('asesmen', [AssessmentController::class, 'store'])->name('asesmen.store');
+        Route::get('asesmen/{asesmen}/diagnostik-alat', [AssessmentController::class, 'toolDiagnostic'])->name('asesmen.diagnostik-alat');
         Route::get('asesmen/{asesmen}', [AssessmentController::class, 'show'])->name('asesmen.show');
         Route::patch('asesmen/{asesmen}/metode-koleksi-bukti', [AssessmentController::class, 'updateEvidenceCollectionMode'])->name('asesmen.metode-koleksi-bukti.update');
         Route::post('asesmen/{asesmen}/bukti', [AssessmentController::class, 'storeEvidence'])->name('asesmen.bukti.store');
