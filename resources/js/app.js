@@ -72,6 +72,46 @@ function showServerAlerts() {
 
 document.addEventListener('DOMContentLoaded', showServerAlerts);
 
+function initSidebarCollapse() {
+    const root = document.documentElement;
+    const toggle = document.getElementById('sidebar-collapse-toggle');
+    if (!toggle) {
+        return;
+    }
+
+    const icon = document.getElementById('sidebar-collapse-icon');
+
+    const apply = (collapsed) => {
+        if (collapsed) {
+            root.dataset.sidebarCollapsed = 'true';
+            toggle.setAttribute('aria-expanded', 'false');
+            toggle.title = 'Perluas menu';
+        } else {
+            delete root.dataset.sidebarCollapsed;
+            toggle.setAttribute('aria-expanded', 'true');
+            toggle.title = 'Ciutkan menu';
+        }
+
+        if (icon) {
+            icon.textContent = collapsed ? 'chevron_right' : 'chevron_left';
+        }
+    };
+
+    apply(root.dataset.sidebarCollapsed === 'true');
+
+    toggle.addEventListener('click', () => {
+        const collapsed = root.dataset.sidebarCollapsed !== 'true';
+        apply(collapsed);
+        try {
+            window.localStorage.setItem('sidebar-collapsed', collapsed ? '1' : '0');
+        } catch {
+            // Abaikan jika localStorage tidak tersedia.
+        }
+    });
+}
+
+document.addEventListener('DOMContentLoaded', initSidebarCollapse);
+
 function bindAiProcessingAlerts() {
     const forms = document.querySelectorAll('.js-ai-processing-form');
     if (!forms.length || !window.Swal) {

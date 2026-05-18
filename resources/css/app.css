@@ -63,6 +63,7 @@
 
     --spacing-sidebar-width: 4.5rem;
     --spacing-sidebar-expanded: 14rem;
+    --spacing-sidebar-max-expanded: 22rem;
     --spacing-container-max: 80rem;
     --spacing-gutter: 1.5rem;
     --spacing-stack-sm: 0.5rem;
@@ -128,5 +129,94 @@
 
     .wysiwyg .ql-toolbar {
         @apply rounded-t-lg border-outline-variant bg-surface-container-low;
+    }
+
+    .app-shell {
+        @apply min-h-dvh;
+    }
+
+    .app-sidebar {
+        width: var(--spacing-sidebar-width);
+        height: 100dvh;
+        min-height: 100dvh;
+        transition: width 0.2s ease;
+    }
+
+    .sidebar-footer {
+        margin-top: auto;
+    }
+
+    .app-main {
+        @apply min-w-0 flex-1;
+    }
+
+    .sidebar-label,
+    .sidebar-brand-text,
+    .sidebar-footer-text {
+        @apply hidden;
+    }
+
+    .sidebar-nav-link {
+        @apply relative flex w-full items-center justify-center gap-3 rounded-xl py-0.5;
+    }
+
+    .sidebar-footer-row {
+        @apply flex items-center justify-center gap-3;
+    }
+
+    .sidebar-footer-btn {
+        @apply flex w-full items-center justify-center gap-3 rounded-xl border-0 bg-transparent py-0.5;
+    }
+
+    @media (min-width: 48rem) {
+        .app-shell {
+            @apply flex min-h-dvh h-dvh;
+        }
+
+        .app-sidebar {
+            position: static;
+            height: 100%;
+            min-height: 100%;
+            align-self: stretch;
+        }
+
+        html:not([data-sidebar-collapsed='true']) .app-sidebar {
+            width: max-content;
+            min-width: var(--spacing-sidebar-expanded);
+            max-width: min(var(--spacing-sidebar-max-expanded), 42vw);
+        }
+
+        html[data-sidebar-collapsed='true'] .app-sidebar {
+            width: var(--spacing-sidebar-width);
+            min-width: var(--spacing-sidebar-width);
+            max-width: var(--spacing-sidebar-width);
+        }
+
+        html:not([data-sidebar-collapsed='true']) .sidebar-label,
+        html:not([data-sidebar-collapsed='true']) .sidebar-brand-text,
+        html:not([data-sidebar-collapsed='true']) .sidebar-footer-text {
+            @apply block;
+        }
+
+        html:not([data-sidebar-collapsed='true']) .sidebar-nav-link,
+        html:not([data-sidebar-collapsed='true']) .sidebar-footer-row,
+        html:not([data-sidebar-collapsed='true']) .sidebar-footer-btn {
+            @apply justify-start px-2;
+        }
+
+        html:not([data-sidebar-collapsed='true']) .sidebar-brand-text {
+            word-break: break-word;
+            overflow-wrap: anywhere;
+        }
+    }
+
+    @media (max-width: 47.99rem) {
+        .app-main {
+            margin-left: var(--spacing-sidebar-width);
+        }
+
+        .sidebar-collapse-toggle {
+            display: none !important;
+        }
     }
 }
