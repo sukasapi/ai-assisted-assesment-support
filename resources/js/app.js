@@ -293,16 +293,6 @@ function normalizeBulkHtml(html, plainFallback = '') {
 
 const bulkBlockTags = new Set([
     'p',
-    'motion',
-    'motion',
-    'motion',
-    'motion',
-    'motion',
-    'motion',
-    'motion',
-    'motion',
-    'motion',
-    'motion',
     'div',
     'li',
     'h1',

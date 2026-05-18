@@ -6,6 +6,7 @@ use App\Models\AiLog;
 use App\Models\CompetencyLevel;
 use App\Models\Evidence;
 use App\Models\User;
+use App\Support\AiModelCatalog;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 
@@ -72,14 +73,20 @@ SYS;
         ]);
 
         try {
-            ['response' => $response, 'latency_ms' => $latency] = $this->client->chatCompletion([
+            $hasilApi = $this->client->chatCompletionDenganFallback([
                 ['role' => 'system', 'content' => $sistem],
                 ['role' => 'user', 'content' => $penggunaMsg],
             ]);
+            $response = $hasilApi['response'];
+            $latency = $hasilApi['latency_ms'];
+            $logBaru->nama_model = $hasilApi['nama_model'];
         } catch (\Throwable $e) {
             $logBaru->fill([
                 'pesan_kesalahan' => $e->getMessage(),
-                'metadata' => ['latency_ms' => null],
+                'metadata' => [
+                    'latency_ms' => null,
+                    'dicoba_model' => AiModelCatalog::rantaiFallback(null),
+                ],
             ]);
             $logBaru->dibuat_pada = now();
             $logBaru->save();
@@ -93,6 +100,8 @@ SYS;
         $meta = array_filter([
             'latency_ms' => $latency,
             'usage' => $usage,
+            'dicoba_model' => $hasilApi['dicoba_model'] ?? [],
+            'model_berhasil' => $hasilApi['nama_model'] ?? $logBaru->nama_model,
         ], static fn ($v) => $v !== null);
 
         $logBaru->kode_http = $response->status();

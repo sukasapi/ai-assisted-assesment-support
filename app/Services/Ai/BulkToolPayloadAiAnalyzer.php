@@ -6,9 +6,12 @@ use App\Models\AiLog;
 use App\Models\AssessmentToolPayload;
 use App\Models\Competency;
 use App\Models\CompetencyLevel;
+use App\Models\CompetencyToolMapping;
 use App\Models\KeyBehavior;
 use App\Models\User;
+use App\Support\AiModelCatalog;
 use App\Support\BulkTextNormalizer;
+use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 
@@ -21,7 +24,7 @@ class BulkToolPayloadAiAnalyzer
     /**
      * @return array{berhasil: bool, pesan?: string, jumlah_perilaku_kunci?: int}
      */
-    public function analisisPayload(AssessmentToolPayload $payload, User $pengguna): array
+    public function analisisPayload(AssessmentToolPayload $payload, User $pengguna, ?string $namaModel = null): array
     {
         if (! config('ai.aktif', false)) {
             return ['berhasil' => false, 'pesan' => 'Fitur AI tidak aktif (AI_AKTIF=false).'];
@@ -29,7 +32,11 @@ class BulkToolPayloadAiAnalyzer
 
         $payload->loadMissing(['assessment.matrixVersion', 'tool']);
 
-        $kompetensi = Competency::query()->where('aktif', true)->orderBy('kode_kompetensi')->get(['id', 'kode_kompetensi', 'nama']);
+        $namaModel = AiModelCatalog::selesaikan($namaModel);
+        $kompetensi = $this->kompetensiDiperbolehkan($payload);
+        if ($kompetensi->isEmpty()) {
+            return ['berhasil' => false, 'pesan' => 'Tidak ada kompetensi aktif pada pemetaan matriks untuk alat payload ini.'];
+        }
         $daftarKode = $kompetensi->map(fn (Competency $c): string => $c->kode_kompetensi.' — '.$c->nama)->implode("\n");
 
         $teksMentah = (string) ($payload->teks_muatan ?? '');
@@ -64,7 +71,6 @@ SYS;
             ."Daftar kode kompetensi yang diperbolehkan:\n{$daftarKode}\n\n"
             ."Teks muatan:\n---\n{$teks}\n---";
 
-        $namaModel = (string) config('ai.openrouter.nama_model');
         $logBaru = new AiLog([
             'id_pengguna' => $pengguna->id,
             'id_asesmen' => $payload->id_asesmen,
@@ -77,14 +83,22 @@ SYS;
         ]);
 
         try {
-            ['response' => $response, 'latency_ms' => $latency] = $this->client->chatCompletion([
-                ['role' => 'system', 'content' => $sistem],
-                ['role' => 'user', 'content' => $penggunaMsg],
-            ]);
+            $hasilApi = $this->client->chatCompletionDenganFallback(
+                [
+                    ['role' => 'system', 'content' => $sistem],
+                    ['role' => 'user', 'content' => $penggunaMsg],
+                ],
+                $namaModel,
+                config('ai.openrouter.maks_token_keluaran_bulk'),
+            );
+            $response = $hasilApi['response'];
+            $latency = $hasilApi['latency_ms'];
+            $namaModel = $hasilApi['nama_model'];
+            $logBaru->nama_model = $namaModel;
         } catch (\Throwable $e) {
             $logBaru->fill([
                 'pesan_kesalahan' => $e->getMessage(),
-                'metadata' => ['latency_ms' => null],
+                'metadata' => ['latency_ms' => null, 'dicoba_model' => AiModelCatalog::rantaiFallback($namaModel)],
             ]);
             $logBaru->dibuat_pada = now();
             $logBaru->save();
@@ -98,6 +112,8 @@ SYS;
         $logBaru->metadata = array_filter([
             'latency_ms' => $latency,
             'usage' => $usage,
+            'dicoba_model' => $hasilApi['dicoba_model'] ?? [$namaModel],
+            'model_berhasil' => $namaModel,
         ], static fn ($v) => $v !== null);
 
         if (! $response->successful()) {
@@ -287,6 +303,53 @@ SYS;
         });
 
         return ['berhasil' => true, 'jumlah_perilaku_kunci' => $jumlahPk];
+    }
+
+    /**
+     * Kompetensi yang dipetakan ke alat + versi matriks asesmen (lebih ringan daripada seluruh kamus).
+     *
+     * @return Collection<int, Competency>
+     */
+    private function kompetensiDiperbolehkan(AssessmentToolPayload $payload): Collection
+    {
+        $idVersi = $payload->assessment?->id_versi_matriks;
+        $idAlat = (int) $payload->id_alat_penilaian;
+
+        if ($idVersi === null) {
+            return Competency::query()
+                ->where('aktif', true)
+                ->orderBy('kode_kompetensi')
+                ->get(['id', 'kode_kompetensi', 'nama']);
+        }
+
+        $idKompetensi = CompetencyToolMapping::query()
+            ->where('id_versi_matriks', $idVersi)
+            ->where('id_alat_penilaian', $idAlat)
+            ->where('aktif', true)
+            ->whereNull('dihapus_pada')
+            ->pluck('id_kompetensi')
+            ->unique()
+            ->values();
+
+        if ($idKompetensi->isEmpty()) {
+            $idKompetensi = CompetencyToolMapping::query()
+                ->where('id_versi_matriks', $idVersi)
+                ->where('aktif', true)
+                ->whereNull('dihapus_pada')
+                ->pluck('id_kompetensi')
+                ->unique()
+                ->values();
+        }
+
+        if ($idKompetensi->isEmpty()) {
+            return new Collection;
+        }
+
+        return Competency::query()
+            ->whereIn('id', $idKompetensi)
+            ->where('aktif', true)
+            ->orderBy('kode_kompetensi')
+            ->get(['id', 'kode_kompetensi', 'nama']);
     }
 
     /**
