@@ -6,6 +6,23 @@
     <title>@yield('title', config('app.name'))</title>
     <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@24,400,0,0" rel="stylesheet">
     @vite(['resources/css/app.css', 'resources/js/app.js'])
+    @auth
+        <script>
+            (function () {
+                try {
+                    if (window.localStorage.getItem('sidebar-collapsed') === '1') {
+                        document.documentElement.dataset.sidebarCollapsed = 'true';
+                        document.addEventListener('DOMContentLoaded', function () {
+                            var icon = document.getElementById('sidebar-collapse-icon');
+                            if (icon) {
+                                icon.textContent = 'chevron_right';
+                            }
+                        }, { once: true });
+                    }
+                } catch (e) {}
+            })();
+        </script>
+    @endauth
 </head>
 <body class="min-h-screen bg-surface text-on-surface antialiased">
 @guest
@@ -23,14 +40,16 @@
 @endguest
 
 @auth
-    @include('layouts.partials.sidebar')
-    <div class="ml-sidebar-width flex min-h-screen min-w-0 flex-col md:ml-sidebar-expanded">
-        @include('layouts.partials.topbar')
-        <main class="flex-1 overflow-y-auto px-4 py-8 lg:px-gutter">
-            <div class="mx-auto max-w-container-max">
-                @yield('content')
-            </div>
-        </main>
+    <div class="app-shell">
+        @include('layouts.partials.sidebar')
+        <div id="app-main" class="app-main flex min-h-screen flex-col">
+            @include('layouts.partials.topbar')
+            <main class="flex-1 overflow-y-auto px-4 py-8 lg:px-gutter">
+                <div class="mx-auto max-w-container-max">
+                    @yield('content')
+                </div>
+            </main>
+        </div>
     </div>
 @endauth
 
