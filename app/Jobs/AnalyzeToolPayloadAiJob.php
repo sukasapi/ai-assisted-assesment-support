@@ -2,6 +2,7 @@
 
 namespace App\Jobs;
 
+use App\Enums\PayloadAnalysisStatus;
 use App\Models\AssessmentToolPayload;
 use App\Models\User;
 use App\Services\Ai\BulkToolPayloadAiAnalyzer;
@@ -59,12 +60,15 @@ class AnalyzeToolPayloadAiJob implements ShouldQueue
             return;
         }
 
+        $payload->tandaiStatusAnalisis(PayloadAnalysisStatus::Memproses);
+
         $hasil = $analyzer->analisisPayload($payload, $pengguna, $this->namaModel);
         if (! ($hasil['berhasil'] ?? false)) {
             $pesan = (string) ($hasil['pesan'] ?? 'Analisis AI bulk gagal.');
             if ($this->layakRetry($pesan)) {
                 throw new RuntimeException($pesan);
             }
+            $payload->tandaiStatusAnalisis(PayloadAnalysisStatus::Gagal, $pesan);
             $this->fail(new RuntimeException($pesan));
 
             return;
@@ -87,6 +91,12 @@ class AnalyzeToolPayloadAiJob implements ShouldQueue
     {
         $pengguna = User::query()->find($this->idPenggunaPemicu);
         $payload = AssessmentToolPayload::query()->find($this->idPayload);
+        if ($payload !== null) {
+            $payload->tandaiStatusAnalisis(
+                PayloadAnalysisStatus::Gagal,
+                $exception?->getMessage() ?? 'Analisis AI bulk gagal setelah beberapa percobaan.',
+            );
+        }
         CatatAktivitas::catat(
             $pengguna,
             'payload_alat.ai_gagal',

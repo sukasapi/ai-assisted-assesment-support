@@ -385,6 +385,7 @@ function normalizePlain(text) {
 
 document.addEventListener('DOMContentLoaded', bindWysiwygEditors);
 
+<<<<<<< HEAD
 /** Payload bulk: textarea polos (tanpa Quill) — normalisasi + preview sebelum simpan. */
 function bindBulkPayloadPlainForms() {
     document.querySelectorAll('form').forEach((form) => {
@@ -425,11 +426,234 @@ function bindBulkPayloadPlainForms() {
                 form.dataset.bulkPlainSubmitting = '1';
                 form.requestSubmit();
             });
+=======
+const payloadStatusBadgeClass = {
+    belum: 'border-outline-variant/40 bg-surface-container text-on-surface-variant',
+    antrian: 'border-primary/30 bg-primary-fixed/40 text-primary',
+    memproses: 'border-primary/30 bg-primary-fixed/40 text-primary',
+    berhasil: 'border-emerald-200 bg-emerald-50 text-emerald-800',
+    gagal: 'border-error/30 bg-error-container/40 text-on-error-container',
+};
+
+function applyPayloadStatusToCard(card, data) {
+    if (!card || !data) {
+        return;
+    }
+
+    card.dataset.status = data.status;
+
+    const badge = card.querySelector('.js-payload-status-badge');
+    const label = card.querySelector('.js-payload-status-label');
+    if (badge && label) {
+        badge.dataset.status = data.status;
+        label.textContent = data.label || data.status;
+        Object.values(payloadStatusBadgeClass).forEach((cls) => {
+            cls.split(' ').forEach((c) => badge.classList.remove(c));
+        });
+        (payloadStatusBadgeClass[data.status] || payloadStatusBadgeClass.belum)
+            .split(' ')
+            .forEach((c) => badge.classList.add(c));
+
+        let dot = badge.querySelector('.js-payload-status-dot');
+        if (data.sedang_berjalan) {
+            if (!dot) {
+                dot = document.createElement('span');
+                dot.className =
+                    'js-payload-status-dot inline-block size-2 animate-pulse rounded-full bg-current';
+                badge.prepend(dot);
+            }
+        } else if (dot) {
+            dot.remove();
+        }
+    }
+
+    const pesan = card.querySelector('.js-payload-status-pesan');
+    if (pesan) {
+        if (data.pesan) {
+            pesan.textContent = data.pesan;
+            pesan.classList.remove('hidden');
+        } else {
+            pesan.textContent = '';
+            pesan.classList.add('hidden');
+        }
+    }
+
+    const analyzeBtn = card.querySelector('.js-payload-analyze-btn');
+    if (analyzeBtn) {
+        analyzeBtn.disabled = Boolean(data.sedang_berjalan);
+    }
+
+    const hasil = card.querySelector('.js-payload-hasil-ai');
+    const meta = card.querySelector('.js-payload-hasil-meta');
+    if (hasil && data.status === 'berhasil' && data.jumlah_usulan > 0) {
+        hasil.classList.remove('hidden');
+        if (meta) {
+            const waktu = data.diproses_pada
+                ? new Date(data.diproses_pada).toLocaleString('id-ID')
+                : '—';
+            meta.textContent = `Diproses ${waktu} · ${data.jumlah_usulan} usulan`;
+        }
+    }
+}
+
+function renderPayloadDetailBody(data) {
+    const usulanRows = (data.usulan || [])
+        .map(
+            (u) => `
+        <tr class="align-top border-t border-outline-variant/20">
+            <td class="px-2 py-2 font-mono text-xs font-semibold">${escapeHtml(u.kode_kompetensi || '?')}</td>
+            <td class="px-2 py-2 text-center">${escapeHtml(String(u.tingkat ?? '—'))}</td>
+            <td class="px-2 py-2 text-xs">${escapeHtml(u.ringkasan || '—')}</td>
+            <td class="px-2 py-2 text-xs italic text-on-surface-variant">${escapeHtml(u.kutipan || '—')}</td>
+        </tr>`
+        )
+        .join('');
+
+    const usulanTable =
+        usulanRows === ''
+            ? '<p class="text-sm text-on-surface-variant">Belum ada usulan AI.</p>'
+            : `<div class="overflow-x-auto rounded-lg border border-outline-variant/30">
+            <table class="min-w-[640px] w-full text-left text-sm">
+                <thead class="bg-surface-container-low text-xs font-semibold uppercase text-on-surface-variant">
+                    <tr>
+                        <th class="px-2 py-2">Kompetensi</th>
+                        <th class="px-2 py-2 text-center">Lvl</th>
+                        <th class="px-2 py-2">Ringkasan</th>
+                        <th class="px-2 py-2">Kutipan</th>
+                    </tr>
+                </thead>
+                <tbody>${usulanRows}</tbody>
+            </table>
+        </div>`;
+
+    return `
+        <div class="space-y-4 text-sm">
+            <div class="flex flex-wrap gap-2">
+                <span class="rounded-full border px-2.5 py-1 text-xs font-bold ${payloadStatusBadgeClass[data.status] || payloadStatusBadgeClass.belum}">${escapeHtml(data.label || '')}</span>
+                ${data.pengunggah ? `<span class="text-xs text-on-surface-variant">Diunggah oleh ${escapeHtml(data.pengunggah)}</span>` : ''}
+            </div>
+            ${data.pesan ? `<p class="rounded-lg border border-error/20 bg-error-container/30 px-3 py-2 text-xs text-on-error-container">${escapeHtml(data.pesan)}</p>` : ''}
+            <dl class="grid gap-2 text-xs text-on-surface-variant sm:grid-cols-2">
+                <div><dt class="font-semibold text-on-surface">Alat</dt><dd>${escapeHtml((data.alat?.kode || '') + ' — ' + (data.alat?.nama || ''))}</dd></div>
+                <div><dt class="font-semibold text-on-surface">Panjang teks</dt><dd>${escapeHtml(String(data.panjang_teks || 0))} karakter</dd></div>
+                <div><dt class="font-semibold text-on-surface">Dibuat</dt><dd>${data.dibuat_pada ? escapeHtml(new Date(data.dibuat_pada).toLocaleString('id-ID')) : '—'}</dd></div>
+                <div><dt class="font-semibold text-on-surface">Diproses AI</dt><dd>${data.diproses_pada ? escapeHtml(new Date(data.diproses_pada).toLocaleString('id-ID')) : '—'}</dd></div>
+            </dl>
+            <div>
+                <p class="mb-2 text-xs font-bold uppercase tracking-wider text-on-surface-variant">Teks muatan lengkap</p>
+                <pre class="max-h-48 overflow-auto whitespace-pre-wrap rounded-xl border border-outline-variant/40 bg-surface-container-low p-4 text-xs leading-relaxed">${escapeHtml(data.teks_muatan || '')}</pre>
+            </div>
+            <div>
+                <p class="mb-2 text-xs font-bold uppercase tracking-wider text-on-surface-variant">Usulan AI (${data.jumlah_usulan || 0})</p>
+                ${usulanTable}
+            </div>
+        </div>`;
+}
+
+function initPayloadDetailModal() {
+    const dialog = document.getElementById('payload-detail-dialog');
+    const body = document.getElementById('payload-detail-body');
+    const title = document.getElementById('payload-detail-title');
+    if (!dialog || !body) {
+        return;
+    }
+
+    document.querySelectorAll('[data-payload-detail-close]').forEach((btn) => {
+        btn.addEventListener('click', () => dialog.close());
+    });
+
+    dialog.addEventListener('click', (e) => {
+        if (e.target === dialog) {
+            dialog.close();
+        }
+    });
+
+    document.querySelectorAll('.js-payload-detail-btn').forEach((btn) => {
+        btn.addEventListener('click', async () => {
+            const url = btn.dataset.payloadDetailUrl;
+            if (!url) {
+                return;
+            }
+            title.textContent = 'Detail payload';
+            body.innerHTML = '<p class="text-sm text-on-surface-variant">Memuat…</p>';
+            dialog.showModal();
+            try {
+                const res = await fetch(url, {
+                    headers: { Accept: 'application/json', 'X-Requested-With': 'XMLHttpRequest' },
+                });
+                if (!res.ok) {
+                    throw new Error('Gagal memuat detail payload.');
+                }
+                const data = await res.json();
+                title.textContent = `#${data.id} · ${data.alat?.kode || 'Payload'}`;
+                body.innerHTML = renderPayloadDetailBody(data);
+            } catch (err) {
+                body.innerHTML = `<p class="text-sm text-error">${escapeHtml(err.message || 'Terjadi kesalahan.')}</p>`;
+            }
+>>>>>>> 559c54242bf45abfd25473f7698056782648b5e7
         });
     });
 }
 
+<<<<<<< HEAD
 document.addEventListener('DOMContentLoaded', bindBulkPayloadPlainForms);
+=======
+function initPayloadBulkStatusPolling() {
+    const root = document.querySelector('[data-payload-status-url]');
+    if (!root) {
+        return;
+    }
+
+    const url = root.dataset.payloadStatusUrl;
+    let timer = null;
+
+    const poll = async () => {
+        try {
+            const res = await fetch(url, {
+                headers: { Accept: 'application/json', 'X-Requested-With': 'XMLHttpRequest' },
+            });
+            if (!res.ok) {
+                return;
+            }
+            const json = await res.json();
+            Object.entries(json.payloads || {}).forEach(([id, data]) => {
+                const card = root.querySelector(`.js-payload-card[data-payload-id="${id}"]`);
+                applyPayloadStatusToCard(card, data);
+            });
+
+            if (json.ada_yang_berjalan) {
+                timer = window.setTimeout(poll, 3000);
+            } else if (timer) {
+                window.clearTimeout(timer);
+                timer = null;
+            }
+        } catch {
+            timer = window.setTimeout(poll, 5000);
+        }
+    };
+
+    poll();
+
+    document.querySelectorAll('.js-payload-bulk-form').forEach((form) => {
+        form.addEventListener('submit', () => {
+            const id = form.dataset.payloadId;
+            const card = root.querySelector(`.js-payload-card[data-payload-id="${id}"]`);
+            if (card) {
+                applyPayloadStatusToCard(card, {
+                    status: 'antrian',
+                    label: 'Dalam antrian',
+                    sedang_berjalan: true,
+                    pesan: null,
+                });
+            }
+            window.setTimeout(poll, 1500);
+        });
+    });
+}
+
+document.addEventListener('DOMContentLoaded', initPayloadDetailModal);
+document.addEventListener('DOMContentLoaded', initPayloadBulkStatusPolling);
+>>>>>>> 559c54242bf45abfd25473f7698056782648b5e7
 
 /** Notifikasi dari kode lain (Livewire, fetch, dll.) */
 window.notifySuccess = (text, title = 'Berhasil') =>

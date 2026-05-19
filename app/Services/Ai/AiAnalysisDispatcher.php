@@ -18,8 +18,12 @@ class AiAnalysisDispatcher
         $koneksi = (string) config('ai.queue.koneksi', 'sync');
 
         if ($koneksi === 'sync') {
+            $payload->tandaiStatusAnalisis(\App\Enums\PayloadAnalysisStatus::Memproses);
+
             return app(BulkToolPayloadAiAnalyzer::class)->analisisPayload($payload, $pengguna, $model);
         }
+
+        $payload->tandaiStatusAnalisis(\App\Enums\PayloadAnalysisStatus::Antrian);
 
         AnalyzeToolPayloadAiJob::dispatch($payload->id, $pengguna->id, $model)
             ->onConnection($koneksi)
