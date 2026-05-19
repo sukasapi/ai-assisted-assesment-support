@@ -392,19 +392,17 @@ class AssessmentController extends Controller
         $this->authorize('update', $asesmen);
         $teksMuatan = $request->string('teks_muatan')->toString();
         $teksMuatanRich = $request->filled('teks_muatan_rich') ? $request->string('teks_muatan_rich')->toString() : null;
-        $plainMuatan = EvidenceTextNormalizer::toPlainText(
+        $teksKanonic = BulkTextNormalizer::canonicalPayloadMuatan(
             $teksMuatanRich,
-            $request->input('teks_muatan_normalized', $teksMuatan)
-        );
-        $teksMuatanNormalized = BulkTextNormalizer::normalizeForStorage(
-            $plainMuatan !== '' ? $plainMuatan : $teksMuatan
+            $request->input('teks_muatan_normalized'),
+            $teksMuatan,
         );
 
         $asesmen->toolPayloads()->create([
             'id_alat_penilaian' => $request->integer('id_alat_penilaian'),
-            'teks_muatan' => $teksMuatanNormalized !== '' ? $teksMuatanNormalized : $teksMuatan,
+            'teks_muatan' => $teksKanonic,
             'teks_muatan_rich' => $teksMuatanRich,
-            'teks_muatan_normalized' => $teksMuatanNormalized !== '' ? $teksMuatanNormalized : $teksMuatan,
+            'teks_muatan_normalized' => $teksKanonic,
             'id_pengguna_pengunggah' => $request->user()?->id,
         ]);
 

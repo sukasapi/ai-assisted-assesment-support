@@ -385,6 +385,52 @@ function normalizePlain(text) {
 
 document.addEventListener('DOMContentLoaded', bindWysiwygEditors);
 
+/** Payload bulk: textarea polos (tanpa Quill) — normalisasi + preview sebelum simpan. */
+function bindBulkPayloadPlainForms() {
+    document.querySelectorAll('form').forEach((form) => {
+        const textarea = form.querySelector('textarea[name="teks_muatan"][data-no-wysiwyg]');
+        if (!textarea || textarea.dataset.bulkPlainBound === '1') {
+            return;
+        }
+        textarea.dataset.bulkPlainBound = '1';
+
+        form.addEventListener('submit', (event) => {
+            if (form.dataset.bulkPlainSubmitting === '1') {
+                return;
+            }
+
+            const normalized = normalizePlainBulk(textarea.value || '');
+            textarea.value = normalized;
+
+            if (textarea.dataset.normalizePreview !== '1') {
+                return;
+            }
+
+            event.preventDefault();
+            const previewText =
+                normalized.length > 2000
+                    ? `${normalized.slice(0, 2000)}\n...(dipotong)`
+                    : normalized;
+            window.Swal.fire({
+                title: 'Preview normalisasi teks muatan',
+                html: `<pre class="text-left text-xs whitespace-pre-wrap max-h-64 overflow-auto">${escapeHtml(previewText)}</pre>`,
+                showCancelButton: true,
+                confirmButtonText: 'Simpan payload',
+                cancelButtonText: 'Ubah lagi',
+                ...swalTheme,
+            }).then((result) => {
+                if (!result.isConfirmed) {
+                    return;
+                }
+                form.dataset.bulkPlainSubmitting = '1';
+                form.requestSubmit();
+            });
+        });
+    });
+}
+
+document.addEventListener('DOMContentLoaded', bindBulkPayloadPlainForms);
+
 /** Notifikasi dari kode lain (Livewire, fetch, dll.) */
 window.notifySuccess = (text, title = 'Berhasil') =>
     Swal.fire({ icon: 'success', title, text, ...swalTheme });

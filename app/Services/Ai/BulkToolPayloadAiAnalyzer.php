@@ -39,15 +39,15 @@ class BulkToolPayloadAiAnalyzer
         }
         $daftarKode = $kompetensi->map(fn (Competency $c): string => $c->kode_kompetensi.' — '.$c->nama)->implode("\n");
 
-        $teksMentah = (string) ($payload->teks_muatan ?? '');
-        $teksTersimpan = BulkTextNormalizer::normalizeForStorage(
-            (string) ($payload->teks_muatan_normalized ?: $teksMentah)
+        $teks = BulkTextNormalizer::canonicalPayloadMuatan(
+            $payload->teks_muatan_rich,
+            $payload->teks_muatan_normalized,
+            (string) ($payload->teks_muatan ?? ''),
         );
-        $sumberTeks = array_values(array_unique(array_filter([
-            $teksTersimpan,
-            BulkTextNormalizer::normalizeForStorage($teksMentah),
-        ])));
-        $teks = $sumberTeks[0] ?? '';
+        if ($teks === '' && trim((string) ($payload->teks_muatan ?? '')) !== '') {
+            $teks = BulkTextNormalizer::normalizeForStorage((string) $payload->teks_muatan);
+        }
+        $sumberTeks = [$teks];
         $sistem = <<<'SYS'
 Anda adalah seorang konsultan dan psikolog handal yang membantu asesor memetakan SATU dump teks (mis. salinan log alat) ke beberapa potong usulan per kompetensi.
 Aturan wajib:
@@ -154,17 +154,20 @@ SYS;
                 return ['berhasil' => false, 'pesan' => 'Model mengembalikan usulan bulk tidak valid: '.$errorSchema];
             }
             $kode = isset($item['kode_kompetensi']) ? (string) $item['kode_kompetensi'] : '';
-            $kutipan = isset($item['kutipan']) ? (string) $item['kutipan'] : '';
+            $kutipan = isset($item['kutipan']) ? trim((string) $item['kutipan']) : '';
             if ($kode === '' || $kutipan === '' || ! in_array($kode, $kodeValid, true)) {
                 continue;
             }
             $kutipanDitemukan = BulkTextNormalizer::selesaikanKutipan($sumberTeks, $kutipan);
             if ($kutipanDitemukan === null) {
-                $logBaru->pesan_kesalahan = 'Salah satu kutipan usulan tidak verbatim di teks muatan.';
-                $logBaru->dibuat_pada = now();
-                $logBaru->save();
+                Log::info('Bulk AI: kutipan dilewati (tidak verbatim)', [
+                    'id_payload' => $payload->id,
+                    'kode_kompetensi' => $kode,
+                    'panjang_kutipan' => mb_strlen($kutipan),
+                    'cuplikan_kutipan' => mb_substr($kutipan, 0, 120),
+                ]);
 
-                return ['berhasil' => false, 'pesan' => 'Kutipan dalam usulan bulk tidak cocok dengan teks muatan (wajib substring verbatim).'];
+                continue;
             }
             [, $kutipan] = $kutipanDitemukan;
 

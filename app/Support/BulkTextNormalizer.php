@@ -4,10 +4,21 @@ namespace App\Support;
 
 /**
  * Normalisasi teks muatan bulk: hanya tanda baca/unicode yang memicu mismatch kutipan.
- * Tidak mengubah spasi, baris baru, atau isi kata.
+ * Tidak mengubah spasi, baris baru, atau isi kata (kecuali saat pencocokan kutipan — lihat normalizeWhitespaceForMatch).
  */
 final class BulkTextNormalizer
 {
+    /**
+     * Teks kanonik untuk penyimpanan payload dan analisis AI (satu sumber kebenaran).
+     */
+    public static function canonicalPayloadMuatan(?string $rich, ?string $plain, ?string $fallback = null): string
+    {
+        $plain = EvidenceTextNormalizer::toPlainText($rich, $plain ?? $fallback);
+        $sumber = $plain !== '' ? $plain : trim((string) $fallback);
+
+        return self::normalizeForStorage($sumber);
+    }
+
     /**
      * Normalisasi untuk penyimpanan dan teks yang dikirim ke model AI.
      */
@@ -57,6 +68,7 @@ final class BulkTextNormalizer
      */
     public static function findVerbatimSubstring(string $haystack, string $kutipan): ?string
     {
+        $kutipan = trim($kutipan);
         if ($kutipan === '') {
             return null;
         }
@@ -70,21 +82,62 @@ final class BulkTextNormalizer
             return null;
         }
 
+        $ditemukan = self::cariPotonganSetara($haystack, $normKutipan, false);
+        if ($ditemukan !== null) {
+            return $ditemukan;
+        }
+
+        $normKutipanSpasi = self::normalizeWhitespaceForMatch($kutipan);
+        if ($normKutipanSpasi !== '' && $normKutipanSpasi !== $normKutipan) {
+            return self::cariPotonganSetara($haystack, $normKutipanSpasi, true);
+        }
+
+        return null;
+    }
+
+    /**
+     * Cari potongan asli di haystack yang setara dengan kutipan ter-normalisasi (O(n·Δ) bukan O(n²)).
+     */
+    private static function cariPotonganSetara(string $haystack, string $normKutipan, bool $whitespaceTolerant): ?string
+    {
+        $kLen = mb_strlen($normKutipan);
+        if ($kLen === 0) {
+            return null;
+        }
+
         $hayLen = mb_strlen($haystack);
+        $minLen = max(1, $kLen - 4);
+        $maxLen = min($hayLen, $kLen + (int) ceil($kLen * 0.15) + 8);
+
         for ($start = 0; $start < $hayLen; $start++) {
-            for ($end = $start + 1; $end <= $hayLen; $end++) {
-                $potongan = mb_substr($haystack, $start, $end - $start);
-                if (self::normalizeForMatch($potongan) === $normKutipan) {
+            $batasLen = min($maxLen, $hayLen - $start);
+            for ($len = $minLen; $len <= $batasLen; $len++) {
+                $potongan = mb_substr($haystack, $start, $len);
+                $normPotongan = $whitespaceTolerant
+                    ? self::normalizeWhitespaceForMatch($potongan)
+                    : self::normalizeForMatch($potongan);
+
+                if ($normPotongan === $normKutipan) {
                     return $potongan;
                 }
-                $normPotongan = self::normalizeForMatch($potongan);
-                if (mb_strlen($normPotongan) > mb_strlen($normKutipan)) {
+
+                if (mb_strlen($normPotongan) > $kLen + 2) {
                     break;
                 }
             }
         }
 
         return null;
+    }
+
+    /**
+     * Normalisasi tambahan hanya untuk pencocokan kutipan (model sering meratakan spasi ganda).
+     */
+    public static function normalizeWhitespaceForMatch(string $text): string
+    {
+        $text = self::normalizeForMatch($text);
+
+        return preg_replace('/\s+/u', ' ', trim($text)) ?? trim($text);
     }
 
     /**

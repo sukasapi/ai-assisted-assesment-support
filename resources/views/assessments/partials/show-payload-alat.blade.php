@@ -29,7 +29,7 @@
                 </div>
                 <div>
                     <label for="teks_muatan" class="text-xs font-bold uppercase tracking-wider text-on-surface-variant">Teks muatan</label>
-                    <textarea name="teks_muatan" id="teks_muatan" rows="5" required data-normalize-preview="1" class="mt-1 w-full rounded-xl border border-outline-variant/40 px-4 py-3 text-sm shadow-inner">{{ old('teks_muatan') }}</textarea>
+                    <textarea name="teks_muatan" id="teks_muatan" rows="5" required data-no-wysiwyg data-normalize-preview="1" class="mt-1 w-full rounded-xl border border-outline-variant/40 px-4 py-3 text-sm font-mono shadow-inner">{{ old('teks_muatan') }}</textarea>
                 </div>
                 <button type="submit" @disabled(! $punyaAlatTersediaInput) class="rounded-lg accent-gradient px-4 py-2 text-sm font-bold text-white hover:opacity-90 disabled:opacity-50">Simpan payload</button>
             </form>
