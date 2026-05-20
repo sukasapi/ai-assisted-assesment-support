@@ -304,7 +304,7 @@ class AssessmentController extends Controller
     public function editKeyBehavior(Assessment $asesmen, KeyBehavior $perilaku): View
     {
         $this->authorize('update', $asesmen);
-        abort_unless($perilaku->id_asesmen === $asesmen->id, 404);
+        abort_unless((int) $perilaku->id_asesmen === (int) $asesmen->id, 404);
 
         $perilaku->load(['tool', 'competency', 'competencyLevel', 'evidence']);
 
@@ -324,7 +324,7 @@ class AssessmentController extends Controller
     public function updateKeyBehavior(UpdateKeyBehaviorRequest $request, Assessment $asesmen, KeyBehavior $perilaku): RedirectResponse
     {
         $this->authorize('update', $asesmen);
-        abort_unless($perilaku->id_asesmen === $asesmen->id, 404);
+        abort_unless((int) $perilaku->id_asesmen === (int) $asesmen->id, 404);
 
         $tingkatBaru = $request->filled('id_tingkat_kompetensi')
             ? $request->integer('id_tingkat_kompetensi')
@@ -356,7 +356,7 @@ class AssessmentController extends Controller
     public function analyzeEvidenceAi(Assessment $asesmen, Evidence $bukti): RedirectResponse
     {
         $this->authorize('update', $asesmen);
-        abort_unless($bukti->id_asesmen === $asesmen->id, 404);
+        abort_unless((int) $bukti->id_asesmen === (int) $asesmen->id, 404);
 
         if ($asesmen->metode_koleksi_bukti !== AssessmentEvidenceCollectionMode::Manual) {
             return redirect()

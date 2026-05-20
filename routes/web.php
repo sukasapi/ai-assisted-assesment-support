@@ -53,6 +53,7 @@ Route::middleware('auth')->group(function () {
         Route::post('asesmen/{asesmen}/bukti', [AssessmentController::class, 'storeEvidence'])->name('asesmen.bukti.store');
         Route::post('asesmen/{asesmen}/bukti/{bukti}/analisis-ai', [AssessmentController::class, 'analyzeEvidenceAi'])
             ->middleware('throttle:ai-analysis-trigger')
+            ->scopeBindings()
             ->name('asesmen.bukti.analisis-ai');
         Route::post('asesmen/{asesmen}/payload-alat', [AssessmentController::class, 'storeToolPayload'])->name('asesmen.payload-alat.store');
         Route::delete('asesmen/{asesmen}/payload-alat/{payload}', [AssessmentController::class, 'destroyToolPayload'])
@@ -70,8 +71,12 @@ Route::middleware('auth')->group(function () {
         Route::patch('asesmen/{asesmen}/finalisasi', [AssessmentController::class, 'finalize'])->name('asesmen.finalisasi');
         Route::patch('asesmen/{asesmen}/batal-finalisasi', [AssessmentController::class, 'unfinalize'])->name('asesmen.batal-finalisasi');
         Route::post('asesmen/{asesmen}/perilaku-kunci', [AssessmentController::class, 'storeKeyBehavior'])->name('asesmen.perilaku.store');
-        Route::get('asesmen/{asesmen}/perilaku-kunci/{perilaku}/ubah', [AssessmentController::class, 'editKeyBehavior'])->name('asesmen.perilaku.edit');
-        Route::patch('asesmen/{asesmen}/perilaku-kunci/{perilaku}', [AssessmentController::class, 'updateKeyBehavior'])->name('asesmen.perilaku.update');
+        Route::get('asesmen/{asesmen}/perilaku-kunci/{perilaku}/ubah', [AssessmentController::class, 'editKeyBehavior'])
+            ->scopeBindings()
+            ->name('asesmen.perilaku.edit');
+        Route::patch('asesmen/{asesmen}/perilaku-kunci/{perilaku}', [AssessmentController::class, 'updateKeyBehavior'])
+            ->scopeBindings()
+            ->name('asesmen.perilaku.update');
         Route::get('asesmen/{asesmen}', [AssessmentController::class, 'show'])->name('asesmen.show');
     });
 

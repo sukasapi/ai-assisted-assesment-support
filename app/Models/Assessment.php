@@ -87,12 +87,20 @@ class Assessment extends Model
     }
 
     /**
-     * Scoped binding: {payload} pada route nested asesmen/{asesmen}/payload-alat/{payload}.
+     * Scoped binding untuk route nested asesmen/{asesmen}/…/{child}.
      */
     public function resolveChildRouteBinding($childType, $value, $field): ?Model
     {
         if ($childType === 'payload') {
             return $this->toolPayloads()->whereKey($value)->first();
+        }
+
+        if ($childType === 'perilaku') {
+            return $this->keyBehaviors()->whereKey($value)->first();
+        }
+
+        if ($childType === 'bukti') {
+            return $this->evidenceItems()->whereKey($value)->first();
         }
 
         return parent::resolveChildRouteBinding($childType, $value, $field);
