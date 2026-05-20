@@ -26,6 +26,7 @@ use App\Models\Participant;
 use App\Models\User;
 use App\Services\Ai\AiAnalysisDispatcher;
 use App\Support\AiModelCatalog;
+use App\Support\PayloadAnalysisPresenter;
 use App\Services\Ai\EvidenceAiAnalyzer;
 use App\Services\Assessment\AlatAsesmenPreset;
 use App\Services\Assessment\AssessmentToolAvailabilityDiagnostic;
@@ -138,6 +139,7 @@ class AssessmentController extends Controller
             'keyBehaviors.evidence',
             'keyBehaviors.competencyLevel',
             'toolPayloads.tool',
+            'toolPayloads.uploader',
         ]);
 
         $kompetensi = Competency::query()->where('aktif', true)->orderBy('kode_kompetensi')->get();
@@ -392,25 +394,54 @@ class AssessmentController extends Controller
         $this->authorize('update', $asesmen);
         $teksMuatan = $request->string('teks_muatan')->toString();
         $teksMuatanRich = $request->filled('teks_muatan_rich') ? $request->string('teks_muatan_rich')->toString() : null;
-        $plainMuatan = EvidenceTextNormalizer::toPlainText(
+        $teksKanonic = BulkTextNormalizer::canonicalPayloadMuatan(
             $teksMuatanRich,
-            $request->input('teks_muatan_normalized', $teksMuatan)
-        );
-        $teksMuatanNormalized = BulkTextNormalizer::normalizeForStorage(
-            $plainMuatan !== '' ? $plainMuatan : $teksMuatan
+            $request->input('teks_muatan_normalized'),
+            $teksMuatan,
         );
 
         $asesmen->toolPayloads()->create([
             'id_alat_penilaian' => $request->integer('id_alat_penilaian'),
-            'teks_muatan' => $teksMuatanNormalized !== '' ? $teksMuatanNormalized : $teksMuatan,
+            'teks_muatan' => $teksKanonic,
             'teks_muatan_rich' => $teksMuatanRich,
-            'teks_muatan_normalized' => $teksMuatanNormalized !== '' ? $teksMuatanNormalized : $teksMuatan,
+            'teks_muatan_normalized' => $teksKanonic,
             'id_pengguna_pengunggah' => $request->user()?->id,
         ]);
 
         return redirect()
             ->route('asesmen.show', $asesmen)
             ->with('status', 'Payload alat disimpan. Anda dapat menjalankan analisis AI bulk.');
+    }
+
+    public function showToolPayload(Assessment $asesmen, AssessmentToolPayload $payload): JsonResponse
+    {
+        $this->authorize('view', $asesmen);
+        abort_unless((int) $payload->id_asesmen === (int) $asesmen->id, 404);
+
+        $payload->load(['tool', 'uploader']);
+
+        return response()->json(
+            PayloadAnalysisPresenter::detail($payload),
+            200,
+            [],
+            JSON_UNESCAPED_UNICODE,
+        );
+    }
+
+    public function toolPayloadStatuses(Assessment $asesmen): JsonResponse
+    {
+        $this->authorize('view', $asesmen);
+
+        $payloads = $asesmen->toolPayloads()->with('tool')->get();
+        $data = [];
+        foreach ($payloads as $p) {
+            $data[(string) $p->id] = PayloadAnalysisPresenter::ringkasan($p);
+        }
+
+        return response()->json([
+            'payloads' => $data,
+            'ada_yang_berjalan' => collect($data)->contains(fn (array $r): bool => $r['sedang_berjalan']),
+        ], 200, [], JSON_UNESCAPED_UNICODE);
     }
 
     public function redirectToolPayloadAiGet(Assessment $asesmen): RedirectResponse

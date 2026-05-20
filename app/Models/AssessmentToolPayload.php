@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Enums\PayloadAnalysisStatus;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
@@ -22,6 +23,9 @@ class AssessmentToolPayload extends Model
         'id_pengguna_pengunggah',
         'hasil_analisis_ai',
         'diproses_pada',
+        'status_analisis',
+        'pesan_status_analisis',
+        'dijadwalkan_pada',
     ];
 
     protected function casts(): array
@@ -29,7 +33,27 @@ class AssessmentToolPayload extends Model
         return [
             'hasil_analisis_ai' => 'array',
             'diproses_pada' => 'datetime',
+            'status_analisis' => PayloadAnalysisStatus::class,
+            'dijadwalkan_pada' => 'datetime',
         ];
+    }
+
+    public function tandaiStatusAnalisis(PayloadAnalysisStatus $status, ?string $pesan = null): void
+    {
+        $data = [
+            'status_analisis' => $status,
+            'pesan_status_analisis' => $pesan,
+        ];
+
+        if ($status === PayloadAnalysisStatus::Antrian) {
+            $data['dijadwalkan_pada'] = now();
+        }
+
+        if ($status === PayloadAnalysisStatus::Berhasil) {
+            $data['pesan_status_analisis'] = null;
+        }
+
+        $this->update($data);
     }
 
     public function assessment(): BelongsTo
