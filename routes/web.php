@@ -55,6 +55,9 @@ Route::middleware('auth')->group(function () {
             ->middleware('throttle:ai-analysis-trigger')
             ->name('asesmen.bukti.analisis-ai');
         Route::post('asesmen/{asesmen}/payload-alat', [AssessmentController::class, 'storeToolPayload'])->name('asesmen.payload-alat.store');
+        Route::delete('asesmen/{asesmen}/payload-alat/{payload}', [AssessmentController::class, 'destroyToolPayload'])
+            ->scopeBindings()
+            ->name('asesmen.payload-alat.destroy');
         Route::get('asesmen/{asesmen}/payload-alat/status', [AssessmentController::class, 'toolPayloadStatuses'])->name('asesmen.payload-alat.statuses');
         Route::get('asesmen/{asesmen}/payload-alat/{payload}', [AssessmentController::class, 'showToolPayload'])->name('asesmen.payload-alat.show');
         Route::get('asesmen/{asesmen}/payload-alat/{payload}/analisis-ai', [AssessmentController::class, 'redirectToolPayloadAiGet'])
