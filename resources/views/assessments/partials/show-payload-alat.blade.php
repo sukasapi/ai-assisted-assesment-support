@@ -33,7 +33,7 @@
                 </div>
                 <div>
                     <label for="teks_muatan" class="text-xs font-bold uppercase tracking-wider text-on-surface-variant">Teks muatan</label>
-                    <textarea name="teks_muatan" id="teks_muatan" rows="5" required data-normalize-preview="1" class="mt-1 w-full rounded-xl border border-outline-variant/40 px-4 py-3 text-sm shadow-inner">{{ old('teks_muatan') }}</textarea>
+                    <textarea name="teks_muatan" id="teks_muatan" rows="5" required data-no-wysiwyg data-normalize-preview="1" class="mt-1 w-full rounded-xl border border-outline-variant/40 px-4 py-3 text-sm font-mono shadow-inner">{{ old('teks_muatan') }}</textarea>
                 </div>
                 <button type="submit" @disabled(! $punyaAlatTersediaInput) class="rounded-lg accent-gradient px-4 py-2 text-sm font-bold text-white hover:opacity-90 disabled:opacity-50">Simpan payload</button>
             </form>
@@ -71,6 +71,18 @@
                                 data-payload-id="{{ $p->id }}"
                                 aria-hidden="true"
                             >@csrf</form>
+                            @if ($ringkasan['dapat_dihapus'])
+                                <form
+                                    id="hapus-payload-{{ $p->id }}"
+                                    method="POST"
+                                    action="{{ route('asesmen.payload-alat.destroy', [$asesmen, $p]) }}"
+                                    class="js-payload-delete-form hidden"
+                                    data-payload-id="{{ $p->id }}"
+                                >
+                                    @csrf
+                                    @method('DELETE')
+                                </form>
+                            @endif
                         @endcan
 
                         {{-- Baris atas: judul + status + aksi --}}
@@ -96,27 +108,48 @@
                                 </button>
                             </div>
                             @can('update', $asesmen)
-                                @if ($aiFiturAktif ?? false)
-                                    <button
-                                        type="submit"
-                                        form="{{ $formBulkId }}"
-                                        class="js-payload-analyze-btn inline-flex shrink-0 items-center gap-2 rounded-full bg-primary px-4 py-2 text-sm font-bold text-white shadow-sm shadow-primary/10 transition-all hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50"
-                                        @disabled(in_array($status, ['antrian', 'memproses'], true))
-                                    >
-                                        <span class="material-symbols-outlined text-sm">psychology</span>
-                                        Analisis AI bulk
-                                    </button>
-                                @else
-                                    <button
-                                        type="button"
-                                        disabled
-                                        title="{{ $aiPesanNonaktif ?? '' }}"
-                                        class="inline-flex shrink-0 cursor-not-allowed items-center gap-2 rounded-full bg-surface-container-high px-4 py-2 text-sm font-bold text-on-surface-variant/70"
-                                    >
-                                        <span class="material-symbols-outlined text-sm">psychology</span>
-                                        Analisis AI bulk
-                                    </button>
-                                @endif
+                                <div class="flex shrink-0 flex-wrap items-center gap-2">
+                                    @if ($ringkasan['dapat_dihapus'])
+                                        <button
+                                            type="submit"
+                                            form="hapus-payload-{{ $p->id }}"
+                                            class="js-payload-delete-btn inline-flex items-center gap-1 rounded-full border border-error/30 bg-error-container/30 px-3 py-2 text-sm font-bold text-on-error-container transition-all hover:bg-error-container/50"
+                                            data-payload-id="{{ $p->id }}"
+                                        >
+                                            <span class="material-symbols-outlined text-sm">delete</span>
+                                            Hapus
+                                        </button>
+                                    @elseif (! empty($ringkasan['alasan_tidak_dihapus']))
+                                        <span
+                                            class="inline-flex max-w-xs cursor-help items-center gap-1 rounded-full border border-outline-variant/40 bg-surface-container px-3 py-2 text-xs text-on-surface-variant"
+                                            title="{{ $ringkasan['alasan_tidak_dihapus'] }}"
+                                        >
+                                            <span class="material-symbols-outlined text-sm">lock</span>
+                                            Tidak dapat dihapus
+                                        </span>
+                                    @endif
+                                    @if ($aiFiturAktif ?? false)
+                                        <button
+                                            type="submit"
+                                            form="{{ $formBulkId }}"
+                                            class="js-payload-analyze-btn inline-flex shrink-0 items-center gap-2 rounded-full bg-primary px-4 py-2 text-sm font-bold text-white shadow-sm shadow-primary/10 transition-all hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50"
+                                            @disabled(in_array($status, ['antrian', 'memproses'], true))
+                                        >
+                                            <span class="material-symbols-outlined text-sm">psychology</span>
+                                            Analisis AI bulk
+                                        </button>
+                                    @else
+                                        <button
+                                            type="button"
+                                            disabled
+                                            title="{{ $aiPesanNonaktif ?? '' }}"
+                                            class="inline-flex shrink-0 cursor-not-allowed items-center gap-2 rounded-full bg-surface-container-high px-4 py-2 text-sm font-bold text-on-surface-variant/70"
+                                        >
+                                            <span class="material-symbols-outlined text-sm">psychology</span>
+                                            Analisis AI bulk
+                                        </button>
+                                    @endif
+                                </div>
                             @endcan
                         </div>
 

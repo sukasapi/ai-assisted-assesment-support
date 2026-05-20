@@ -17,11 +17,14 @@ class PayloadAnalysisPresenter
      *   dijadwalkan_pada: string|null,
      *   jumlah_usulan: int,
      *   jumlah_perilaku_kunci: int,
+     *   dapat_dihapus: bool,
+     *   alasan_tidak_dihapus: string|null,
      * }
      */
     public static function ringkasan(AssessmentToolPayload $payload): array
     {
         $status = self::statusTerselesaikan($payload);
+        $alasanTidakDihapus = ToolPayloadDeletionGuard::alasanTidakDapatDihapus($payload);
 
         return [
             'status' => $status->value,
@@ -32,6 +35,8 @@ class PayloadAnalysisPresenter
             'dijadwalkan_pada' => $payload->dijadwalkan_pada?->toIso8601String(),
             'jumlah_usulan' => count($payload->hasil_analisis_ai['usulan'] ?? []),
             'jumlah_perilaku_kunci' => count($payload->hasil_analisis_ai['perilaku_kunci_dibuat'] ?? []),
+            'dapat_dihapus' => $alasanTidakDihapus === null,
+            'alasan_tidak_dihapus' => $alasanTidakDihapus,
         ];
     }
 

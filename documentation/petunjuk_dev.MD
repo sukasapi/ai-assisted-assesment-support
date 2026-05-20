@@ -261,7 +261,7 @@ Metode dapat diubah di halaman detail asesmen selama belum final.
 
 #### Finalisasi
 
-- Tombol finalisasi memeriksa **cakupan kompetensi wajib**: setiap kompetensi yang wajib di matriks (via pemetaan alat aktif) harus punya minimal satu perilaku kunci dengan `id_tingkat_kompetensi` terisi.
+- Tombol finalisasi memeriksa **cakupan kompetensi wajib**: setiap kompetensi wajib harus punya minimal satu perilaku kunci **disahkan** (`tervalidasi = true`) dengan `id_tingkat_kompetensi` terisi (aturan sama dengan input pratinjau integrasi).
 - Hanya **admin** yang dapat **membatalkan finalisasi** (kembali ke draf).
 
 ### 6.4 Fitur AI (OpenRouter)
@@ -360,8 +360,8 @@ Berdasarkan rencana pengembangan MVP, berikut **belum** atau **baru sebagian** d
 
 | Area | Status |
 |------|--------|
-| Dasbor GAP & Job Fit | Belum |
-| Mesin integrasi skor berbobot | Belum |
+| Dasbor GAP & Job Fit | Ada (ringkasan pratinjau) |
+| Mesin integrasi skor berbobot | Ada (`CompetencyIntegrationService`, pratinjau) |
 | Laporan naratif + export PDF | Belum |
 | Wizard assessment lengkap (job target, snapshot matriks dinamis) | Sebagian (form buat asesmen sudah ada) |
 | API eksternal dokumentasi publik | Sanctum ada; endpoint bisnis terbatas |

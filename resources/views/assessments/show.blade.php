@@ -110,9 +110,12 @@
                 @endcan
             </div>
 
-            <div class="card-depth rounded-xl bg-surface-container-lowest p-8 lg:col-span-2">
-                <div class="mb-8 flex flex-wrap items-center justify-between gap-3">
-                    <p class="text-section-header uppercase text-on-surface-variant">Cakupan Kompetensi</p>
+            <details class="card-depth group rounded-xl bg-surface-container-lowest lg:col-span-2" open>
+                <summary class="flex cursor-pointer list-none flex-wrap items-center justify-between gap-3 p-8 pb-0 [&::-webkit-details-marker]:hidden">
+                    <div class="flex flex-wrap items-center gap-3">
+                        <span class="material-symbols-outlined text-on-surface-variant transition-transform group-open:rotate-180">expand_more</span>
+                        <p class="text-section-header uppercase text-on-surface-variant">Cakupan Kompetensi</p>
+                    </div>
                     @if ($ringkasanFinalisasi['total_wajib'] === 0)
                         <span class="flex items-center gap-2 rounded-lg border border-outline-variant/40 bg-surface-container px-3 py-1.5 text-label font-bold text-on-surface-variant">Belum ada kompetensi wajib</span>
                     @elseif ($cakupanLengkap)
@@ -124,30 +127,39 @@
                             <span class="material-symbols-outlined text-sm">warning</span> Belum Lengkap
                         </span>
                     @endif
-                </div>
+                </summary>
+                <div class="p-8 pt-6">
                 @if ($gridCakupanKompetensi === [])
                     <p class="text-sm text-on-surface-variant">Aktifkan alat preset dan pemetaan wajib di matriks untuk melihat progress per kompetensi.</p>
                 @else
-                    <div class="grid grid-cols-2 gap-6 sm:grid-cols-4">
+                        <p class="mb-4 text-xs text-on-surface-variant">
+                            {{ $ringkasanFinalisasi['total_terpenuhi'] }}/{{ $ringkasanFinalisasi['total_wajib'] }} kompetensi wajib sudah memiliki perilaku kunci <strong>disahkan</strong> (mapping resmi) dengan tingkat terisi.
+                            <span class="text-on-surface-variant/70">· Hijau = siap finalisasi/integrasi, kuning = ada draft atau belum disahkan, abu = belum ada mapping.</span>
+                        </p>
+                        <div class="max-h-80 overflow-y-auto pr-1">
+                    <div class="grid grid-cols-2 gap-4 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5">
                         @foreach ($gridCakupanKompetensi as $item)
                             @php
-                                $barColor = $item['persen'] >= 100 ? 'bg-emerald-500' : ($item['persen'] > 0 ? 'bg-amber-500' : 'bg-outline-variant/40');
+                                $barColor = ($item['terpenuhi'] ?? false)
+                                    ? 'bg-emerald-500'
+                                    : (($item['ada_pk'] ?? false) ? 'bg-amber-500' : 'bg-outline-variant/40');
+                                $borderKelas = ($item['terpenuhi'] ?? false)
+                                    ? 'border-emerald-200/80'
+                                    : (($item['ada_pk'] ?? false) ? 'border-amber-200/80' : 'border-outline-variant/30');
                             @endphp
-                            <div class="rounded-xl border border-outline-variant/30 bg-surface-container-lowest p-4 text-center">
-                                <p class="mb-2 truncate text-label text-on-surface-variant" title="{{ $item['nama'] }}">{{ $item['nama'] }}</p>
+                            <div class="rounded-xl border {{ $borderKelas }} bg-surface-container-lowest p-3 text-center" title="{{ $item['kode'] }} — {{ $item['nama'] }}">
+                                <p class="font-mono text-[10px] font-bold uppercase text-primary">{{ $item['kode'] }}</p>
+                                <p class="mb-2 line-clamp-2 min-h-[2.5rem] text-[11px] leading-snug text-on-surface-variant">{{ $item['nama'] }}</p>
                                 <div class="h-2 w-full overflow-hidden rounded-full bg-surface-container-high">
                                     <div class="{{ $barColor }} h-full rounded-full transition-all" style="width: {{ $item['persen'] }}%"></div>
                                 </div>
                             </div>
                         @endforeach
                     </div>
-                    @if ($ringkasanFinalisasi['total_kompetensi_kurang'] > 0)
-                        <p class="mt-4 text-xs text-on-surface-variant">
-                            {{ $ringkasanFinalisasi['total_terpenuhi'] }}/{{ $ringkasanFinalisasi['total_wajib'] }} kompetensi wajib sudah memiliki level indikator.
-                        </p>
-                    @endif
+                        </div>
                 @endif
-            </div>
+                </div>
+            </details>
         </section>
 
         {{-- Section C & D: Metode & asesor --}}
@@ -155,10 +167,18 @@
             <div class="card-depth rounded-xl bg-surface-container-lowest p-8">
                 <p class="mb-6 text-section-header uppercase text-on-surface-variant">Metode Pengumpulan Bukti</p>
                 @can('update', $asesmen)
-                    <form method="POST" action="{{ route('asesmen.metode-koleksi-bukti.update', $asesmen) }}" id="form-metode-bukti">
+                    <form
+                        method="POST"
+                        action="{{ route('asesmen.metode-koleksi-bukti.update', $asesmen) }}"
+                        id="form-metode-bukti"
+                        data-metode-awal="{{ $metodeBukti->value }}"
+                        data-jumlah-payload="{{ $asesmen->toolPayloads->count() }}"
+                        data-jumlah-perilaku="{{ $asesmen->keyBehaviors->count() }}"
+                    >
                         @csrf
                         @method('PATCH')
                         <input type="hidden" name="metode_koleksi_bukti" id="metode_koleksi_bukti_input" value="{{ $metodeBukti->value }}">
+                        <input type="hidden" name="konfirmasi_ubah_metode" id="konfirmasi_ubah_metode" value="0">
                         <div class="flex w-fit rounded-xl bg-surface-container-low p-1.5">
                             <button type="button" data-metode="manual" class="metode-toggle px-8 py-2 text-body-base font-bold transition-colors rounded-lg {{ $metodeBukti === \App\Enums\AssessmentEvidenceCollectionMode::Manual ? 'bg-surface-container-lowest text-primary shadow-sm' : 'text-on-surface-variant hover:text-on-surface' }}">Manual</button>
                             <button type="button" data-metode="payload_alat" class="metode-toggle px-8 py-2 text-body-base transition-colors rounded-lg {{ $metodeBukti === \App\Enums\AssessmentEvidenceCollectionMode::PayloadAlat ? 'bg-surface-container-lowest text-primary shadow-sm font-bold' : 'text-on-surface-variant hover:text-on-surface' }}">Otomatis</button>
@@ -167,8 +187,47 @@
                     <script>
                         document.querySelectorAll('.metode-toggle').forEach((btn) => {
                             btn.addEventListener('click', () => {
-                                document.getElementById('metode_koleksi_bukti_input').value = btn.dataset.metode;
-                                document.getElementById('form-metode-bukti').submit();
+                                const form = document.getElementById('form-metode-bukti');
+                                const metodeBaru = btn.dataset.metode;
+                                const metodeAwal = form.dataset.metodeAwal;
+                                const jumlahPayload = parseInt(form.dataset.jumlahPayload || '0', 10);
+                                const jumlahPerilaku = parseInt(form.dataset.jumlahPerilaku || '0', 10);
+
+                                document.getElementById('metode_koleksi_bukti_input').value = metodeBaru;
+
+                                if (metodeBaru === metodeAwal) {
+                                    return;
+                                }
+
+                                if (jumlahPayload > 0 || jumlahPerilaku > 0) {
+                                    const labelBaru = metodeBaru === 'payload_alat' ? 'Otomatis (payload alat)' : 'Manual';
+                                    window.Swal.fire({
+                                        icon: 'warning',
+                                        title: 'Ubah metode pengumpulan bukti?',
+                                        html:
+                                            '<p class="text-sm text-left">Asesmen ini sudah memiliki ' +
+                                            (jumlahPayload > 0 ? '<strong>' + jumlahPayload + ' payload alat</strong>' : '') +
+                                            (jumlahPayload > 0 && jumlahPerilaku > 0 ? ' dan ' : '') +
+                                            (jumlahPerilaku > 0 ? '<strong>' + jumlahPerilaku + ' mapping perilaku kunci</strong>' : '') +
+                                            '.</p><p class="mt-3 text-sm text-left">Indikator perilaku yang telah dimasukkan <strong>tetap tersimpan</strong>. Yang berubah hanya tampilan dan alur input bukti ke metode <strong>' +
+                                            labelBaru +
+                                            '</strong>.</p>',
+                                        showCancelButton: true,
+                                        confirmButtonText: 'Ya, ubah metode',
+                                        cancelButtonText: 'Batal',
+                                        confirmButtonColor: '#0058be',
+                                        cancelButtonColor: '#727785',
+                                    }).then((result) => {
+                                        if (!result.isConfirmed) {
+                                            return;
+                                        }
+                                        document.getElementById('konfirmasi_ubah_metode').value = '1';
+                                        form.submit();
+                                    });
+                                    return;
+                                }
+
+                                form.submit();
                             });
                         });
                     </script>
@@ -368,47 +427,84 @@
         @endif
 
         {{-- Section G: Perilaku kunci --}}
+        @php
+            use App\Support\KeyBehaviorPresentation;
+        @endphp
         <section class="space-y-6 pb-8">
             <h2 class="font-display text-2xl text-on-surface">Mapping Perilaku Kunci</h2>
+            @error('perilaku_kunci')
+                <p class="rounded-lg border border-error/30 bg-error-container/20 px-4 py-2 text-sm text-on-error-container">{{ $message }}</p>
+            @enderror
             <div class="card-depth overflow-hidden rounded-xl bg-surface-container-lowest">
                 @if ($asesmen->keyBehaviors->isEmpty())
                     <p class="p-8 text-sm text-on-surface-variant">Belum ada mapping perilaku kunci.</p>
                 @else
                     <div class="overflow-x-auto">
-                        <table class="min-w-[1000px] w-full text-left">
+                        <table class="min-w-[1100px] w-full text-left">
                             <thead>
                                 <tr class="bg-on-surface text-white">
-                                    <th class="w-32 px-6 py-5 text-xs font-section-header uppercase">Alat</th>
-                                    <th class="w-56 px-6 py-5 text-xs font-section-header uppercase">Kompetensi</th>
-                                    <th class="w-20 px-6 py-5 text-center text-xs font-section-header uppercase">Lvl</th>
-                                    <th class="px-6 py-5 text-xs font-section-header uppercase">Indikator Perilaku &amp; Reasoning</th>
-                                    <th class="w-32 px-6 py-5 text-right text-xs font-section-header uppercase">Aksi</th>
+                                    <th class="w-28 px-4 py-5 text-xs font-section-header uppercase">Alat</th>
+                                    <th class="w-48 px-4 py-5 text-xs font-section-header uppercase">Kompetensi</th>
+                                    <th class="w-16 px-4 py-5 text-center text-xs font-section-header uppercase">Lvl</th>
+                                    <th class="w-24 px-4 py-5 text-center text-xs font-section-header uppercase">Sumber</th>
+                                    <th class="w-28 px-4 py-5 text-center text-xs font-section-header uppercase">Status</th>
+                                    <th class="px-4 py-5 text-xs font-section-header uppercase">Indikator Perilaku &amp; Reasoning</th>
+                                    <th class="w-24 px-4 py-5 text-right text-xs font-section-header uppercase">Aksi</th>
                                 </tr>
                             </thead>
                             <tbody class="divide-y divide-outline-variant/10">
                                 @foreach ($asesmen->keyBehaviors as $pk)
                                     @php
-                                        $dariAi = $pk->evidence && ($pk->evidence->ai_dinilai_pada || $pk->evidence->ai_tingkat);
+                                        $badgeSumber = KeyBehaviorPresentation::badgeSumber($pk, $idPerilakuDariBulkAi);
+                                        $badgeStatus = KeyBehaviorPresentation::badgeStatus($pk);
+                                        $dariAi = $badgeSumber['label'] === 'AI';
                                         $kutipan = $pk->kutipan_referensi ?: (is_array($pk->evidence?->ai_muatan) ? ($pk->evidence->ai_muatan['kutipan_dari_teks_mentah'] ?? null) : null);
                                     @endphp
-                                    <tr class="transition-colors hover:bg-surface-container-lowest {{ $dariAi ? 'bg-primary-fixed/20' : '' }}">
-                                        <td class="px-6 py-8 align-top">
-                                            <span class="rounded px-2 py-1 text-[10px] font-bold uppercase tracking-tighter {{ $dariAi ? 'bg-primary-fixed/50 text-primary' : 'bg-surface-container text-on-surface-variant' }}">{{ $dariAi ? 'AI-GEN' : ($pk->tool?->kode ?? '—') }}</span>
+                                    <tr class="transition-colors hover:bg-surface-container-lowest {{ $dariAi ? 'bg-primary-fixed/15' : '' }} {{ ! $pk->tervalidasi ? 'opacity-95' : '' }}">
+                                        <td class="px-4 py-6 align-top">
+                                            <span class="text-xs font-bold text-on-surface">{{ $pk->tool?->kode ?? '—' }}</span>
                                         </td>
-                                        <td class="px-6 py-8 align-top">
-                                            <p class="font-bold {{ $dariAi ? 'text-primary' : 'text-on-surface' }}">{{ $pk->competency?->nama ?? '?' }}</p>
+                                        <td class="px-4 py-6 align-top">
+                                            <p class="font-bold text-on-surface">{{ $pk->competency?->nama ?? '?' }}</p>
                                             @if ($pk->competency?->group?->nama)
                                                 <p class="mt-1 text-xs {{ $dariAi ? 'text-primary/70' : 'text-on-surface-variant' }}">{{ $pk->competency->group->nama }}</p>
                                             @endif
                                         </td>
-                                        <td class="px-6 py-8 align-top text-center">
+                                        <td class="px-4 py-6 align-top text-center">
                                             @if ($pk->competencyLevel)
-                                                <span class="rounded-lg border border-outline-variant/30 px-2.5 py-1.5 font-bold {{ $dariAi ? 'bg-primary text-white shadow-sm' : 'bg-surface-container text-on-surface' }}">{{ $pk->competencyLevel->tingkat }}</span>
+                                                <span class="rounded-lg border border-outline-variant/30 bg-surface-container px-2.5 py-1.5 font-bold text-on-surface">{{ $pk->competencyLevel->tingkat }}</span>
                                             @else
                                                 <span class="text-on-surface-variant/50">—</span>
                                             @endif
                                         </td>
-                                        <td class="space-y-5 px-6 py-8 align-top">
+                                        <td class="px-4 py-6 align-top text-center">
+                                            <span class="inline-block rounded px-2 py-1 text-[10px] font-bold uppercase tracking-tighter {{ $badgeSumber['kelas'] }}">{{ $badgeSumber['label'] }}</span>
+                                            @can('update', $asesmen)
+                                                @if ($isDraft && ! $pk->tervalidasi)
+                                                    <form
+                                                        method="POST"
+                                                        action="{{ route('asesmen.perilaku.sahkan', [$asesmen, $pk]) }}"
+                                                        class="js-pk-sahkan-form mt-2"
+                                                    >
+                                                        @csrf
+                                                        @method('PATCH')
+                                                        <button
+                                                            type="submit"
+                                                            class="rounded-md border border-emerald-200 bg-emerald-50 px-2.5 py-1 text-[10px] font-bold text-emerald-800 transition-colors hover:bg-emerald-100"
+                                                            title="Simpan sebagai mapping resmi peserta"
+                                                        >
+                                                            Sahkan
+                                                        </button>
+                                                    </form>
+                                                @elseif ($pk->tervalidasi)
+                                                    <p class="mt-2 text-[10px] font-medium text-emerald-700">✓ Resmi</p>
+                                                @endif
+                                            @endcan
+                                        </td>
+                                        <td class="px-4 py-6 align-top text-center">
+                                            <span data-pk-status-badge class="inline-block rounded-full border px-2.5 py-1 text-[10px] font-bold {{ $badgeStatus['kelas'] }}">{{ $badgeStatus['label'] }}</span>
+                                        </td>
+                                        <td class="space-y-4 px-4 py-6 align-top">
                                             <div class="space-y-2">
                                                 <p class="font-bold leading-tight text-on-surface">{{ $pk->teks_perilaku }}</p>
                                                 @if ($pk->alasan_pemilihan)
@@ -421,7 +517,7 @@
                                                 </div>
                                             @endif
                                         </td>
-                                        <td class="px-6 py-8 align-top text-right">
+                                        <td class="px-4 py-6 align-top text-right">
                                             @can('update', $asesmen)
                                                 <a href="{{ route('asesmen.perilaku.edit', [$asesmen, $pk]) }}" class="inline-flex items-center gap-1 rounded-lg bg-surface-container p-2 text-on-surface-variant transition-all hover:text-primary" title="Edit">
                                                     <span class="material-symbols-outlined text-sm">edit</span>
@@ -501,5 +597,12 @@
                 @endcan
             </div>
         </section>
+
+        @include('assessments.partials.integration-preview', [
+            'asesmen' => $asesmen,
+            'integrasiPratinjau' => $integrasiPratinjau ?? collect(),
+            'isFinal' => $isFinal,
+            'isDraft' => $isDraft,
+        ])
     </div>
 @endsection

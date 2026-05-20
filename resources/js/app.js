@@ -385,6 +385,50 @@ function normalizePlain(text) {
 
 document.addEventListener('DOMContentLoaded', bindWysiwygEditors);
 
+/** Payload bulk: textarea polos (tanpa Quill) — normalisasi + preview sebelum simpan. */
+function bindBulkPayloadPlainForms() {
+    document.querySelectorAll('form').forEach((form) => {
+        const textarea = form.querySelector('textarea[name="teks_muatan"][data-no-wysiwyg]');
+        if (!textarea || textarea.dataset.bulkPlainBound === '1') {
+            return;
+        }
+        textarea.dataset.bulkPlainBound = '1';
+
+        form.addEventListener('submit', (event) => {
+            if (form.dataset.bulkPlainSubmitting === '1') {
+                return;
+            }
+
+            const normalized = normalizePlainBulk(textarea.value || '');
+            textarea.value = normalized;
+
+            if (textarea.dataset.normalizePreview !== '1') {
+                return;
+            }
+
+            event.preventDefault();
+            const previewText =
+                normalized.length > 2000
+                    ? `${normalized.slice(0, 2000)}\n...(dipotong)`
+                    : normalized;
+            window.Swal.fire({
+                title: 'Preview normalisasi teks muatan',
+                html: `<pre class="text-left text-xs whitespace-pre-wrap max-h-64 overflow-auto">${escapeHtml(previewText)}</pre>`,
+                showCancelButton: true,
+                confirmButtonText: 'Simpan payload',
+                cancelButtonText: 'Ubah lagi',
+                ...swalTheme,
+            }).then((result) => {
+                if (!result.isConfirmed) {
+                    return;
+                }
+                form.dataset.bulkPlainSubmitting = '1';
+                form.requestSubmit();
+            });
+        });
+    });
+}
+
 const payloadStatusBadgeClass = {
     belum: 'border-outline-variant/40 bg-surface-container text-on-surface-variant',
     antrian: 'border-primary/30 bg-primary-fixed/40 text-primary',
@@ -605,8 +649,118 @@ function initPayloadBulkStatusPolling() {
     });
 }
 
+function initPayloadDeleteConfirm() {
+    document.querySelectorAll('.js-payload-delete-form').forEach((form) => {
+        form.addEventListener('submit', (event) => {
+            if (form.dataset.payloadDeleteConfirmed === '1') {
+                return;
+            }
+            event.preventDefault();
+            window.Swal.fire({
+                title: 'Hapus payload ini?',
+                text: 'Teks muatan dan hasil analisis AI yang belum disetujui sebagai mapping perilaku kunci akan dihapus.',
+                icon: 'warning',
+                showCancelButton: true,
+                confirmButtonText: 'Ya, hapus',
+                cancelButtonText: 'Batal',
+                confirmButtonColor: '#b3261e',
+                ...swalTheme,
+            }).then((result) => {
+                if (!result.isConfirmed) {
+                    return;
+                }
+                form.dataset.payloadDeleteConfirmed = '1';
+                form.requestSubmit();
+            });
+        });
+    });
+}
+
+function getCsrfToken() {
+    return document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') ?? '';
+}
+
+function initPkSahkanAjax() {
+    document.querySelectorAll('.js-pk-sahkan-form').forEach((form) => {
+        form.addEventListener('submit', async (event) => {
+            event.preventDefault();
+            const url = form.action;
+            const btn = form.querySelector('button[type="submit"]');
+            if (!url || !btn) {
+                return;
+            }
+
+            const token = getCsrfToken();
+            btn.disabled = true;
+
+            try {
+                const res = await fetch(url, {
+                    method: 'PATCH',
+                    headers: {
+                        Accept: 'application/json',
+                        'Content-Type': 'application/json',
+                        'X-CSRF-TOKEN': token,
+                        'X-Requested-With': 'XMLHttpRequest',
+                    },
+                });
+
+                let data = {};
+                try {
+                    data = await res.json();
+                } catch {
+                    // abaikan
+                }
+
+                if (res.status === 419) {
+                    window.notifyError?.('Sesi kedaluwarsa. Muat ulang halaman lalu coba lagi.');
+                    btn.disabled = false;
+
+                    return;
+                }
+
+                if (!res.ok || data.success === false) {
+                    const msg =
+                        data.message ||
+                        (Array.isArray(data.errors?.perilaku_kunci)
+                            ? data.errors.perilaku_kunci[0]
+                            : null) ||
+                        'Gagal menyahkan mapping.';
+                    window.notifyError?.(msg);
+                    btn.disabled = false;
+
+                    return;
+                }
+
+                const row = form.closest('tr');
+                if (row) {
+                    row.classList.remove('opacity-95');
+                }
+
+                const wrap = document.createElement('p');
+                wrap.className = 'mt-2 text-[10px] font-medium text-emerald-700';
+                wrap.textContent = '✓ Resmi';
+                form.replaceWith(wrap);
+
+                const badge = row?.querySelector('[data-pk-status-badge]');
+                if (badge && data.status_label) {
+                    badge.textContent = data.status_label;
+                    badge.className = `inline-block rounded-full border px-2.5 py-1 text-[10px] font-bold ${data.status_kelas || ''}`;
+                }
+
+                window.notifySuccess?.(data.message || 'Mapping disimpan.');
+            } catch {
+                window.notifyError?.('Tidak dapat menghubungi server. Coba lagi.');
+                btn.disabled = false;
+            }
+        });
+    });
+}
+
+document.addEventListener('DOMContentLoaded', bindBulkPayloadPlainForms);
 document.addEventListener('DOMContentLoaded', initPayloadDetailModal);
 document.addEventListener('DOMContentLoaded', initPayloadBulkStatusPolling);
+document.addEventListener('DOMContentLoaded', initPayloadDeleteConfirm);
+document.addEventListener('DOMContentLoaded', initPkSahkanAjax);
 
 /** Notifikasi dari kode lain (Livewire, fetch, dll.) */
 window.notifySuccess = (text, title = 'Berhasil') =>

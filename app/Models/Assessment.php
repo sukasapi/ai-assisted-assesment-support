@@ -28,6 +28,8 @@ class Assessment extends Model
         'id_pengguna_finalisasi',
         'waktu_finalisasi',
         'catatan',
+        'job_fit_persen_pratinjau',
+        'integrasi_pratinjau_pada',
     ];
 
     protected function casts(): array
@@ -38,6 +40,8 @@ class Assessment extends Model
             'tanpa_intray' => 'boolean',
             'metode_koleksi_bukti' => AssessmentEvidenceCollectionMode::class,
             'waktu_finalisasi' => 'datetime',
+            'job_fit_persen_pratinjau' => 'decimal:2',
+            'integrasi_pratinjau_pada' => 'datetime',
         ];
     }
 
@@ -86,13 +90,26 @@ class Assessment extends Model
         return $this->hasMany(AssessmentToolPayload::class, 'id_asesmen')->orderByDesc('id');
     }
 
+    public function competencyIntegrations(): HasMany
+    {
+        return $this->hasMany(CompetencyIntegration::class, 'id_asesmen');
+    }
+
     /**
-     * Scoped binding: {payload} pada route nested asesmen/{asesmen}/payload-alat/{payload}.
+     * Scoped binding untuk route nested asesmen/{asesmen}/…/{child}.
      */
     public function resolveChildRouteBinding($childType, $value, $field): ?Model
     {
         if ($childType === 'payload') {
             return $this->toolPayloads()->whereKey($value)->first();
+        }
+
+        if ($childType === 'perilaku') {
+            return $this->keyBehaviors()->whereKey($value)->first();
+        }
+
+        if ($childType === 'bukti') {
+            return $this->evidenceItems()->whereKey($value)->first();
         }
 
         return parent::resolveChildRouteBinding($childType, $value, $field);

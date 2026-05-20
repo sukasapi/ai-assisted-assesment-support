@@ -45,4 +45,33 @@ class BulkTextNormalizerTest extends TestCase
         $this->assertNotNull($hasil);
         $this->assertSame('KUTIPAN BULK tes perilaku.', $hasil[1]);
     }
+
+    public function test_kutipan_spasi_ganda_model_cocok_teks_tunggal(): void
+    {
+        $haystack = 'Peserta mengatakan saya siap mengerjakan tugas ini.';
+        $kutipanModel = 'Peserta mengatakan  saya siap mengerjakan';
+
+        $this->assertNotNull(BulkTextNormalizer::findVerbatimSubstring($haystack, $kutipanModel));
+    }
+
+    public function test_canonical_payload_muatan_seragam_dari_rich(): void
+    {
+        $rich = '<p>Baris A</p><p>Baris B</p>';
+        $kanonik = BulkTextNormalizer::canonicalPayloadMuatan($rich, null, '');
+
+        $this->assertStringContainsString("Baris A\n\nBaris B", $kanonik);
+    }
+
+    public function test_pencarian_kutipan_cepat_pada_teks_panjang(): void
+    {
+        $haystack = str_repeat('kata ', 5000).'TARGET unik di sini '.str_repeat('lain ', 5000);
+        $kutipan = 'TARGET unik di sini';
+
+        $mulai = microtime(true);
+        $hasil = BulkTextNormalizer::findVerbatimSubstring($haystack, $kutipan);
+        $durasi = microtime(true) - $mulai;
+
+        $this->assertNotNull($hasil);
+        $this->assertLessThan(2.0, $durasi, 'Pencarian kutipan tidak boleh O(n²) pada teks panjang.');
+    }
 }

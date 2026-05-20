@@ -1,5 +1,15 @@
 # Development history
 
+## [2026-05-20]-[Phase 4 (inti): integrasi pratinjau GAP/Job Fit, aturan PK disahkan, finalisasi selaras]
+
+- **Aturan PK & finalisasi:** `MandatoryCompetencyCoverage` — kompetensi wajib terpenuhi hanya jika ada PK `tervalidasi=true` + tingkat + pemetaan/alat aktif. PK manual otomatis disahkan saat tambah.
+- **Migrasi:** `ais_integrasi_kompetensi`; kolom `ais_asesmen.job_fit_persen_pratinjau`, `integrasi_pratinjau_pada`.
+- **Layanan:** `CompetencyIntegrationService` (formula `v1`: rata-rata tertimbang level×bobot, target promosi +1 / talenta default 4).
+- **HTTP:** `POST /asesmen/{asesmen}/integrasi/hitung`; log `asesmen.integrasi_dihitung`.
+- **UI:** panel pratinjau di detail asesmen; widget dasbor Job Fit & GAP terbesar.
+- **Tes:** `CompetencyIntegrationTest`, `AssessmentFinalizationTest` (termasuk tolak PK draft).
+- **Dokumen:** `documentation/phase_4_ceklist.md` §0.1 aturan resmi + rumus.
+
 ## [2026-05-11]-[Phase 2 (inti): asesmen, preset alat, bukti, perilaku kunci, impor CSV peserta]
 
 - **Migrasi:** `ais_asesmen`, `ais_asesmen_asesor`, `ais_pemilihan_alat_asesmen`, `ais_bukti_penilaian`, `ais_perilaku_kunci` ([database/migrations/2026_05_13_120000_create_ais_assessment_core_tables.php](c:\laragon\www\aiassisstedconsultan\database\migrations\2026_05_13_120000_create_ais_assessment_core_tables.php)).

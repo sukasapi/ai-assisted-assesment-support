@@ -46,6 +46,43 @@ class AssessmentFinalizationTest extends TestCase
         $this->assertNull($asesmen->waktu_finalisasi);
     }
 
+    public function test_finalisasi_ditolak_jika_pk_hanya_draft(): void
+    {
+        $this->seed(DatabaseSeeder::class);
+        $admin = User::query()->where('alamat_surel', 'admin@example.com')->firstOrFail();
+        $asesmen = $this->buatAsesmen($admin);
+
+        $idAlatAktif = $asesmen->toolSelections()->where('aktif', true)->pluck('id_alat_penilaian')->all();
+        $idKompetensiWajib = CompetencyToolMapping::query()
+            ->where('id_versi_matriks', $asesmen->id_versi_matriks)
+            ->whereIn('id_alat_penilaian', $idAlatAktif)
+            ->where('aktif', true)
+            ->where('wajib', true)
+            ->pluck('id_kompetensi')
+            ->unique()
+            ->first();
+
+        $alat = AssessmentTool::query()->whereIn('id', $idAlatAktif)->orderBy('id')->firstOrFail();
+        $idTingkat = CompetencyLevel::query()
+            ->where('id_kompetensi', $idKompetensiWajib)
+            ->whereNull('dihapus_pada')
+            ->orderBy('tingkat')
+            ->value('id');
+
+        $asesmen->keyBehaviors()->create([
+            'id_alat_penilaian' => $alat->id,
+            'id_kompetensi' => (int) $idKompetensiWajib,
+            'id_tingkat_kompetensi' => (int) $idTingkat,
+            'teks_perilaku' => 'Draft belum disahkan',
+            'tervalidasi' => false,
+        ]);
+
+        $this->actingAs($admin)
+            ->patch(route('asesmen.finalisasi', $asesmen))
+            ->assertRedirect(route('asesmen.show', $asesmen))
+            ->assertSessionHasErrors('finalisasi');
+    }
+
     public function test_finalisasi_berhasil_jika_semua_kompetensi_wajib_bernilai(): void
     {
         $this->seed(DatabaseSeeder::class);
@@ -82,6 +119,9 @@ class AssessmentFinalizationTest extends TestCase
                 'id_kompetensi' => (int) $idKompetensi,
                 'id_tingkat_kompetensi' => (int) $idTingkat,
                 'teks_perilaku' => 'Terpenuhi via uji finalisasi',
+                'tervalidasi' => true,
+                'id_pengguna_validasi' => User::query()->where('alamat_surel', 'admin@example.com')->value('id'),
+                'waktu_validasi' => now(),
             ]);
         }
 
@@ -188,6 +228,8 @@ class AssessmentFinalizationTest extends TestCase
             ], [
                 'id_tingkat_kompetensi' => (int) $idTingkat,
                 'teks_perilaku' => 'Terpenuhi via helper uji finalisasi',
+                'tervalidasi' => true,
+                'waktu_validasi' => now(),
             ]);
         }
     }
