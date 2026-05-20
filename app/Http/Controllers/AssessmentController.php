@@ -27,6 +27,7 @@ use App\Models\User;
 use App\Services\Ai\AiAnalysisDispatcher;
 use App\Support\AiModelCatalog;
 use App\Support\PayloadAnalysisPresenter;
+use App\Support\ToolPayloadDeletionGuard;
 use App\Services\Ai\EvidenceAiAnalyzer;
 use App\Services\Assessment\AlatAsesmenPreset;
 use App\Services\Assessment\AssessmentToolAvailabilityDiagnostic;
@@ -411,6 +412,38 @@ class AssessmentController extends Controller
         return redirect()
             ->route('asesmen.show', $asesmen)
             ->with('status', 'Payload alat disimpan. Anda dapat menjalankan analisis AI bulk.');
+    }
+
+    public function destroyToolPayload(Assessment $asesmen, AssessmentToolPayload $payload): RedirectResponse
+    {
+        $this->authorize('update', $asesmen);
+        abort_unless((int) $payload->id_asesmen === (int) $asesmen->id, 404);
+
+        $alasan = ToolPayloadDeletionGuard::alasanTidakDapatDihapus($payload);
+        if ($alasan !== null) {
+            return redirect()
+                ->route('asesmen.show', $asesmen)
+                ->withErrors(['payload' => $alasan]);
+        }
+
+        $idPayload = $payload->id;
+
+        DB::transaction(function () use ($payload): void {
+            ToolPayloadDeletionGuard::hapusPerilakuKunciDraft($payload);
+            $payload->delete();
+        });
+
+        CatatAktivitas::catat(
+            request()->user(),
+            'payload_alat.dihapus',
+            AssessmentToolPayload::class,
+            $idPayload,
+            ['id_asesmen' => $asesmen->id],
+        );
+
+        return redirect()
+            ->route('asesmen.show', $asesmen)
+            ->with('status', 'Payload #'.$idPayload.' dihapus.');
     }
 
     public function showToolPayload(Assessment $asesmen, AssessmentToolPayload $payload): JsonResponse

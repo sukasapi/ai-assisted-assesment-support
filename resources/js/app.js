@@ -385,7 +385,6 @@ function normalizePlain(text) {
 
 document.addEventListener('DOMContentLoaded', bindWysiwygEditors);
 
-<<<<<<< HEAD
 /** Payload bulk: textarea polos (tanpa Quill) — normalisasi + preview sebelum simpan. */
 function bindBulkPayloadPlainForms() {
     document.querySelectorAll('form').forEach((form) => {
@@ -426,7 +425,10 @@ function bindBulkPayloadPlainForms() {
                 form.dataset.bulkPlainSubmitting = '1';
                 form.requestSubmit();
             });
-=======
+        });
+    });
+}
+
 const payloadStatusBadgeClass = {
     belum: 'border-outline-variant/40 bg-surface-container text-on-surface-variant',
     antrian: 'border-primary/30 bg-primary-fixed/40 text-primary',
@@ -590,14 +592,10 @@ function initPayloadDetailModal() {
             } catch (err) {
                 body.innerHTML = `<p class="text-sm text-error">${escapeHtml(err.message || 'Terjadi kesalahan.')}</p>`;
             }
->>>>>>> 559c54242bf45abfd25473f7698056782648b5e7
         });
     });
 }
 
-<<<<<<< HEAD
-document.addEventListener('DOMContentLoaded', bindBulkPayloadPlainForms);
-=======
 function initPayloadBulkStatusPolling() {
     const root = document.querySelector('[data-payload-status-url]');
     if (!root) {
@@ -651,9 +649,37 @@ function initPayloadBulkStatusPolling() {
     });
 }
 
+function initPayloadDeleteConfirm() {
+    document.querySelectorAll('.js-payload-delete-form').forEach((form) => {
+        form.addEventListener('submit', (event) => {
+            if (form.dataset.payloadDeleteConfirmed === '1') {
+                return;
+            }
+            event.preventDefault();
+            window.Swal.fire({
+                title: 'Hapus payload ini?',
+                text: 'Teks muatan dan hasil analisis AI yang belum disetujui sebagai mapping perilaku kunci akan dihapus.',
+                icon: 'warning',
+                showCancelButton: true,
+                confirmButtonText: 'Ya, hapus',
+                cancelButtonText: 'Batal',
+                confirmButtonColor: '#b3261e',
+                ...swalTheme,
+            }).then((result) => {
+                if (!result.isConfirmed) {
+                    return;
+                }
+                form.dataset.payloadDeleteConfirmed = '1';
+                form.requestSubmit();
+            });
+        });
+    });
+}
+
+document.addEventListener('DOMContentLoaded', bindBulkPayloadPlainForms);
 document.addEventListener('DOMContentLoaded', initPayloadDetailModal);
 document.addEventListener('DOMContentLoaded', initPayloadBulkStatusPolling);
->>>>>>> 559c54242bf45abfd25473f7698056782648b5e7
+document.addEventListener('DOMContentLoaded', initPayloadDeleteConfirm);
 
 /** Notifikasi dari kode lain (Livewire, fetch, dll.) */
 window.notifySuccess = (text, title = 'Berhasil') =>

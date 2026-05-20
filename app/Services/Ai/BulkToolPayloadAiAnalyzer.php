@@ -168,11 +168,7 @@ SYS;
                     'cuplikan_kutipan' => mb_substr($kutipan, 0, 120),
                 ]);
 
-<<<<<<< HEAD
                 continue;
-=======
-                return $this->gagal($payload, 'Kutipan dalam usulan bulk tidak cocok dengan teks muatan (wajib substring verbatim).');
->>>>>>> 559c54242bf45abfd25473f7698056782648b5e7
             }
             [, $kutipan] = $kutipanDitemukan;
 
