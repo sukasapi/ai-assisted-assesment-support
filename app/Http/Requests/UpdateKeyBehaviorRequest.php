@@ -32,9 +32,8 @@ class UpdateKeyBehaviorRequest extends FormRequest
     {
         return [
             'id_tingkat_kompetensi' => ['nullable', 'integer', 'exists:ais_tingkat_kompetensi,id'],
-            'teks_perilaku' => ['required', 'string'],
             'alasan_pemilihan' => ['nullable', 'string'],
-            'kutipan_referensi' => ['nullable', 'string'],
+            'simpan_sebagai_mapping' => ['sometimes', 'boolean'],
         ];
     }
 

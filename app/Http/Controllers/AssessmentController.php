@@ -26,17 +26,21 @@ use App\Models\Participant;
 use App\Models\User;
 use App\Services\Ai\AiAnalysisDispatcher;
 use App\Support\AiModelCatalog;
+use App\Support\KeyBehaviorPresentation;
 use App\Support\PayloadAnalysisPresenter;
 use App\Support\ToolPayloadDeletionGuard;
 use App\Services\Ai\EvidenceAiAnalyzer;
 use App\Services\Assessment\AlatAsesmenPreset;
 use App\Services\Assessment\AssessmentToolAvailabilityDiagnostic;
+use App\Services\Integration\CompetencyIntegrationService;
+use App\Support\MandatoryCompetencyCoverage;
 use App\Support\AiFeature;
 use App\Support\CatatAktivitas;
 use App\Support\BulkTextNormalizer;
 use App\Support\EvidenceTextNormalizer;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\View\View;
 
@@ -174,16 +178,24 @@ class AssessmentController extends Controller
         $alatTersediaInput = $ketersediaanAlat['alatTersediaInput'];
 
         $punyaKompetensiUntukMatriks = Competency::query()->whereNull('dihapus_pada')->exists();
-        $ringkasanFinalisasi = $this->ringkasanCakupanKompetensiWajib($asesmen);
+        $ringkasanFinalisasi = MandatoryCompetencyCoverage::ringkasan($asesmen);
         $gridCakupanKompetensi = $this->gridCakupanKompetensi($asesmen, $ringkasanFinalisasi);
+        $integrasiPratinjau = $asesmen->competencyIntegrations()
+            ->with('competency')
+            ->get()
+            ->sortBy(fn ($row) => $row->competency?->kode_kompetensi ?? '')
+            ->values();
         $ringkasanAlatPreset = $this->ringkasanAlatPreset($asesmen, $pemilihanAlatPreset, $pemetaanKompetensiAlat);
         $buktiPerAlat = $asesmen->evidenceItems->groupBy('id_alat_penilaian');
         $persenProgress = $ringkasanFinalisasi['total_wajib'] > 0
             ? (int) round(($ringkasanFinalisasi['total_terpenuhi'] / $ringkasanFinalisasi['total_wajib']) * 100)
             : 0;
 
+        $idPerilakuDariBulkAi = KeyBehaviorPresentation::idDariAnalisisBulk($asesmen);
+
         return view('assessments.show', [
             'asesmen' => $asesmen,
+            'idPerilakuDariBulkAi' => $idPerilakuDariBulkAi,
             'kompetensi' => $kompetensi,
             'tingkatKompetensi' => $tingkatKompetensi,
             'kelompokKompetensiMatriks' => $kelompokKompetensiMatriks,
@@ -201,7 +213,47 @@ class AssessmentController extends Controller
             'aiModelOptions' => AiModelCatalog::daftarModel(),
             'aiModelDefault' => AiModelCatalog::modelDefault(),
             'aiAntrianAsync' => AiAnalysisDispatcher::antrianAsyncAktif(),
+            'integrasiPratinjau' => $integrasiPratinjau,
         ]);
+    }
+
+    public function hitungIntegrasiPratinjau(Assessment $asesmen): RedirectResponse
+    {
+        $this->authorize('update', $asesmen);
+
+        $hasil = app(CompetencyIntegrationService::class)->hitungUlang(
+            $asesmen,
+            request()->user()?->id,
+        );
+
+        if (! ($hasil['berhasil'] ?? false)) {
+            return redirect()
+                ->route('asesmen.show', $asesmen)
+                ->withErrors(['integrasi' => $hasil['pesan'] ?? 'Pratinjau integrasi gagal dihitung.']);
+        }
+
+        CatatAktivitas::catat(
+            request()->user(),
+            'asesmen.integrasi_dihitung',
+            Assessment::class,
+            $asesmen->id,
+            [
+                'jumlah_kompetensi' => $hasil['jumlah_kompetensi'] ?? 0,
+                'job_fit_persen' => $hasil['job_fit_persen'] ?? null,
+                'rekomendasi_agregat' => $hasil['rekomendasi_agregat'] ?? null,
+            ],
+        );
+
+        $pesan = $hasil['pesan'] ?? 'Pratinjau integrasi diperbarui.';
+        if (($hasil['jumlah_kompetensi'] ?? 0) > 0) {
+            $jobFit = $hasil['job_fit_persen'] ?? null;
+            $pesan = 'Pratinjau integrasi diperbarui untuk '.$hasil['jumlah_kompetensi'].' kompetensi.'
+                .($jobFit !== null ? ' Job Fit pratinjau: '.number_format((float) $jobFit, 1).' %.' : '');
+        }
+
+        return redirect()
+            ->route('asesmen.show', $asesmen)
+            ->with('status', $pesan);
     }
 
     public function toolDiagnostic(Assessment $asesmen): JsonResponse
@@ -228,6 +280,9 @@ class AssessmentController extends Controller
                 ->with('status', 'Metode koleksi bukti tidak berubah.');
         }
 
+        $punyaPayload = $asesmen->toolPayloads()->exists();
+        $punyaPerilaku = $asesmen->keyBehaviors()->exists();
+
         $asesmen->update(['metode_koleksi_bukti' => $baru]);
 
         CatatAktivitas::catat(
@@ -238,12 +293,19 @@ class AssessmentController extends Controller
             [
                 'dari' => $lama->value,
                 'ke' => $baru->value,
+                'punya_payload' => $punyaPayload,
+                'punya_perilaku_kunci' => $punyaPerilaku,
             ],
         );
 
+        $pesan = 'Metode koleksi bukti diperbarui.';
+        if ($punyaPayload || $punyaPerilaku) {
+            $pesan .= ' Mapping perilaku kunci dan indikator yang sudah dimasukkan tetap tersimpan; tampilan koleksi bukti menyesuaikan metode baru.';
+        }
+
         return redirect()
             ->route('asesmen.show', $asesmen)
-            ->with('status', 'Metode koleksi bukti diperbarui.');
+            ->with('status', $pesan);
     }
 
     public function storeEvidence(StoreEvidenceRequest $request, Assessment $asesmen): RedirectResponse
@@ -294,6 +356,9 @@ class AssessmentController extends Controller
             'kutipan_referensi' => $request->filled('kutipan_referensi')
                 ? $request->string('kutipan_referensi')->toString()
                 : null,
+            'tervalidasi' => true,
+            'id_pengguna_validasi' => $request->user()?->id,
+            'waktu_validasi' => now(),
         ]);
 
         return redirect()
@@ -314,10 +379,13 @@ class AssessmentController extends Controller
             ->orderBy('tingkat')
             ->get();
 
+        $teksIndikatorResmi = CompetencyLevel::teksIndikatorResmi($perilaku->id_tingkat_kompetensi) ?? '';
+
         return view('assessments.key-behaviors.edit', [
             'asesmen' => $asesmen,
             'perilaku' => $perilaku,
             'tingkatUntukKompetensi' => $tingkatUntukKompetensi,
+            'teksIndikatorResmi' => $teksIndikatorResmi,
         ]);
     }
 
@@ -326,31 +394,132 @@ class AssessmentController extends Controller
         $this->authorize('update', $asesmen);
         abort_unless((int) $perilaku->id_asesmen === (int) $asesmen->id, 404);
 
-        $tingkatBaru = $request->filled('id_tingkat_kompetensi')
-            ? $request->integer('id_tingkat_kompetensi')
-            : null;
-        $teksDariForm = $request->string('teks_perilaku')->toString();
-        $tingkatLama = $perilaku->id_tingkat_kompetensi;
+        $data = [];
 
-        $teksSimpan = $teksDariForm;
-        if ($tingkatBaru !== null && (int) $tingkatBaru !== (int) ($tingkatLama ?? 0)) {
-            $teksSimpan = CompetencyLevel::teksIndikatorResmi($tingkatBaru) ?? $teksDariForm;
+        if ($request->has('id_tingkat_kompetensi')) {
+            $tingkatBaru = $request->filled('id_tingkat_kompetensi')
+                ? $request->integer('id_tingkat_kompetensi')
+                : null;
+            $tingkatLama = $perilaku->id_tingkat_kompetensi;
+            $data['id_tingkat_kompetensi'] = $tingkatBaru;
+
+            if ($tingkatBaru !== null && (int) $tingkatBaru !== (int) ($tingkatLama ?? 0)) {
+                $data['teks_perilaku'] = CompetencyLevel::teksIndikatorResmi($tingkatBaru) ?? $perilaku->teks_perilaku;
+            }
         }
 
-        $perilaku->update([
-            'id_tingkat_kompetensi' => $tingkatBaru,
-            'teks_perilaku' => $teksSimpan,
-            'alasan_pemilihan' => $request->filled('alasan_pemilihan')
+        if ($request->has('alasan_pemilihan')) {
+            $data['alasan_pemilihan'] = $request->filled('alasan_pemilihan')
                 ? $request->string('alasan_pemilihan')->toString()
-                : null,
-            'kutipan_referensi' => $request->filled('kutipan_referensi')
-                ? $request->string('kutipan_referensi')->toString()
-                : null,
-        ]);
+                : null;
+        }
+
+        if ($request->boolean('simpan_sebagai_mapping')) {
+            if ($perilaku->id_tingkat_kompetensi === null && ! isset($data['id_tingkat_kompetensi'])) {
+                return redirect()
+                    ->route('asesmen.show', $asesmen)
+                    ->withErrors([
+                        'perilaku_kunci' => 'Pilih tingkat indikator perilaku sebelum menyimpan sebagai mapping resmi.',
+                    ]);
+            }
+
+            $data['tervalidasi'] = true;
+            $data['id_pengguna_validasi'] = $request->user()?->id;
+            $data['waktu_validasi'] = now();
+        }
+
+        if ($data !== []) {
+            $perilaku->update($data);
+        }
 
         return redirect()
             ->route('asesmen.show', $asesmen)
             ->with('status', 'Perilaku kunci diperbarui.');
+    }
+
+    public function sahkanKeyBehavior(Request $request, Assessment $asesmen, KeyBehavior $perilaku): RedirectResponse|JsonResponse
+    {
+        $this->authorize('update', $asesmen);
+        abort_unless((int) $perilaku->id_asesmen === (int) $asesmen->id, 404);
+
+        $expectsJson = $request->expectsJson();
+
+        $jsonError = fn (string $message, int $status = 422): JsonResponse => response()->json([
+            'success' => false,
+            'message' => $message,
+        ], $status);
+
+        $jsonSuccess = fn (KeyBehavior $row, string $message): JsonResponse => response()->json(array_merge([
+            'success' => true,
+            'message' => $message,
+        ], $this->payloadBadgeStatusPk($row)));
+
+        if ($asesmen->status === AssessmentStatus::SelesaiFinal) {
+            return $expectsJson
+                ? $jsonError('Asesmen sudah difinalisasi.')
+                : redirect()
+                    ->route('asesmen.show', $asesmen)
+                    ->withErrors(['perilaku_kunci' => 'Asesmen sudah difinalisasi.']);
+        }
+
+        if ($perilaku->tervalidasi) {
+            $perilaku->refresh();
+
+            return $expectsJson
+                ? $jsonSuccess($perilaku, 'Mapping sudah disahkan sebelumnya.')
+                : redirect()
+                    ->route('asesmen.show', $asesmen)
+                    ->with('status', 'Mapping sudah disahkan sebelumnya.');
+        }
+
+        if ($perilaku->id_tingkat_kompetensi === null) {
+            $pesan = 'Isi tingkat indikator perilaku (lewat Edit) sebelum menyimpan sebagai mapping resmi.';
+
+            return $expectsJson
+                ? $jsonError($pesan)
+                : redirect()
+                    ->route('asesmen.show', $asesmen)
+                    ->withErrors(['perilaku_kunci' => $pesan]);
+        }
+
+        $perilaku->update([
+            'tervalidasi' => true,
+            'id_pengguna_validasi' => $request->user()?->id,
+            'waktu_validasi' => now(),
+        ]);
+
+        CatatAktivitas::catat(
+            $request->user(),
+            'asesmen.perilaku_kunci.disahkan',
+            KeyBehavior::class,
+            $perilaku->id,
+            [
+                'id_asesmen' => $asesmen->id,
+                'id_kompetensi' => $perilaku->id_kompetensi,
+            ],
+        );
+
+        $perilaku->refresh();
+        $pesan = 'Mapping perilaku kunci disahkan sebagai resmi.';
+
+        return $expectsJson
+            ? $jsonSuccess($perilaku, $pesan)
+            : redirect()
+                ->route('asesmen.show', $asesmen)
+                ->with('status', $pesan);
+    }
+
+    /**
+     * @return array{status_label: string, status_kelas: string}
+     */
+    private function payloadBadgeStatusPk(KeyBehavior $perilaku): array
+    {
+        $badge = KeyBehaviorPresentation::badgeStatus($perilaku);
+
+        return [
+            'status_label' => $badge['label'],
+            'status_kelas' => $badge['kelas'],
+        ];
     }
 
     public function analyzeEvidenceAi(Assessment $asesmen, Evidence $bukti): RedirectResponse
@@ -556,12 +725,12 @@ class AssessmentController extends Controller
                 ->with('status', 'Asesmen sudah difinalisasi sebelumnya.');
         }
 
-        $ringkasan = $this->ringkasanCakupanKompetensiWajib($asesmen);
+        $ringkasan = MandatoryCompetencyCoverage::ringkasan($asesmen);
         if ($ringkasan['total_kompetensi_kurang'] > 0) {
             return redirect()
                 ->route('asesmen.show', $asesmen)
                 ->withErrors([
-                    'finalisasi' => 'Finalisasi belum bisa dilakukan. Masih ada kompetensi wajib tanpa tingkat indikator perilaku dari evidence/perilaku kunci.',
+                    'finalisasi' => 'Finalisasi belum bisa dilakukan. Setiap kompetensi wajib harus punya minimal satu perilaku kunci disahkan (mapping resmi) dengan tingkat indikator terisi.',
                 ]);
         }
 
@@ -622,74 +791,6 @@ class AssessmentController extends Controller
      *   kompetensi_kurang: array<int, array{kode:string, nama:string}>
      * }
      */
-    private function ringkasanCakupanKompetensiWajib(Assessment $asesmen): array
-    {
-        $alatAktif = AssessmentToolSelection::query()
-            ->where('id_asesmen', $asesmen->id)
-            ->where('aktif', true)
-            ->pluck('id_alat_penilaian')
-            ->all();
-
-        if ($alatAktif === []) {
-            return [
-                'total_wajib' => 0,
-                'total_terpenuhi' => 0,
-                'total_kompetensi_kurang' => 0,
-                'kompetensi_kurang' => [],
-            ];
-        }
-
-        $mapWajib = CompetencyToolMapping::query()
-            ->where('id_versi_matriks', $asesmen->id_versi_matriks)
-            ->whereIn('id_alat_penilaian', $alatAktif)
-            ->where(function ($query): void {
-                $query->where('aktif', true)->orWhereNull('aktif');
-            })
-            ->where('wajib', true)
-            ->with('competency')
-            ->get();
-
-        $idKompetensiWajib = $mapWajib->pluck('id_kompetensi')->unique()->values();
-        if ($idKompetensiWajib->isEmpty()) {
-            return [
-                'total_wajib' => 0,
-                'total_terpenuhi' => 0,
-                'total_kompetensi_kurang' => 0,
-                'kompetensi_kurang' => [],
-            ];
-        }
-
-        $idKompetensiTerpenuhi = KeyBehavior::query()
-            ->where('id_asesmen', $asesmen->id)
-            ->whereIn('id_kompetensi', $idKompetensiWajib->all())
-            ->whereNotNull('id_tingkat_kompetensi')
-            ->pluck('id_kompetensi')
-            ->unique()
-            ->values();
-
-        $idKompetensiKurang = $idKompetensiWajib
-            ->diff($idKompetensiTerpenuhi)
-            ->values();
-
-        $kompetensiKurang = $mapWajib
-            ->filter(fn (CompetencyToolMapping $m): bool => $idKompetensiKurang->contains($m->id_kompetensi))
-            ->map(fn (CompetencyToolMapping $m): array => [
-                'kode' => (string) ($m->competency?->kode_kompetensi ?? '-'),
-                'nama' => (string) ($m->competency?->nama ?? 'Kompetensi'),
-            ])
-            ->unique('kode')
-            ->sortBy('kode')
-            ->values()
-            ->all();
-
-        return [
-            'total_wajib' => $idKompetensiWajib->count(),
-            'total_terpenuhi' => $idKompetensiTerpenuhi->count(),
-            'total_kompetensi_kurang' => $idKompetensiKurang->count(),
-            'kompetensi_kurang' => $kompetensiKurang,
-        ];
-    }
-
     /**
      * @return list<array{nama: string, kode: string, persen: int}>
      */
@@ -722,26 +823,30 @@ class AssessmentController extends Controller
             ->sortBy('kode_kompetensi')
             ->values();
 
-        $idTerpenuhi = KeyBehavior::query()
-            ->where('id_asesmen', $asesmen->id)
-            ->whereNotNull('id_tingkat_kompetensi')
+        $idTerpenuhi = MandatoryCompetencyCoverage::queryPkLayak($asesmen)
             ->pluck('id_kompetensi')
             ->flip();
 
-        $idAdaPk = KeyBehavior::query()
+        $idAdaPkDraft = KeyBehavior::query()
             ->where('id_asesmen', $asesmen->id)
+            ->where(function ($q): void {
+                $q->where('tervalidasi', false)
+                    ->orWhereNull('id_tingkat_kompetensi');
+            })
             ->pluck('id_kompetensi')
             ->flip();
 
         $grid = [];
-        foreach ($kompetensiWajib->take(8) as $c) {
+        foreach ($kompetensiWajib as $c) {
             $terpenuhi = $idTerpenuhi->has($c->id);
-            $adaPk = $idAdaPk->has($c->id);
-            $persen = $terpenuhi ? 100 : ($adaPk ? 40 : 0);
+            $adaDraft = $idAdaPkDraft->has($c->id);
+            $persen = $terpenuhi ? 100 : ($adaDraft ? 40 : 0);
             $grid[] = [
                 'nama' => (string) $c->nama,
                 'kode' => (string) $c->kode_kompetensi,
                 'persen' => $persen,
+                'terpenuhi' => $terpenuhi,
+                'ada_pk' => $adaDraft,
             ];
         }
 

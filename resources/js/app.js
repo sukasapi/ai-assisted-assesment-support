@@ -676,10 +676,91 @@ function initPayloadDeleteConfirm() {
     });
 }
 
+function getCsrfToken() {
+    return document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') ?? '';
+}
+
+function initPkSahkanAjax() {
+    document.querySelectorAll('.js-pk-sahkan-form').forEach((form) => {
+        form.addEventListener('submit', async (event) => {
+            event.preventDefault();
+            const url = form.action;
+            const btn = form.querySelector('button[type="submit"]');
+            if (!url || !btn) {
+                return;
+            }
+
+            const token = getCsrfToken();
+            btn.disabled = true;
+
+            try {
+                const res = await fetch(url, {
+                    method: 'PATCH',
+                    headers: {
+                        Accept: 'application/json',
+                        'Content-Type': 'application/json',
+                        'X-CSRF-TOKEN': token,
+                        'X-Requested-With': 'XMLHttpRequest',
+                    },
+                });
+
+                let data = {};
+                try {
+                    data = await res.json();
+                } catch {
+                    // abaikan
+                }
+
+                if (res.status === 419) {
+                    window.notifyError?.('Sesi kedaluwarsa. Muat ulang halaman lalu coba lagi.');
+                    btn.disabled = false;
+
+                    return;
+                }
+
+                if (!res.ok || data.success === false) {
+                    const msg =
+                        data.message ||
+                        (Array.isArray(data.errors?.perilaku_kunci)
+                            ? data.errors.perilaku_kunci[0]
+                            : null) ||
+                        'Gagal menyahkan mapping.';
+                    window.notifyError?.(msg);
+                    btn.disabled = false;
+
+                    return;
+                }
+
+                const row = form.closest('tr');
+                if (row) {
+                    row.classList.remove('opacity-95');
+                }
+
+                const wrap = document.createElement('p');
+                wrap.className = 'mt-2 text-[10px] font-medium text-emerald-700';
+                wrap.textContent = '✓ Resmi';
+                form.replaceWith(wrap);
+
+                const badge = row?.querySelector('[data-pk-status-badge]');
+                if (badge && data.status_label) {
+                    badge.textContent = data.status_label;
+                    badge.className = `inline-block rounded-full border px-2.5 py-1 text-[10px] font-bold ${data.status_kelas || ''}`;
+                }
+
+                window.notifySuccess?.(data.message || 'Mapping disimpan.');
+            } catch {
+                window.notifyError?.('Tidak dapat menghubungi server. Coba lagi.');
+                btn.disabled = false;
+            }
+        });
+    });
+}
+
 document.addEventListener('DOMContentLoaded', bindBulkPayloadPlainForms);
 document.addEventListener('DOMContentLoaded', initPayloadDetailModal);
 document.addEventListener('DOMContentLoaded', initPayloadBulkStatusPolling);
 document.addEventListener('DOMContentLoaded', initPayloadDeleteConfirm);
+document.addEventListener('DOMContentLoaded', initPkSahkanAjax);
 
 /** Notifikasi dari kode lain (Livewire, fetch, dll.) */
 window.notifySuccess = (text, title = 'Berhasil') =>

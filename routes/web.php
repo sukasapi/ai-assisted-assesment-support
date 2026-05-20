@@ -68,12 +68,16 @@ Route::middleware('auth')->group(function () {
             ->middleware('throttle:ai-analysis-trigger')
             ->scopeBindings()
             ->name('asesmen.payload-alat.analisis-ai');
+        Route::post('asesmen/{asesmen}/integrasi/hitung', [AssessmentController::class, 'hitungIntegrasiPratinjau'])->name('asesmen.integrasi.hitung');
         Route::patch('asesmen/{asesmen}/finalisasi', [AssessmentController::class, 'finalize'])->name('asesmen.finalisasi');
         Route::patch('asesmen/{asesmen}/batal-finalisasi', [AssessmentController::class, 'unfinalize'])->name('asesmen.batal-finalisasi');
         Route::post('asesmen/{asesmen}/perilaku-kunci', [AssessmentController::class, 'storeKeyBehavior'])->name('asesmen.perilaku.store');
         Route::get('asesmen/{asesmen}/perilaku-kunci/{perilaku}/ubah', [AssessmentController::class, 'editKeyBehavior'])
             ->scopeBindings()
             ->name('asesmen.perilaku.edit');
+        Route::patch('asesmen/{asesmen}/perilaku-kunci/{perilaku}/sahkan', [AssessmentController::class, 'sahkanKeyBehavior'])
+            ->scopeBindings()
+            ->name('asesmen.perilaku.sahkan');
         Route::patch('asesmen/{asesmen}/perilaku-kunci/{perilaku}', [AssessmentController::class, 'updateKeyBehavior'])
             ->scopeBindings()
             ->name('asesmen.perilaku.update');
