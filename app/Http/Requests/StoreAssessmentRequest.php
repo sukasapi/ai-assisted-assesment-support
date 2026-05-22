@@ -32,6 +32,13 @@ class StoreAssessmentRequest extends FormRequest
                 'integer',
                 Rule::exists('ais_pengguna', 'id')->whereIn('peran', ['admin', 'konsultan']),
             ],
+            'id_template_prompt_ai' => [
+                'nullable',
+                'integer',
+                Rule::exists('ais_template_prompt_ai', 'id')
+                    ->where('aktif', true)
+                    ->whereNull('dihapus_pada'),
+            ],
         ];
     }
 

@@ -11,6 +11,7 @@ use App\Models\CompetencyToolMapping;
 use App\Models\KeyBehavior;
 use App\Models\User;
 use App\Support\AiModelCatalog;
+use App\Support\AiPromptComposer;
 use App\Support\BulkTextNormalizer;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Support\Facades\DB;
@@ -66,6 +67,7 @@ Aturan wajib:
 7) Field "alasan" wajib menjelaskan mengapa "tingkat" dipilih, dengan merujuk secara eksplisit ke bagian teks yang relevan di "kutipan" (kutipan ulang frasa singkat jika perlu). Dilarang alasan generik tanpa tautan ke isi kutipan.
 8) Satu kode kompetensi tidak boleh dipecah menjadi beberapa usulan untuk alat yang sama—gabungkan ke satu baris terkuat.
 SYS;
+        $sistem = AiPromptComposer::gabungkanSystem($sistem, $payload->assessment, (int) $payload->id_alat_penilaian);
 
         $penggunaMsg = 'Alat: '.($payload->tool?->kode ?? '')."\n"
             .'Matriks: '.($payload->assessment?->matrixVersion?->kode_versi ?? '')."\n\n"
@@ -115,7 +117,8 @@ SYS;
             'usage' => $usage,
             'dicoba_model' => $hasilApi['dicoba_model'] ?? [$namaModel],
             'model_berhasil' => $namaModel,
-        ], static fn ($v) => $v !== null);
+            'prompt_template' => AiPromptComposer::metadataUntukAlat($payload->assessment, (int) $payload->id_alat_penilaian),
+        ], static fn ($v) => $v !== null && $v !== ['kode' => null, 'nama' => null]);
 
         if (! $response->successful()) {
             $logBaru->pesan_kesalahan = $response->body();

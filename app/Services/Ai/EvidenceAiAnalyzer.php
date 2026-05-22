@@ -7,6 +7,7 @@ use App\Models\CompetencyLevel;
 use App\Models\Evidence;
 use App\Models\User;
 use App\Support\AiModelCatalog;
+use App\Support\AiPromptComposer;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 
@@ -55,6 +56,7 @@ Anda membantu asesor menafsirkan SATU bukti penilaian. Aturan wajib:
    keyakinan (angka 0 sampai 1).
 4) Jika kutipan tidak verbatim, set keyakinan rendah dan jelaskan di alasan.
 SYS;
+        $sistem = AiPromptComposer::gabungkanSystem($sistem, $bukti->assessment, (int) $bukti->id_alat_penilaian);
 
         $penggunaMsg = "Kompetensi: {$kodeKompetensi} — {$namaKompetensi}\n"
             .'Alat: '.($bukti->tool?->kode ?? '')."\n\n"
@@ -102,7 +104,8 @@ SYS;
             'usage' => $usage,
             'dicoba_model' => $hasilApi['dicoba_model'] ?? [],
             'model_berhasil' => $hasilApi['nama_model'] ?? $logBaru->nama_model,
-        ], static fn ($v) => $v !== null);
+            'prompt_template' => AiPromptComposer::metadataUntukAlat($bukti->assessment, (int) $bukti->id_alat_penilaian),
+        ], static fn ($v) => $v !== null && $v !== ['kode' => null, 'nama' => null]);
 
         $logBaru->kode_http = $response->status();
         $logBaru->metadata = $meta;

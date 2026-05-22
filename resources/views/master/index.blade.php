@@ -15,6 +15,8 @@
             ['route' => 'master.alat-penilaian.index', 'icon' => 'construction', 'label' => 'Alat penilaian'],
             ['route' => 'master.versi-matriks.index', 'icon' => 'grid_view', 'label' => 'Versi matriks', 'hint' => 'Termasuk pemetaan per versi'],
             ['route' => 'master.peserta.index', 'icon' => 'group', 'label' => 'Peserta'],
+            ['route' => 'master.template-prompt-ai.index', 'icon' => 'description', 'label' => 'Template prompt AI', 'hint' => 'STAR, kerangka analisis, dll.'],
+            ['route' => 'master.model-ai.index', 'icon' => 'model_training', 'label' => 'Model AI (OpenRouter)'],
         ];
         if (auth()->user()->role === 'admin') {
             $links[] = ['route' => 'master.log-aktivitas.index', 'icon' => 'history', 'label' => 'Log aktivitas'];

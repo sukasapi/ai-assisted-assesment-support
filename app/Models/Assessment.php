@@ -30,6 +30,7 @@ class Assessment extends Model
         'catatan',
         'job_fit_persen_pratinjau',
         'integrasi_pratinjau_pada',
+        'id_template_prompt_ai',
     ];
 
     protected function casts(): array
@@ -93,6 +94,16 @@ class Assessment extends Model
     public function competencyIntegrations(): HasMany
     {
         return $this->hasMany(CompetencyIntegration::class, 'id_asesmen');
+    }
+
+    public function aiPromptTemplate(): BelongsTo
+    {
+        return $this->belongsTo(AiPromptTemplate::class, 'id_template_prompt_ai');
+    }
+
+    public function toolAiPrompts(): HasMany
+    {
+        return $this->hasMany(AssessmentToolAiPrompt::class, 'id_asesmen');
     }
 
     /**

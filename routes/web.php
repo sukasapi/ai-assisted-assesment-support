@@ -5,6 +5,8 @@ use App\Http\Controllers\Auth\LoginController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\Master\ActivityLogController;
 use App\Http\Controllers\Master\AiLogController;
+use App\Http\Controllers\Master\AiOpenRouterModelController;
+use App\Http\Controllers\Master\AiPromptTemplateController;
 use App\Http\Controllers\Master\AssessmentToolController;
 use App\Http\Controllers\Master\CompetencyController;
 use App\Http\Controllers\Master\CompetencyGroupController;
@@ -44,12 +46,16 @@ Route::middleware('auth')->group(function () {
                 ->with('status', 'Pemetaan kompetensi–alat ada di tiap versi matriks: buka Versi matriks, lalu tautan «Pemetaan».');
         })->name('master.pemetaan-kompetensi-alat.index');
         Route::get('master/peserta', [MasterDataController::class, 'participants'])->name('master.peserta.index');
+        Route::get('master/template-prompt-ai', [MasterDataController::class, 'aiPromptTemplates'])->name('master.template-prompt-ai.index');
+        Route::get('master/model-ai', [MasterDataController::class, 'aiModels'])->name('master.model-ai.index');
 
         Route::get('asesmen', [AssessmentController::class, 'index'])->name('asesmen.index');
         Route::get('asesmen/buat', [AssessmentController::class, 'create'])->name('asesmen.create');
         Route::post('asesmen', [AssessmentController::class, 'store'])->name('asesmen.store');
         Route::get('asesmen/{asesmen}/diagnostik-alat', [AssessmentController::class, 'toolDiagnostic'])->name('asesmen.diagnostik-alat');
         Route::patch('asesmen/{asesmen}/metode-koleksi-bukti', [AssessmentController::class, 'updateEvidenceCollectionMode'])->name('asesmen.metode-koleksi-bukti.update');
+        Route::patch('asesmen/{asesmen}/template-prompt-ai', [AssessmentController::class, 'updateAiPromptTemplate'])->name('asesmen.template-prompt-ai.update');
+        Route::patch('asesmen/{asesmen}/template-prompt-alat', [AssessmentController::class, 'updateToolAiPrompts'])->name('asesmen.template-prompt-alat.update');
         Route::post('asesmen/{asesmen}/bukti', [AssessmentController::class, 'storeEvidence'])->name('asesmen.bukti.store');
         Route::post('asesmen/{asesmen}/bukti/{bukti}/analisis-ai', [AssessmentController::class, 'analyzeEvidenceAi'])
             ->middleware('throttle:ai-analysis-trigger')
@@ -140,5 +146,17 @@ Route::middleware('auth')->group(function () {
         Route::get('master/peserta/{peserta}/ubah', [ParticipantMasterController::class, 'edit'])->name('master.peserta.edit');
         Route::put('master/peserta/{peserta}', [ParticipantMasterController::class, 'update'])->name('master.peserta.update');
         Route::delete('master/peserta/{peserta}', [ParticipantMasterController::class, 'destroy'])->name('master.peserta.destroy');
+
+        Route::get('master/template-prompt-ai/buat', [AiPromptTemplateController::class, 'create'])->name('master.template-prompt-ai.create');
+        Route::post('master/template-prompt-ai', [AiPromptTemplateController::class, 'store'])->name('master.template-prompt-ai.store');
+        Route::get('master/template-prompt-ai/{templatePromptAi}/ubah', [AiPromptTemplateController::class, 'edit'])->name('master.template-prompt-ai.edit');
+        Route::put('master/template-prompt-ai/{templatePromptAi}', [AiPromptTemplateController::class, 'update'])->name('master.template-prompt-ai.update');
+        Route::delete('master/template-prompt-ai/{templatePromptAi}', [AiPromptTemplateController::class, 'destroy'])->name('master.template-prompt-ai.destroy');
+
+        Route::get('master/model-ai/buat', [AiOpenRouterModelController::class, 'create'])->name('master.model-ai.create');
+        Route::post('master/model-ai', [AiOpenRouterModelController::class, 'store'])->name('master.model-ai.store');
+        Route::get('master/model-ai/{modelAi}/ubah', [AiOpenRouterModelController::class, 'edit'])->name('master.model-ai.edit');
+        Route::put('master/model-ai/{modelAi}', [AiOpenRouterModelController::class, 'update'])->name('master.model-ai.update');
+        Route::delete('master/model-ai/{modelAi}', [AiOpenRouterModelController::class, 'destroy'])->name('master.model-ai.destroy');
     });
 });

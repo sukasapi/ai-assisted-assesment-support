@@ -22,6 +22,25 @@ class AiModelCatalogTest extends TestCase
         $this->assertSame('model-a', AiModelCatalog::selesaikan('tidak-ada'));
     }
 
+    public function test_daftar_model_prioritas_database(): void
+    {
+        $this->artisan('migrate', ['--force' => true]);
+        \App\Models\AiOpenRouterModel::query()->create([
+            'id_model_openrouter' => 'vendor/from-db',
+            'label' => 'From DB',
+            'urutan' => 0,
+            'utama' => true,
+            'aktif' => true,
+        ]);
+
+        Config::set('ai.openrouter.daftar_model', [
+            ['id' => 'model-env-only', 'label' => 'Env'],
+        ]);
+
+        $this->assertSame('vendor/from-db', AiModelCatalog::daftarModel()[0]['id']);
+        $this->assertSame('vendor/from-db', AiModelCatalog::modelDefault());
+    }
+
     public function test_model_gratis_bawaan_tidak_kosong(): void
     {
         $gratis = AiModelCatalog::modelGratisBawaan();
