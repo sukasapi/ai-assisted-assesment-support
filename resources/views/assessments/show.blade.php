@@ -162,8 +162,8 @@
             </details>
         </section>
 
-        {{-- Section C & D: Metode & asesor --}}
-        <section class="grid grid-cols-1 gap-gutter md:grid-cols-2">
+        {{-- Section C, D, E: Metode, template AI, asesor --}}
+        <section class="grid grid-cols-1 gap-gutter lg:grid-cols-2">
             <div class="card-depth rounded-xl bg-surface-container-lowest p-8">
                 <p class="mb-6 text-section-header uppercase text-on-surface-variant">Metode Pengumpulan Bukti</p>
                 @can('update', $asesmen)
@@ -251,6 +251,102 @@
                             Ubah toggle di atas, simpan payload alat, lalu gunakan tombol bulk pada setiap payload tersimpan.
                         </p>
                     </div>
+                @endif
+            </div>
+
+            <div class="card-depth rounded-xl bg-surface-container-lowest p-8 xl:col-span-2">
+                <p class="mb-2 text-section-header uppercase text-on-surface-variant">Template prompt AI</p>
+                <p class="mb-6 text-xs text-on-surface-variant">Default dari master (per alat), dapat di-override per asesmen. Analisis AI memakai template sesuai alat bukti/payload.</p>
+                @if (($opsiTemplatePromptAi ?? []) === [])
+                    <p class="text-sm text-on-surface-variant">Belum ada template aktif. Admin dapat menambah di Master data → Template prompt AI.</p>
+                @else
+                    @can('update', $asesmen)
+                        <form method="POST" action="{{ route('asesmen.template-prompt-ai.update', $asesmen) }}" class="mb-6 max-w-md space-y-2">
+                            @csrf
+                            @method('PATCH')
+                            <label for="id_template_prompt_ai" class="text-xs font-semibold uppercase tracking-wider text-on-surface-variant">Terapkan ke semua alat aktif</label>
+                            <select
+                                id="id_template_prompt_ai"
+                                name="id_template_prompt_ai"
+                                class="w-full rounded-lg border border-outline-variant/40 bg-surface-container-low px-3 py-2 text-sm text-on-surface"
+                                onchange="if (confirm('Terapkan template ini ke semua alat aktif? Pengaturan per alat akan disamakan.')) { this.form.submit(); } else { this.selectedIndex = 0; }"
+                            >
+                                <option value="" disabled selected hidden>— pilih untuk terapkan massal —</option>
+                                <option value="">Tanpa template (semua alat)</option>
+                                @foreach ($opsiTemplatePromptAi as $tpl)
+                                    <option value="{{ $tpl['id'] }}">{{ $tpl['nama'] }} ({{ $tpl['kode'] }})</option>
+                                @endforeach
+                            </select>
+                        </form>
+
+                        @if (($ringkasanTemplatePerAlat ?? []) !== [])
+                            <form method="POST" action="{{ route('asesmen.template-prompt-alat.update', $asesmen) }}" class="space-y-3">
+                                @csrf
+                                @method('PATCH')
+                                <div class="overflow-x-auto rounded-lg border border-outline-variant/30">
+                                    <table class="min-w-full text-left text-sm">
+                                        <thead class="bg-surface-container-low text-xs uppercase text-on-surface-variant">
+                                            <tr>
+                                                <th class="px-4 py-3">Alat</th>
+                                                <th class="px-4 py-3">Default master</th>
+                                                <th class="px-4 py-3">Pengaturan asesmen</th>
+                                                <th class="px-4 py-3">Efektif</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody class="divide-y divide-outline-variant/20">
+                                            @foreach ($ringkasanTemplatePerAlat as $baris)
+                                                <tr>
+                                                    <td class="px-4 py-3 font-semibold text-on-surface">{{ $baris['kode'] }}</td>
+                                                    <td class="px-4 py-3 text-xs text-on-surface-variant">{{ $baris['master_label'] ?? '—' }}</td>
+                                                    <td class="px-4 py-3">
+                                                        <input type="hidden" name="prompt_alat[{{ $baris['id_alat'] }}][id_alat_penilaian]" value="{{ $baris['id_alat'] }}">
+                                                        <select
+                                                            name="prompt_alat[{{ $baris['id_alat'] }}][mode]"
+                                                            class="js-prompt-mode mb-2 w-full min-w-[10rem] rounded-md border border-outline-variant px-2 py-1.5 text-xs"
+                                                            data-alat="{{ $baris['id_alat'] }}"
+                                                        >
+                                                            <option value="master" @selected($baris['mode'] === 'master')>Ikuti master</option>
+                                                            <option value="none" @selected($baris['mode'] === 'none')>Tanpa template</option>
+                                                            <option value="custom" @selected($baris['mode'] === 'custom')>Template khusus</option>
+                                                        </select>
+                                                        <select
+                                                            name="prompt_alat[{{ $baris['id_alat'] }}][id_template_prompt_ai]"
+                                                            class="js-prompt-custom w-full min-w-[10rem] rounded-md border border-outline-variant px-2 py-1.5 text-xs {{ $baris['mode'] === 'custom' ? '' : 'hidden' }}"
+                                                        >
+                                                            <option value="">— pilih —</option>
+                                                            @foreach ($opsiTemplatePromptAi as $tpl)
+                                                                <option value="{{ $tpl['id'] }}" @selected((int) ($baris['id_template'] ?? 0) === $tpl['id'])>{{ $tpl['kode'] }}</option>
+                                                            @endforeach
+                                                        </select>
+                                                    </td>
+                                                    <td class="px-4 py-3 text-xs text-on-surface-variant">{{ $baris['template_label'] }}</td>
+                                                </tr>
+                                            @endforeach
+                                        </tbody>
+                                    </table>
+                                </div>
+                                <button type="submit" class="rounded-lg bg-primary px-4 py-2 text-sm font-semibold text-white hover:opacity-90">Simpan per alat</button>
+                            </form>
+                            <script>
+                                document.querySelectorAll('.js-prompt-mode').forEach((sel) => {
+                                    const toggle = () => {
+                                        const custom = sel.closest('td')?.querySelector('.js-prompt-custom');
+                                        if (custom) {
+                                            custom.classList.toggle('hidden', sel.value !== 'custom');
+                                        }
+                                    };
+                                    sel.addEventListener('change', toggle);
+                                    toggle();
+                                });
+                            </script>
+                        @endif
+                    @else
+                        <ul class="space-y-2 text-sm text-on-surface-variant">
+                            @foreach ($ringkasanTemplatePerAlat ?? [] as $baris)
+                                <li><strong>{{ $baris['kode'] }}</strong>: {{ $baris['template_label'] }} <span class="text-xs">({{ $baris['mode_label'] }})</span></li>
+                            @endforeach
+                        </ul>
+                    @endcan
                 @endif
             </div>
 

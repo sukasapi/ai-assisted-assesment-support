@@ -13,6 +13,7 @@ class DatabaseSeeder extends Seeder
     public function run(): void
     {
         $this->call(MasterDataSeeder::class);
+        $this->call(AiMasterSeeder::class);
         $this->call(ContohVersiMatriksPaketSeeder::class);
 
         User::factory()->admin()->create([

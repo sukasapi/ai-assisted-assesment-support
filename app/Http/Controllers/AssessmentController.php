@@ -9,6 +9,9 @@ use App\Http\Requests\StoreAssessmentRequest;
 use App\Http\Requests\StoreAssessmentToolPayloadRequest;
 use App\Http\Requests\StoreEvidenceRequest;
 use App\Http\Requests\StoreKeyBehaviorRequest;
+use App\Enums\AssessmentToolPromptMode;
+use App\Http\Requests\UpdateAssessmentAiPromptTemplateRequest;
+use App\Http\Requests\UpdateAssessmentToolAiPromptRequest;
 use App\Http\Requests\UpdateAssessmentEvidenceCollectionModeRequest;
 use App\Http\Requests\UpdateKeyBehaviorRequest;
 use App\Models\Assessment;
@@ -26,6 +29,8 @@ use App\Models\Participant;
 use App\Models\User;
 use App\Services\Ai\AiAnalysisDispatcher;
 use App\Support\AiModelCatalog;
+use App\Support\AiPromptComposer;
+use App\Support\AiPromptTemplateResolver;
 use App\Support\KeyBehaviorPresentation;
 use App\Support\PayloadAnalysisPresenter;
 use App\Support\ToolPayloadDeletionGuard;
@@ -69,6 +74,7 @@ class AssessmentController extends Controller
                 ->whereIn('peran', ['admin', 'konsultan'])
                 ->orderBy('nama')
                 ->get(),
+            'opsiTemplatePromptAi' => AiPromptComposer::opsiTemplateAktif(),
         ]);
     }
 
@@ -81,6 +87,10 @@ class AssessmentController extends Controller
 
         $asesmen = DB::transaction(function () use ($request, $tujuan, $metode): Assessment {
             /** @var Assessment $row */
+            $idTemplate = $request->filled('id_template_prompt_ai')
+                ? $request->integer('id_template_prompt_ai')
+                : null;
+
             $row = Assessment::query()->create([
                 'id_peserta' => $request->integer('id_peserta'),
                 'id_versi_matriks' => $request->integer('id_versi_matriks'),
@@ -88,6 +98,7 @@ class AssessmentController extends Controller
                 'status' => AssessmentStatus::Draf,
                 'tanpa_intray' => $request->boolean('tanpa_intray'),
                 'metode_koleksi_bukti' => $metode,
+                'id_template_prompt_ai' => $idTemplate,
                 'id_pengguna_pembuat' => $request->user()?->id,
             ]);
 
@@ -105,6 +116,11 @@ class AssessmentController extends Controller
                 $tujuan,
                 $row->tanpa_intray
             );
+
+            AiPromptTemplateResolver::inisialisasiAlatAktifBilaPerlu($row);
+            if ($idTemplate !== null) {
+                AiPromptTemplateResolver::terapkanKeSemuaAlatAktif($row, $idTemplate);
+            }
 
             return $row;
         });
@@ -135,6 +151,7 @@ class AssessmentController extends Controller
         $asesmen->load([
             'participant',
             'matrixVersion',
+            'aiPromptTemplate',
             'assessorAssignments.user',
             'toolSelections.tool',
             'evidenceItems.tool',
@@ -214,7 +231,73 @@ class AssessmentController extends Controller
             'aiModelDefault' => AiModelCatalog::modelDefault(),
             'aiAntrianAsync' => AiAnalysisDispatcher::antrianAsyncAktif(),
             'integrasiPratinjau' => $integrasiPratinjau,
+            'opsiTemplatePromptAi' => AiPromptComposer::opsiTemplateAktif(),
+            'ringkasanTemplatePerAlat' => AiPromptTemplateResolver::ringkasanPerAlatAktif($asesmen),
         ]);
+    }
+
+    public function updateAiPromptTemplate(UpdateAssessmentAiPromptTemplateRequest $request, Assessment $asesmen): RedirectResponse
+    {
+        $this->authorize('update', $asesmen);
+
+        $idBaru = $request->filled('id_template_prompt_ai')
+            ? $request->integer('id_template_prompt_ai')
+            : null;
+
+        if ((int) $asesmen->id_template_prompt_ai === (int) $idBaru) {
+            return redirect()
+                ->route('asesmen.show', $asesmen)
+                ->with('status', 'Template prompt AI tidak berubah.');
+        }
+
+        $asesmen->update(['id_template_prompt_ai' => $idBaru]);
+        AiPromptTemplateResolver::terapkanKeSemuaAlatAktif($asesmen, $idBaru);
+
+        CatatAktivitas::catat(
+            $request->user(),
+            'asesmen.template_prompt_ai.diubah',
+            Assessment::class,
+            $asesmen->id,
+            ['id_template_prompt_ai' => $idBaru, 'diterapkan_ke_semua_alat' => true],
+        );
+
+        return redirect()
+            ->route('asesmen.show', $asesmen)
+            ->with('status', 'Template diterapkan ke semua alat aktif. Sesuaikan per alat di bawah jika perlu.');
+    }
+
+    public function updateToolAiPrompts(UpdateAssessmentToolAiPromptRequest $request, Assessment $asesmen): RedirectResponse
+    {
+        $this->authorize('update', $asesmen);
+
+        foreach ($request->input('prompt_alat', []) as $baris) {
+            if (! is_array($baris)) {
+                continue;
+            }
+            $idAlat = (int) ($baris['id_alat_penilaian'] ?? 0);
+            if ($idAlat <= 0) {
+                continue;
+            }
+            $mode = AssessmentToolPromptMode::tryFrom((string) ($baris['mode'] ?? ''))
+                ?? AssessmentToolPromptMode::Master;
+            $idTemplate = isset($baris['id_template_prompt_ai']) && $baris['id_template_prompt_ai'] !== ''
+                ? (int) $baris['id_template_prompt_ai']
+                : null;
+
+            AiPromptTemplateResolver::simpanOverride($asesmen->id, $idAlat, $mode, $idTemplate);
+        }
+
+        CatatAktivitas::catat(
+            $request->user(),
+            'asesmen.template_prompt_alat.diubah',
+            Assessment::class,
+            $asesmen->id,
+            ['jumlah_alat' => count($request->input('prompt_alat', []))],
+        );
+
+        return redirect()
+            ->route('asesmen.show', $asesmen)
+            ->with('status', 'Template prompt per alat diperbarui.');
     }
 
     public function hitungIntegrasiPratinjau(Assessment $asesmen): RedirectResponse

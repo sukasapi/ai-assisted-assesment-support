@@ -50,6 +50,17 @@
             </div>
         </fieldset>
 
+        @if (($opsiTemplatePromptAi ?? []) !== [])
+            <x-ui.form-select label="Template prompt AI — terapkan ke semua alat (opsional)" name="id_template_prompt_ai" hint="Menerapkan template yang sama ke tiap alat aktif. Di detail asesmen dapat diatur per alat atau ikuti default master (mis. STAR hanya BEI).">
+                <option value="">— tanpa template tambahan —</option>
+                @foreach ($opsiTemplatePromptAi as $tpl)
+                    <option value="{{ $tpl['id'] }}" @selected((int) old('id_template_prompt_ai') === $tpl['id'])>
+                        {{ $tpl['nama'] }} ({{ $tpl['kode'] }})
+                    </option>
+                @endforeach
+            </x-ui.form-select>
+        @endif
+
         <div class="flex items-center gap-2">
             <input type="hidden" name="tanpa_intray" value="0">
             <input type="checkbox" name="tanpa_intray" id="tanpa_intray" value="1" class="size-4 rounded border-outline-variant text-primary focus:ring-primary/20" @checked(old('tanpa_intray'))>

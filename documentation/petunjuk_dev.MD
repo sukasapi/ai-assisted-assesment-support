@@ -283,6 +283,19 @@ Metode dapat diubah di halaman detail asesmen selama belum final.
 | `AI_QUEUE_NAME` | `ai-analysis` |
 | `AI_TRIGGER_PER_MINUTE` | 20 (throttle trigger UI) |
 
+**Master data AI (opsi C):**
+
+| Master | Menu | Fungsi |
+|--------|------|--------|
+| **Template prompt AI** | Master data → Template prompt AI | Kerangka analisis (mis. STAR) — teks instruksi digabung ke prompt sistem untuk **semua alat** |
+| **Model AI** | Master data → Model AI (OpenRouter) | Daftar model yang boleh dipilih; jika tabel berisi baris aktif, menggantikan `AI_OPENROUTER_MODELS` di `.env` |
+
+- **Default master:** di form template, centang **alat penilaian** yang memakai template tersebut (mis. STAR → BEI).
+- **Per asesmen per alat:** di detail asesmen, tabel «Template prompt AI» — mode *Ikuti master* / *Tanpa template* / *Template khusus* per alat; tombol «Terapkan ke semua alat» untuk set massal.
+- Urutan resolusi efektif: override per alat asesmen → pemetaan master template–alat → fallback `id_template_prompt_ai` global asesmen.
+- Seeder: `AiMasterSeeder` (STAR terhubung BEI; model dari `.env` bila kosong).
+- Log AI: metadata `prompt_template` berisi kode, nama, dan `sumber` (`master` | `asesmen_per_alat` | `asesmen_global`).
+
 **Prinsip governance AI:**
 
 - Prompt memaksa **kutipan verbatim** dari teks mentah; tidak mengarang fakta di luar bukti.

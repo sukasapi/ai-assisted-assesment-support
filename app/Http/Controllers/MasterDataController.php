@@ -2,6 +2,8 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\AiOpenRouterModel;
+use App\Models\AiPromptTemplate;
 use App\Models\AssessmentTool;
 use App\Models\Competency;
 use App\Models\CompetencyGroup;
@@ -68,5 +70,26 @@ class MasterDataController extends Controller
             ->paginate(25);
 
         return view('master.participants', compact('items'));
+    }
+
+    public function aiPromptTemplates(): View
+    {
+        $items = AiPromptTemplate::query()
+            ->with('tools:id,kode,nama')
+            ->orderBy('urutan')
+            ->orderBy('nama')
+            ->paginate(25);
+
+        return view('master.ai-prompt-templates', compact('items'));
+    }
+
+    public function aiModels(): View
+    {
+        $items = AiOpenRouterModel::query()
+            ->orderBy('urutan')
+            ->orderBy('label')
+            ->paginate(25);
+
+        return view('master.ai-models', compact('items'));
     }
 }
