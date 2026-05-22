@@ -28,6 +28,8 @@ class Assessment extends Model
         'id_pengguna_finalisasi',
         'waktu_finalisasi',
         'catatan',
+        'job_fit_persen_pratinjau',
+        'integrasi_pratinjau_pada',
     ];
 
     protected function casts(): array
@@ -38,6 +40,8 @@ class Assessment extends Model
             'tanpa_intray' => 'boolean',
             'metode_koleksi_bukti' => AssessmentEvidenceCollectionMode::class,
             'waktu_finalisasi' => 'datetime',
+            'job_fit_persen_pratinjau' => 'decimal:2',
+            'integrasi_pratinjau_pada' => 'datetime',
         ];
     }
 
@@ -84,6 +88,11 @@ class Assessment extends Model
     public function toolPayloads(): HasMany
     {
         return $this->hasMany(AssessmentToolPayload::class, 'id_asesmen')->orderByDesc('id');
+    }
+
+    public function competencyIntegrations(): HasMany
+    {
+        return $this->hasMany(CompetencyIntegration::class, 'id_asesmen');
     }
 
     /**
