@@ -1,5 +1,29 @@
 # Development history
 
+## [2026-05-23]-[Master pengguna, sesi assessment, penugasan admin & token konsultan]
+
+- **Migrasi:** `ais_sesi_asesmen`, FK wajib `ais_asesmen.id_sesi_asesmen` (sesi legacy `SES-LEGACY`), `aktif` di `ais_pengguna`, `jenis_penugasan` di `ais_asesmen_asesor`, `ais_penugasan_konsultan` + pivot asesmen.
+- **Master admin:** CRUD pengguna (`master/pengguna`); konsultan tidak boleh akses.
+- **Sesi:** CRUD `sesi-asesmen`; buat asesmen hanya dari dalam sesi (`sesi-asesmen.asesmen.store`); redirect `asesmen/buat` → daftar sesi.
+- **Otorisasi:** admin **update** asesmen hanya jika ditugaskan di `ais_asesmen_asesor` (`jenis_penugasan=admin`); konsultan login biasa lalu **token 8 karakter** (`EnsureKonsultanPenugasanToken`, throttle `konsultan-token`).
+- **Tes:** `SessionUserAndTokenTest`, helper `AssessmentTestHelpers`; tes lama memakai route sesi.
+- **Dokumen:** bagian sesi & token di `petunjuk_dev.MD`.
+
+## [2026-05-22]-[Template prompt per alat: master default + override asesmen]
+
+- **Migrasi:** `ais_pemetaan_template_alat`, `ais_asesmen_template_alat` (mode: master | none | custom).
+- **Resolver:** `AiPromptTemplateResolver` — urutan: override per alat → master template–alat → global asesmen.
+- **UI:** centang alat di master template; tabel per alat di detail asesmen + terapkan massal.
+- **Seeder:** STAR ↔ BEI. **Tes:** `AiPromptTemplateResolverTest`, perluasan feature test.
+
+## [2026-05-22]-[Master AI: template prompt (opsi C) + model OpenRouter di database]
+
+- **Migrasi:** `ais_template_prompt_ai`, `ais_model_ai`, FK `ais_asesmen.id_template_prompt_ai`.
+- **Master admin:** CRUD template prompt & model AI; seeder `AiMasterSeeder` (STAR + impor model dari `.env`).
+- **Asesmen:** pilih template saat buat / ubah di detail; `AiPromptComposer` menggabung instruksi ke prompt inkremental & bulk (semua alat).
+- **Katalog model:** `AiModelCatalog` prioritas data DB aktif, fallback `.env`.
+- **Tes:** `AiPromptComposerTest`, `AiMasterAndTemplateTest`, perluasan `AiModelCatalogTest`.
+
 ## [2026-05-20]-[Phase 4 (inti): integrasi pratinjau GAP/Job Fit, aturan PK disahkan, finalisasi selaras]
 
 - **Aturan PK & finalisasi:** `MandatoryCompetencyCoverage` — kompetensi wajib terpenuhi hanya jika ada PK `tervalidasi=true` + tingkat + pemetaan/alat aktif. PK manual otomatis disahkan saat tambah.

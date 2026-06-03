@@ -16,9 +16,17 @@
     ];
 
     if ($bolehMaster) {
+        if (auth()->user()->role === 'admin') {
+            $navItems[] = [
+                'href' => route('sesi-asesmen.index'),
+                'active' => request()->routeIs('sesi-asesmen.*'),
+                'icon' => 'event',
+                'label' => 'Sesi assessment',
+            ];
+        }
         $navItems[] = [
             'href' => route('asesmen.index'),
-            'active' => request()->routeIs('asesmen.*'),
+            'active' => request()->routeIs('asesmen.*') && ! request()->routeIs('asesmen.token*'),
             'icon' => 'assessment',
             'label' => 'Asesmen',
         ];

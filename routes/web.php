@@ -1,10 +1,15 @@
 <?php
 
 use App\Http\Controllers\AssessmentController;
+use App\Http\Controllers\AssessmentSessionController;
+use App\Http\Controllers\AssessmentTokenGateController;
+use App\Http\Controllers\ConsultantAssignmentController;
 use App\Http\Controllers\Auth\LoginController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\Master\ActivityLogController;
 use App\Http\Controllers\Master\AiLogController;
+use App\Http\Controllers\Master\AiOpenRouterModelController;
+use App\Http\Controllers\Master\AiPromptTemplateController;
 use App\Http\Controllers\Master\AssessmentToolController;
 use App\Http\Controllers\Master\CompetencyController;
 use App\Http\Controllers\Master\CompetencyGroupController;
@@ -12,6 +17,7 @@ use App\Http\Controllers\Master\CompetencyLevelController;
 use App\Http\Controllers\Master\CompetencyToolMappingController;
 use App\Http\Controllers\Master\MatrixVersionController;
 use App\Http\Controllers\Master\ParticipantMasterController;
+use App\Http\Controllers\Master\UserMasterController;
 use App\Http\Controllers\MasterDataController;
 use App\Http\Controllers\ParticipantImportController;
 use App\Models\CompetencyToolMapping;
@@ -23,14 +29,22 @@ Route::get('/', function () {
 
 Route::middleware('guest')->group(function () {
     Route::get('login', [LoginController::class, 'create'])->name('login');
-    Route::post('login', [LoginController::class, 'store'])->name('login.store');
+    Route::post('login', [LoginController::class, 'store'])
+        ->middleware('throttle:login')
+        ->name('login.store');
 });
 
-Route::middleware('auth')->group(function () {
+Route::middleware(['auth', 'user.aktif'])->group(function () {
     Route::post('logout', [LoginController::class, 'destroy'])->name('logout');
     Route::get('dashboard', DashboardController::class)->name('dashboard');
 
     Route::middleware('role:admin,konsultan')->group(function () {
+        Route::get('asesmen/token', [AssessmentTokenGateController::class, 'show'])->name('asesmen.token');
+        Route::post('asesmen/token', [AssessmentTokenGateController::class, 'verify'])
+            ->middleware('throttle:konsultan-token')
+            ->name('asesmen.token.verify');
+        Route::post('asesmen/token/hapus', [AssessmentTokenGateController::class, 'clear'])->name('asesmen.token.clear');
+
         Route::get('master', [MasterDataController::class, 'index'])->name('master.index');
         Route::get('master/kelompok-kompetensi', [MasterDataController::class, 'competencyGroups'])->name('master.kelompok-kompetensi.index');
         Route::get('master/kompetensi', [MasterDataController::class, 'competencies'])->name('master.kompetensi.index');
@@ -44,12 +58,19 @@ Route::middleware('auth')->group(function () {
                 ->with('status', 'Pemetaan kompetensi–alat ada di tiap versi matriks: buka Versi matriks, lalu tautan «Pemetaan».');
         })->name('master.pemetaan-kompetensi-alat.index');
         Route::get('master/peserta', [MasterDataController::class, 'participants'])->name('master.peserta.index');
+        Route::get('master/template-prompt-ai', [MasterDataController::class, 'aiPromptTemplates'])->name('master.template-prompt-ai.index');
+        Route::get('master/model-ai', [MasterDataController::class, 'aiModels'])->name('master.model-ai.index');
+    });
 
+    Route::middleware(['role:admin,konsultan', 'konsultan.token'])->group(function () {
         Route::get('asesmen', [AssessmentController::class, 'index'])->name('asesmen.index');
-        Route::get('asesmen/buat', [AssessmentController::class, 'create'])->name('asesmen.create');
-        Route::post('asesmen', [AssessmentController::class, 'store'])->name('asesmen.store');
+        Route::get('asesmen/buat', fn () => redirect()->route('sesi-asesmen.index')->with('status', 'Buat asesmen dari dalam sesi assessment.'))->name('asesmen.create');
+        Route::post('asesmen', fn () => abort(404))->name('asesmen.store');
+
         Route::get('asesmen/{asesmen}/diagnostik-alat', [AssessmentController::class, 'toolDiagnostic'])->name('asesmen.diagnostik-alat');
         Route::patch('asesmen/{asesmen}/metode-koleksi-bukti', [AssessmentController::class, 'updateEvidenceCollectionMode'])->name('asesmen.metode-koleksi-bukti.update');
+        Route::patch('asesmen/{asesmen}/template-prompt-ai', [AssessmentController::class, 'updateAiPromptTemplate'])->name('asesmen.template-prompt-ai.update');
+        Route::patch('asesmen/{asesmen}/template-prompt-alat', [AssessmentController::class, 'updateToolAiPrompts'])->name('asesmen.template-prompt-alat.update');
         Route::post('asesmen/{asesmen}/bukti', [AssessmentController::class, 'storeEvidence'])->name('asesmen.bukti.store');
         Route::post('asesmen/{asesmen}/bukti/{bukti}/analisis-ai', [AssessmentController::class, 'analyzeEvidenceAi'])
             ->middleware('throttle:ai-analysis-trigger')
@@ -85,6 +106,19 @@ Route::middleware('auth')->group(function () {
     });
 
     Route::middleware('role:admin')->group(function () {
+        Route::get('sesi-asesmen', [AssessmentSessionController::class, 'index'])->name('sesi-asesmen.index');
+        Route::get('sesi-asesmen/buat', [AssessmentSessionController::class, 'create'])->name('sesi-asesmen.create');
+        Route::post('sesi-asesmen', [AssessmentSessionController::class, 'store'])->name('sesi-asesmen.store');
+        Route::get('sesi-asesmen/{sesiAsesmen}', [AssessmentSessionController::class, 'show'])->name('sesi-asesmen.show');
+        Route::get('sesi-asesmen/{sesiAsesmen}/ubah', [AssessmentSessionController::class, 'edit'])->name('sesi-asesmen.edit');
+        Route::put('sesi-asesmen/{sesiAsesmen}', [AssessmentSessionController::class, 'update'])->name('sesi-asesmen.update');
+        Route::delete('sesi-asesmen/{sesiAsesmen}', [AssessmentSessionController::class, 'destroy'])->name('sesi-asesmen.destroy');
+        Route::get('sesi-asesmen/{sesiAsesmen}/asesmen/buat', [AssessmentController::class, 'create'])->name('sesi-asesmen.asesmen.create');
+        Route::post('sesi-asesmen/{sesiAsesmen}/asesmen', [AssessmentController::class, 'store'])->name('sesi-asesmen.asesmen.store');
+        Route::post('sesi-asesmen/{sesiAsesmen}/penugasan-konsultan', [ConsultantAssignmentController::class, 'store'])->name('sesi-asesmen.penugasan-konsultan.store');
+        Route::patch('sesi-asesmen/{sesiAsesmen}/penugasan-konsultan/{penugasan}/regenerate', [ConsultantAssignmentController::class, 'regenerate'])->name('sesi-asesmen.penugasan-konsultan.regenerate');
+        Route::patch('sesi-asesmen/{sesiAsesmen}/penugasan-konsultan/{penugasan}/nonaktif', [ConsultantAssignmentController::class, 'deactivate'])->name('sesi-asesmen.penugasan-konsultan.nonaktif');
+
         Route::get('master/log-aktivitas', [ActivityLogController::class, 'index'])->name('master.log-aktivitas.index');
         Route::get('master/log-ai', [AiLogController::class, 'index'])->name('master.log-ai.index');
 
@@ -140,5 +174,24 @@ Route::middleware('auth')->group(function () {
         Route::get('master/peserta/{peserta}/ubah', [ParticipantMasterController::class, 'edit'])->name('master.peserta.edit');
         Route::put('master/peserta/{peserta}', [ParticipantMasterController::class, 'update'])->name('master.peserta.update');
         Route::delete('master/peserta/{peserta}', [ParticipantMasterController::class, 'destroy'])->name('master.peserta.destroy');
+
+        Route::get('master/template-prompt-ai/buat', [AiPromptTemplateController::class, 'create'])->name('master.template-prompt-ai.create');
+        Route::post('master/template-prompt-ai', [AiPromptTemplateController::class, 'store'])->name('master.template-prompt-ai.store');
+        Route::get('master/template-prompt-ai/{templatePromptAi}/ubah', [AiPromptTemplateController::class, 'edit'])->name('master.template-prompt-ai.edit');
+        Route::put('master/template-prompt-ai/{templatePromptAi}', [AiPromptTemplateController::class, 'update'])->name('master.template-prompt-ai.update');
+        Route::delete('master/template-prompt-ai/{templatePromptAi}', [AiPromptTemplateController::class, 'destroy'])->name('master.template-prompt-ai.destroy');
+
+        Route::get('master/model-ai/buat', [AiOpenRouterModelController::class, 'create'])->name('master.model-ai.create');
+        Route::post('master/model-ai', [AiOpenRouterModelController::class, 'store'])->name('master.model-ai.store');
+        Route::get('master/model-ai/{modelAi}/ubah', [AiOpenRouterModelController::class, 'edit'])->name('master.model-ai.edit');
+        Route::put('master/model-ai/{modelAi}', [AiOpenRouterModelController::class, 'update'])->name('master.model-ai.update');
+        Route::delete('master/model-ai/{modelAi}', [AiOpenRouterModelController::class, 'destroy'])->name('master.model-ai.destroy');
+
+        Route::get('master/pengguna', [MasterDataController::class, 'users'])->name('master.pengguna.index');
+        Route::get('master/pengguna/buat', [UserMasterController::class, 'create'])->name('master.pengguna.create');
+        Route::post('master/pengguna', [UserMasterController::class, 'store'])->name('master.pengguna.store');
+        Route::get('master/pengguna/{pengguna}/ubah', [UserMasterController::class, 'edit'])->name('master.pengguna.edit');
+        Route::put('master/pengguna/{pengguna}', [UserMasterController::class, 'update'])->name('master.pengguna.update');
+        Route::delete('master/pengguna/{pengguna}', [UserMasterController::class, 'destroy'])->name('master.pengguna.destroy');
     });
 });

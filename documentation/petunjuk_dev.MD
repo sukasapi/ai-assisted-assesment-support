@@ -102,10 +102,25 @@ Peserta contoh: kode `DEMO-001`, matriks `KAMUS-17-DEFAULT`. Seeder juga membuat
 
 | Peran | Kode | Hak akses utama |
 |-------|------|-----------------|
-| **Admin** | `admin` | Semua fitur konsultan + CRUD master data, impor CSV peserta, log aktivitas, log AI, batalkan finalisasi asesmen |
-| **Konsultan** | `konsultan` | Lihat master data, buat/kelola asesmen, bukti, perilaku kunci, analisis AI |
+| **Admin** | `admin` | CRUD master data (termasuk **Pengguna**), **Sesi assessment**, penugasan admin penilai per asesmen, penugasan konsultan + token, impor CSV, log aktivitas/AI, batalkan finalisasi |
+| **Konsultan** | `konsultan` | Lihat master data (read-only); setelah login + **token 8 karakter** — kelola hanya asesmen dalam penugasan token |
 
-Middleware `role:admin` / `role:admin,konsultan` mengatur route di `routes/web.php`.
+Middleware `role:admin` / `role:admin,konsultan` dan `konsultan.token` (gate token) mengatur route di `routes/web.php`.
+
+### 4.1 Dua jenis “sesi”
+
+| Nama tabel | Fungsi |
+|------------|--------|
+| `ais_sesi` | Sesi HTTP Laravel (cookie login) |
+| `ais_sesi_asesmen` | **Sesi bisnis** assessment center — mengelompokkan banyak asesmen; setiap asesmen baru **wajib** punya `id_sesi_asesmen` |
+
+### 4.2 Penugasan admin penilai
+
+Baris di `ais_asesmen_asesor` dengan `jenis_penugasan = admin` (hanya user `peran=admin`). Admin boleh **melihat** semua asesmen, tetapi **mengubah** (bukti, PK, finalisasi, dll.) hanya jika ditugaskan di tabel tersebut. Pembuat asesmen otomatis ditambahkan sebagai penilai.
+
+### 4.3 Token konsultan
+
+Admin membuat **penugasan** di detail sesi (`ais_penugasan_konsultan`): konsultan, token 8 karakter `[A-Z0-9]`, daftar asesmen (pivot). Konsultan login email/kata sandi seperti biasa; saat membuka menu **Asesmen** tanpa token di session → form `/asesmen/token`. Setelah verifikasi, session menyimpan `penugasan_konsultan_id`; daftar asesmen terfilter. Tombol **Ganti token** menghapus session gate. Verifikasi dibatasi throttle (`konsultan-token`).
 
 ---
 
@@ -113,31 +128,34 @@ Middleware `role:admin` / `role:admin,konsultan` mengatur route di `routes/web.p
 
 Setelah login, menu samping menampilkan:
 
-1. **Dasbor** — ringkasan sesi (fitur analitik GAP/Job Fit masih dalam rencana fase berikutnya).
-2. **Asesmen** — daftar, buat, dan detail asesmen.
-3. **Master data** (submenu):
+1. **Dasbor** — ringkasan (widget Job Fit / GAP jika tersedia).
+2. **Sesi assessment** *(admin)* — buat/edit sesi, detail sesi (daftar asesmen, buat asesmen, penugasan konsultan + token).
+3. **Asesmen** — daftar & detail; admin buat asesmen dari dalam sesi; konsultan wajib token dulu.
+4. **Master data** (submenu):
    - Ringkasan master
-   - Kelompok kompetensi
-   - Kompetensi
-   - Tingkat kompetensi
-   - Alat penilaian
-   - Versi matriks (+ pemetaan per versi)
-   - Peserta
+   - *(Admin)* **Pengguna**
+   - Kelompok kompetensi … Peserta
    - *(Admin)* Log aktivitas, Log AI, Impor peserta CSV
 
-### 5.1 Alur kerja tipikal assessor
+### 5.1 Alur kerja admin
 
 ```mermaid
 flowchart LR
-    A[Login] --> B[Master: pastikan peserta & matriks]
-    B --> C[Buat asesmen]
-    C --> D[Kumpulkan bukti / payload]
-    D --> E{Metode?}
-    E -->|Manual| F[Bukti per kompetensi + AI per baris]
-    E -->|Payload| G[Muatan per alat + AI bulk]
-    F --> H[Review & edit perilaku kunci]
-    G --> H
-    H --> I[Finalisasi]
+    A[Login] --> B[Sesi assessment]
+    B --> C[Buat asesmen dalam sesi]
+    C --> D[Centang admin penilai]
+    D --> E[Penugasan konsultan + token]
+    E --> F[Kumpulkan bukti / PK]
+    F --> G[Finalisasi]
+```
+
+### 5.2 Alur kerja konsultan
+
+```mermaid
+flowchart LR
+    A[Login] --> B[Token 8 karakter]
+    B --> C[Daftar asesmen terfilter]
+    C --> D[Bukti / PK / AI]
 ```
 
 ---
@@ -146,10 +164,11 @@ flowchart LR
 
 ### 6.1 Autentikasi
 
-- Login email + kata sandi (`/login`).
+- Login email + kata sandi (`/login`); akun nonaktif (`aktif=false`) ditolak.
 - Logout via tombol di sidebar.
-- Tabel pengguna: `ais_pengguna` (kolom domain berbahasa Indonesia: `nama`, `alamat_surel`, `kata_sandi`, `peran`).
-- Laravel Sanctum tersedia untuk token API (`ais_token_akses_pribadi`) — integrasi API dapat dikembangkan lebih lanjut.
+- Tabel pengguna: `ais_pengguna` (`nama`, `alamat_surel`, `kata_sandi`, `peran`, `aktif`). CRUD admin: `/master/pengguna`.
+- **Konsultan:** token akses penugasan (bukan kata sandi) — lihat §4.3.
+- Laravel Sanctum: `ais_token_akses_pribadi` (API pribadi, terpisah dari token penugasan konsultan).
 
 ### 6.2 Master data
 
@@ -282,6 +301,19 @@ Metode dapat diubah di halaman detail asesmen selama belum final.
 | `AI_QUEUE_CONNECTION` | `database` |
 | `AI_QUEUE_NAME` | `ai-analysis` |
 | `AI_TRIGGER_PER_MINUTE` | 20 (throttle trigger UI) |
+
+**Master data AI (opsi C):**
+
+| Master | Menu | Fungsi |
+|--------|------|--------|
+| **Template prompt AI** | Master data → Template prompt AI | Kerangka analisis (mis. STAR) — teks instruksi digabung ke prompt sistem untuk **semua alat** |
+| **Model AI** | Master data → Model AI (OpenRouter) | Daftar model yang boleh dipilih; jika tabel berisi baris aktif, menggantikan `AI_OPENROUTER_MODELS` di `.env` |
+
+- **Default master:** di form template, centang **alat penilaian** yang memakai template tersebut (mis. STAR → BEI).
+- **Per asesmen per alat:** di detail asesmen, tabel «Template prompt AI» — mode *Ikuti master* / *Tanpa template* / *Template khusus* per alat; tombol «Terapkan ke semua alat» untuk set massal.
+- Urutan resolusi efektif: override per alat asesmen → pemetaan master template–alat → fallback `id_template_prompt_ai` global asesmen.
+- Seeder: `AiMasterSeeder` (STAR terhubung BEI; model dari `.env` bila kosong).
+- Log AI: metadata `prompt_template` berisi kode, nama, dan `sumber` (`master` | `asesmen_per_alat` | `asesmen_global`).
 
 **Prinsip governance AI:**
 

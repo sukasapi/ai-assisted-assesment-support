@@ -2,6 +2,9 @@
 
 namespace App\Support;
 
+use App\Models\AiOpenRouterModel;
+use Illuminate\Support\Facades\Schema;
+
 /**
  * Daftar model OpenRouter yang boleh dipilih pengguna.
  */
@@ -56,6 +59,11 @@ final class AiModelCatalog
      */
     public static function daftarModel(): array
     {
+        $dariDb = self::daftarModelDariDatabase();
+        if ($dariDb !== []) {
+            return $dariDb;
+        }
+
         $daftar = config('ai.openrouter.daftar_model');
         if (! is_array($daftar) || $daftar === []) {
             $id = (string) config('ai.openrouter.nama_model', 'google/gemini-2.0-flash-001');
@@ -84,12 +92,66 @@ final class AiModelCatalog
 
     public static function modelDefault(): string
     {
+        $utamaDb = self::modelUtamaDariDatabase();
+        if ($utamaDb !== null && self::modelDiizinkan($utamaDb)) {
+            return $utamaDb;
+        }
+
         $utama = trim((string) config('ai.openrouter.nama_model', ''));
         if ($utama !== '' && self::modelDiizinkan($utama)) {
             return $utama;
         }
 
         return self::daftarModel()[0]['id'];
+    }
+
+    /**
+     * @return list<array{id: string, label: string}>
+     */
+    private static function daftarModelDariDatabase(): array
+    {
+        if (! Schema::hasTable('ais_model_ai')) {
+            return [];
+        }
+
+        $baris = AiOpenRouterModel::query()
+            ->where('aktif', true)
+            ->orderBy('urutan')
+            ->orderBy('label')
+            ->get(['id_model_openrouter', 'label']);
+
+        if ($baris->isEmpty()) {
+            return [];
+        }
+
+        return $baris->map(static fn (AiOpenRouterModel $m): array => [
+            'id' => $m->id_model_openrouter,
+            'label' => $m->label !== '' ? $m->label : self::labelDariId($m->id_model_openrouter),
+        ])->all();
+    }
+
+    private static function modelUtamaDariDatabase(): ?string
+    {
+        if (! Schema::hasTable('ais_model_ai')) {
+            return null;
+        }
+
+        $utama = AiOpenRouterModel::query()
+            ->where('aktif', true)
+            ->where('utama', true)
+            ->orderBy('urutan')
+            ->value('id_model_openrouter');
+
+        if (is_string($utama) && trim($utama) !== '') {
+            return trim($utama);
+        }
+
+        $pertama = AiOpenRouterModel::query()
+            ->where('aktif', true)
+            ->orderBy('urutan')
+            ->value('id_model_openrouter');
+
+        return is_string($pertama) && trim($pertama) !== '' ? trim($pertama) : null;
     }
 
     public static function modelDiizinkan(string $model): bool

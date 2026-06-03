@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Enums\AssessorAssignmentType;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
@@ -16,7 +17,15 @@ class AssessmentAssessor extends Model
     protected $fillable = [
         'id_asesmen',
         'id_pengguna',
+        'jenis_penugasan',
     ];
+
+    protected function casts(): array
+    {
+        return [
+            'jenis_penugasan' => AssessorAssignmentType::class,
+        ];
+    }
 
     public function assessment(): BelongsTo
     {
