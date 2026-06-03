@@ -3,8 +3,12 @@
 namespace App\Providers;
 
 use App\Models\Assessment;
+use App\Models\AssessmentSession;
 use App\Models\PersonalAccessToken;
+use App\Models\User;
 use App\Policies\AssessmentPolicy;
+use App\Policies\AssessmentSessionPolicy;
+use App\Policies\UserPolicy;
 use Illuminate\Cache\RateLimiting\Limit;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Gate;
@@ -35,7 +39,18 @@ class AppServiceProvider extends ServiceProvider
     {
         Sanctum::usePersonalAccessTokenModel(PersonalAccessToken::class);
         Gate::policy(Assessment::class, AssessmentPolicy::class);
+        Gate::policy(AssessmentSession::class, AssessmentSessionPolicy::class);
+        Gate::policy(User::class, UserPolicy::class);
         $this->registerAiRateLimiters();
+        RateLimiter::for('login', function (Request $request): Limit {
+            $kunci = strtolower((string) $request->input('email')).'|'.$request->ip();
+
+            return Limit::perMinute(5)->by($kunci);
+        });
+
+        RateLimiter::for('konsultan-token', function (Request $request): Limit {
+            return Limit::perMinute(10)->by('konsultan-token:'.($request->user()?->id ?? $request->ip()));
+        });
 
         $this->guardDestructiveSchemaCommands();
     }

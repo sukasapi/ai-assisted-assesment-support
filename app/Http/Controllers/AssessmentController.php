@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Enums\AssessorAssignmentType;
 use App\Enums\AssessmentEvidenceCollectionMode;
 use App\Enums\AssessmentPurpose;
 use App\Enums\AssessmentStatus;
@@ -15,6 +16,7 @@ use App\Http\Requests\UpdateAssessmentToolAiPromptRequest;
 use App\Http\Requests\UpdateAssessmentEvidenceCollectionModeRequest;
 use App\Http\Requests\UpdateKeyBehaviorRequest;
 use App\Models\Assessment;
+use App\Models\AssessmentSession;
 use App\Models\AssessmentAssessor;
 use App\Models\AssessmentToolPayload;
 use App\Models\AssessmentToolSelection;
@@ -38,6 +40,8 @@ use App\Services\Ai\EvidenceAiAnalyzer;
 use App\Services\Assessment\AlatAsesmenPreset;
 use App\Services\Assessment\AssessmentToolAvailabilityDiagnostic;
 use App\Services\Integration\CompetencyIntegrationService;
+use App\Support\AssessmentQueryScope;
+use App\Support\ConsultantAccessSession;
 use App\Support\MandatoryCompetencyCoverage;
 use App\Support\AiFeature;
 use App\Support\CatatAktivitas;
@@ -51,41 +55,54 @@ use Illuminate\View\View;
 
 class AssessmentController extends Controller
 {
-    public function index(): View
+    public function index(Request $request): View
     {
         $this->authorize('viewAny', Assessment::class);
 
-        $daftar = Assessment::query()
-            ->with(['participant', 'matrixVersion'])
-            ->latest('dibuat_pada')
-            ->paginate(15);
+        $user = $request->user();
+        $query = Assessment::query()
+            ->with(['participant', 'matrixVersion', 'session']);
+        if ($user !== null) {
+            AssessmentQueryScope::untukPengguna($query, $user);
+        }
 
-        return view('assessments.index', ['daftar' => $daftar]);
+        $daftar = $query->latest('dibuat_pada')->paginate(15);
+
+        return view('assessments.index', [
+            'daftar' => $daftar,
+            'penugasanKonsultan' => $user?->role === 'konsultan'
+                ? ConsultantAccessSession::penugasanAktif($user)
+                : null,
+        ]);
     }
 
-    public function create(): View
+    public function create(AssessmentSession $sesiAsesmen): View
     {
         $this->authorize('create', Assessment::class);
+        $this->authorize('view', $sesiAsesmen);
 
         return view('assessments.create', [
+            'sesi' => $sesiAsesmen,
             'peserta' => Participant::query()->where('aktif', true)->orderBy('nama_lengkap')->get(),
             'versiMatriks' => MatrixVersion::query()->where('aktif', true)->orderBy('nama_versi')->get(),
             'asesorKandidat' => User::query()
-                ->whereIn('peran', ['admin', 'konsultan'])
+                ->where('peran', 'admin')
+                ->where('aktif', true)
                 ->orderBy('nama')
                 ->get(),
             'opsiTemplatePromptAi' => AiPromptComposer::opsiTemplateAktif(),
         ]);
     }
 
-    public function store(StoreAssessmentRequest $request): RedirectResponse
+    public function store(StoreAssessmentRequest $request, AssessmentSession $sesiAsesmen): RedirectResponse
     {
         $this->authorize('create', Assessment::class);
+        $this->authorize('view', $sesiAsesmen);
 
         $tujuan = AssessmentPurpose::from($request->string('tujuan')->toString());
         $metode = AssessmentEvidenceCollectionMode::from($request->string('metode_koleksi_bukti')->toString());
 
-        $asesmen = DB::transaction(function () use ($request, $tujuan, $metode): Assessment {
+        $asesmen = DB::transaction(function () use ($request, $tujuan, $metode, $sesiAsesmen): Assessment {
             /** @var Assessment $row */
             $idTemplate = $request->filled('id_template_prompt_ai')
                 ? $request->integer('id_template_prompt_ai')
@@ -94,6 +111,7 @@ class AssessmentController extends Controller
             $row = Assessment::query()->create([
                 'id_peserta' => $request->integer('id_peserta'),
                 'id_versi_matriks' => $request->integer('id_versi_matriks'),
+                'id_sesi_asesmen' => $sesiAsesmen->id,
                 'tujuan' => $tujuan,
                 'status' => AssessmentStatus::Draf,
                 'tanpa_intray' => $request->boolean('tanpa_intray'),
@@ -103,10 +121,15 @@ class AssessmentController extends Controller
             ]);
 
             $idsAsesor = array_unique($request->input('id_asesor', []));
+            $pembuatId = $request->user()?->id;
+            if ($pembuatId && ! in_array($pembuatId, $idsAsesor, true)) {
+                $idsAsesor[] = $pembuatId;
+            }
             foreach ($idsAsesor as $idPengguna) {
                 AssessmentAssessor::query()->create([
                     'id_asesmen' => $row->id,
                     'id_pengguna' => (int) $idPengguna,
+                    'jenis_penugasan' => AssessorAssignmentType::Admin,
                 ]);
             }
 

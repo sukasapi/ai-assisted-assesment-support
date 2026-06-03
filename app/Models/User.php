@@ -33,6 +33,7 @@ class User extends Authenticatable
         'alamat_surel',
         'kata_sandi',
         'peran',
+        'aktif',
     ];
 
     /**
@@ -48,7 +49,23 @@ class User extends Authenticatable
         return [
             'diverifikasi_pada' => 'datetime',
             'kata_sandi' => 'hashed',
+            'aktif' => 'boolean',
         ];
+    }
+
+    public function isAdmin(): bool
+    {
+        return $this->peran === 'admin';
+    }
+
+    public function isKonsultan(): bool
+    {
+        return $this->peran === 'konsultan';
+    }
+
+    public function consultantAssignments(): \Illuminate\Database\Eloquent\Relations\HasMany
+    {
+        return $this->hasMany(ConsultantAssignment::class, 'id_pengguna');
     }
 
     /**

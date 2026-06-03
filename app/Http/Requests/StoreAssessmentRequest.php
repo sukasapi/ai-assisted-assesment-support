@@ -30,7 +30,7 @@ class StoreAssessmentRequest extends FormRequest
             'id_asesor' => ['nullable', 'array'],
             'id_asesor.*' => [
                 'integer',
-                Rule::exists('ais_pengguna', 'id')->whereIn('peran', ['admin', 'konsultan']),
+                Rule::exists('ais_pengguna', 'id')->where('peran', 'admin')->where('aktif', true),
             ],
             'id_template_prompt_ai' => [
                 'nullable',

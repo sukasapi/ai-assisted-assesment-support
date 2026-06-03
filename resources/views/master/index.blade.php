@@ -19,6 +19,7 @@
             ['route' => 'master.model-ai.index', 'icon' => 'model_training', 'label' => 'Model AI (OpenRouter)'],
         ];
         if (auth()->user()->role === 'admin') {
+            $links[] = ['route' => 'master.pengguna.index', 'icon' => 'manage_accounts', 'label' => 'Pengguna'];
             $links[] = ['route' => 'master.log-aktivitas.index', 'icon' => 'history', 'label' => 'Log aktivitas'];
             $links[] = ['route' => 'master.log-ai.index', 'icon' => 'smart_toy', 'label' => 'Log AI'];
             $links[] = ['route' => 'peserta.impor-csv', 'icon' => 'upload_file', 'label' => 'Impor peserta (CSV)'];

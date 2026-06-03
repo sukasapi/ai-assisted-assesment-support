@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\AiOpenRouterModel;
+use App\Models\User;
 use App\Models\AiPromptTemplate;
 use App\Models\AssessmentTool;
 use App\Models\Competency;
@@ -91,5 +92,15 @@ class MasterDataController extends Controller
             ->paginate(25);
 
         return view('master.ai-models', compact('items'));
+    }
+
+    public function users(): View
+    {
+        $items = User::query()
+            ->orderBy('peran')
+            ->orderBy('nama')
+            ->paginate(25);
+
+        return view('master.users', compact('items'));
     }
 }

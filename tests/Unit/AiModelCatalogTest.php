@@ -2,14 +2,23 @@
 
 namespace Tests\Unit;
 
+use App\Models\AiOpenRouterModel;
 use App\Support\AiModelCatalog;
+use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Config;
+use Illuminate\Support\Facades\Schema;
 use Tests\TestCase;
 
 class AiModelCatalogTest extends TestCase
 {
+    use RefreshDatabase;
+
     public function test_daftar_model_dari_konfigurasi(): void
     {
+        if (Schema::hasTable('ais_model_ai')) {
+            AiOpenRouterModel::query()->delete();
+        }
+
         Config::set('ai.openrouter.daftar_model', [
             ['id' => 'model-a', 'label' => 'Model A'],
             ['id' => 'model-b', 'label' => 'Model B'],
