@@ -9,6 +9,7 @@ use App\Models\Participant;
 use App\Models\User;
 use Database\Seeders\DatabaseSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Tests\Support\AssessmentTestHelpers;
 use Tests\TestCase;
 
 class AssessmentAccessTest extends TestCase
@@ -47,20 +48,8 @@ class AssessmentAccessTest extends TestCase
         $this->seed(DatabaseSeeder::class);
 
         $admin = User::query()->where('alamat_surel', 'admin@example.com')->firstOrFail();
-        $peserta = Participant::query()->where('kode_peserta', 'DEMO-001')->firstOrFail();
-        $versi = MatrixVersion::query()->where('kode_versi', 'KAMUS-17-DEFAULT')->firstOrFail();
 
-        $this->actingAs($admin)
-            ->post(route('asesmen.store'), [
-                'id_peserta' => $peserta->id,
-                'id_versi_matriks' => $versi->id,
-                'tujuan' => 'promosi',
-                'tanpa_intray' => '0',
-                'id_asesor' => [$admin->id],
-            ])
-            ->assertRedirect();
-
-        $asesmen = Assessment::query()->latest('id')->firstOrFail();
+        $asesmen = AssessmentTestHelpers::buatAsesmen($this, $admin);
 
         $this->assertDatabaseHas('ais_log_aktivitas', [
             'id_pengguna' => $admin->id,

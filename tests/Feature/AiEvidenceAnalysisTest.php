@@ -13,6 +13,7 @@ use App\Models\User;
 use Database\Seeders\DatabaseSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Http;
+use Tests\Support\AssessmentTestHelpers;
 use Tests\TestCase;
 
 class AiEvidenceAnalysisTest extends TestCase
@@ -92,23 +93,10 @@ class AiEvidenceAnalysisTest extends TestCase
 
     private function buatAsesmenDenganSatuBukti(User $admin): Assessment
     {
-        $peserta = Participant::query()->where('kode_peserta', 'DEMO-001')->firstOrFail();
-        $versi = MatrixVersion::query()->where('kode_versi', 'KAMUS-17-DEFAULT')->firstOrFail();
         $kompetensi = Competency::query()->orderBy('id')->firstOrFail();
         $alat = AssessmentTool::query()->where('kode', 'BEI')->firstOrFail();
 
-        $this->actingAs($admin)
-            ->post(route('asesmen.store'), [
-                'id_peserta' => $peserta->id,
-                'id_versi_matriks' => $versi->id,
-                'tujuan' => 'promosi',
-                'tanpa_intray' => '0',
-                'id_asesor' => [$admin->id],
-            ])
-            ->assertRedirect();
-
-        /** @var Assessment $asesmen */
-        $asesmen = Assessment::query()->latest('id')->firstOrFail();
+        $asesmen = AssessmentTestHelpers::buatAsesmen($this, $admin);
 
         $this->actingAs($admin)
             ->post(route('asesmen.bukti.store', $asesmen), [

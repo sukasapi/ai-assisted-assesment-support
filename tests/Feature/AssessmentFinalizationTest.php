@@ -12,6 +12,7 @@ use App\Models\Participant;
 use App\Models\User;
 use Database\Seeders\DatabaseSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Tests\Support\AssessmentTestHelpers;
 use Tests\TestCase;
 
 class AssessmentFinalizationTest extends TestCase
@@ -172,6 +173,10 @@ class AssessmentFinalizationTest extends TestCase
         $this->isiSemuaKompetensiWajib($asesmen);
         $this->actingAs($admin)->patch(route('asesmen.finalisasi', $asesmen))->assertRedirect();
 
+        $token = 'FINAL123';
+        AssessmentTestHelpers::buatPenugasanKonsultan($this, $konsultan, $asesmen, $admin, $token);
+        AssessmentTestHelpers::masukTokenKonsultan($this, $konsultan, $token);
+
         $this->actingAs($konsultan)
             ->patch(route('asesmen.batal-finalisasi', $asesmen))
             ->assertForbidden();
@@ -179,20 +184,7 @@ class AssessmentFinalizationTest extends TestCase
 
     private function buatAsesmen(User $admin): Assessment
     {
-        $peserta = Participant::query()->where('kode_peserta', 'DEMO-001')->firstOrFail();
-        $versi = MatrixVersion::query()->where('kode_versi', 'KAMUS-17-DEFAULT')->firstOrFail();
-
-        $this->actingAs($admin)
-            ->post(route('asesmen.store'), [
-                'id_peserta' => $peserta->id,
-                'id_versi_matriks' => $versi->id,
-                'tujuan' => 'promosi',
-                'tanpa_intray' => '0',
-                'id_asesor' => [$admin->id],
-            ])
-            ->assertRedirect();
-
-        return Assessment::query()->latest('id')->firstOrFail();
+        return AssessmentTestHelpers::buatAsesmen($this, $admin);
     }
 
     private function isiSemuaKompetensiWajib(Assessment $asesmen): void

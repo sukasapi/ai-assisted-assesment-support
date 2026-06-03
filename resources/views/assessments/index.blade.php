@@ -5,17 +5,35 @@
 @section('content')
     <x-ui.page-header title="Asesmen">
         <x-slot:actions>
-            <x-ui.button href="{{ route('asesmen.create') }}" variant="primary">
-                <span class="material-symbols-outlined text-lg">add</span>
-                Buat asesmen
-            </x-ui.button>
+            @if (auth()->user()->role === 'konsultan' && $penugasanKonsultan)
+                <form method="POST" action="{{ route('asesmen.token.clear') }}" class="inline">
+                    @csrf
+                    <x-ui.button type="submit" variant="secondary">Ganti token</x-ui.button>
+                </form>
+            @endif
+            @if (auth()->user()->role === 'admin')
+                <x-ui.button href="{{ route('sesi-asesmen.index') }}" variant="primary">
+                    <span class="material-symbols-outlined text-lg">event</span>
+                    Sesi assessment
+                </x-ui.button>
+            @endif
         </x-slot:actions>
     </x-ui.page-header>
 
-    <x-ui.data-table :colspan="5" empty="Belum ada asesmen. Buat dari tombol di atas.">
+    @if ($penugasanKonsultan ?? null)
+        <p class="mb-4 text-sm text-on-surface-variant">
+            Token aktif · {{ $penugasanKonsultan->assessments->count() }} asesmen ditugaskan
+            @if ($penugasanKonsultan->session)
+                · Sesi {{ $penugasanKonsultan->session->kode_sesi }}
+            @endif
+        </p>
+    @endif
+
+    <x-ui.data-table :colspan="6" empty="Belum ada asesmen yang dapat Anda akses.">
         <x-slot:head>
             <tr>
                 <th class="px-4 py-3">Peserta</th>
+                <th class="px-4 py-3">Sesi</th>
                 <th class="px-4 py-3">Matriks</th>
                 <th class="px-4 py-3">Tujuan</th>
                 <th class="px-4 py-3">Status</th>
@@ -25,6 +43,7 @@
         @forelse ($daftar as $row)
             <tr class="transition-colors hover:bg-surface-container-low/50">
                 <td class="px-4 py-3 font-semibold text-on-surface">{{ $row->participant?->nama_lengkap ?? '—' }}</td>
+                <td class="px-4 py-3 font-mono text-xs text-on-surface-variant">{{ $row->session?->kode_sesi ?? '—' }}</td>
                 <td class="px-4 py-3 font-mono text-sm text-on-surface-variant">{{ $row->matrixVersion?->kode_versi ?? '—' }}</td>
                 <td class="px-4 py-3 text-on-surface-variant">
                     @if ($row->tujuan?->value === 'promosi')

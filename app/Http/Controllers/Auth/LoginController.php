@@ -29,6 +29,7 @@ class LoginController extends Controller
         if (! Auth::attempt([
             'alamat_surel' => $credentials['email'],
             'password' => $credentials['password'],
+            'aktif' => true,
         ], $request->boolean('remember'))) {
             return back()
                 ->withInput($request->only('email'))

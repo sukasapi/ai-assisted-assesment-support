@@ -5,8 +5,10 @@ namespace Database\Seeders;
 use App\Enums\AssessmentEvidenceCollectionMode;
 use App\Enums\AssessmentPurpose;
 use App\Enums\AssessmentStatus;
+use App\Enums\AssessorAssignmentType;
 use App\Models\Assessment;
 use App\Models\AssessmentAssessor;
+use App\Models\AssessmentSession;
 use App\Models\AssessmentTool;
 use App\Models\AssessmentToolPayload;
 use App\Models\Competency;
@@ -30,22 +32,31 @@ class ContohAssessmentSeeder extends Seeder
     public function run(): void
     {
         $versi = MatrixVersion::query()->where('kode_versi', 'KAMUS-17-DEFAULT')->first();
-        $konsultan = User::query()->where('alamat_surel', 'konsultan@example.com')->first()
+        $admin = User::query()->where('alamat_surel', 'admin@example.com')->first()
             ?? User::query()->where('peran', 'admin')->first();
 
-        if ($versi === null || $konsultan === null) {
-            $this->command?->warn('ContohAssessmentSeeder dilewati: versi matriks KAMUS-17-DEFAULT atau pengguna konsultan/admin tidak ditemukan.');
+        if ($versi === null || $admin === null) {
+            $this->command?->warn('ContohAssessmentSeeder dilewati: versi matriks KAMUS-17-DEFAULT atau pengguna admin tidak ditemukan.');
 
             return;
         }
 
-        DB::transaction(function () use ($versi, $konsultan): void {
-            $this->seedManualExample($versi, $konsultan);
-            $this->seedPayloadExample($versi, $konsultan);
+        $sesi = AssessmentSession::query()->firstOrCreate(
+            ['kode_sesi' => 'SES-DEMO'],
+            [
+                'nama' => 'Sesi demo pengembangan',
+                'status' => 'aktif',
+                'id_pengguna_pembuat' => $admin->id,
+            ]
+        );
+
+        DB::transaction(function () use ($versi, $admin, $sesi): void {
+            $this->seedManualExample($versi, $admin, $sesi);
+            $this->seedPayloadExample($versi, $admin, $sesi);
         });
     }
 
-    private function seedManualExample(MatrixVersion $versi, User $konsultan): void
+    private function seedManualExample(MatrixVersion $versi, User $admin, AssessmentSession $sesi): void
     {
         $tag = '[seed:contoh-manual]';
         if (Assessment::query()->where('catatan', 'like', '%'.$tag.'%')->exists()) {
@@ -66,17 +77,19 @@ class ContohAssessmentSeeder extends Seeder
         $asesmen = Assessment::query()->create([
             'id_peserta' => $peserta->id,
             'id_versi_matriks' => $versi->id,
+            'id_sesi_asesmen' => $sesi->id,
             'tujuan' => AssessmentPurpose::Promosi,
             'status' => AssessmentStatus::Berlangsung,
             'tanpa_intray' => false,
             'metode_koleksi_bukti' => AssessmentEvidenceCollectionMode::Manual,
-            'id_pengguna_pembuat' => $konsultan->id,
+            'id_pengguna_pembuat' => $admin->id,
             'catatan' => $tag.' Contoh asesmen dengan bukti per kompetensi dan perilaku kunci.',
         ]);
 
         AssessmentAssessor::query()->create([
             'id_asesmen' => $asesmen->id,
-            'id_pengguna' => $konsultan->id,
+            'id_pengguna' => $admin->id,
+            'jenis_penugasan' => AssessorAssignmentType::Admin,
         ]);
 
         AlatAsesmenPreset::buatPemilihan(
@@ -122,7 +135,7 @@ class ContohAssessmentSeeder extends Seeder
         ]);
     }
 
-    private function seedPayloadExample(MatrixVersion $versi, User $konsultan): void
+    private function seedPayloadExample(MatrixVersion $versi, User $admin, AssessmentSession $sesi): void
     {
         $tag = '[seed:contoh-payload]';
         if (Assessment::query()->where('catatan', 'like', '%'.$tag.'%')->exists()) {
@@ -143,17 +156,19 @@ class ContohAssessmentSeeder extends Seeder
         $asesmen = Assessment::query()->create([
             'id_peserta' => $peserta->id,
             'id_versi_matriks' => $versi->id,
+            'id_sesi_asesmen' => $sesi->id,
             'tujuan' => AssessmentPurpose::PemetaanTalenta,
             'status' => AssessmentStatus::Draf,
             'tanpa_intray' => false,
             'metode_koleksi_bukti' => AssessmentEvidenceCollectionMode::PayloadAlat,
-            'id_pengguna_pembuat' => $konsultan->id,
+            'id_pengguna_pembuat' => $admin->id,
             'catatan' => $tag.' Contoh asesmen dengan teks muatan alat (alur otomatis / AI bulk).',
         ]);
 
         AssessmentAssessor::query()->create([
             'id_asesmen' => $asesmen->id,
-            'id_pengguna' => $konsultan->id,
+            'id_pengguna' => $admin->id,
+            'jenis_penugasan' => AssessorAssignmentType::Admin,
         ]);
 
         AlatAsesmenPreset::buatPemilihan(
@@ -171,7 +186,7 @@ class ContohAssessmentSeeder extends Seeder
             'teks_muatan' => "Cuplikan perilaku MI (contoh seed):\n"
                 ."INF — Peserta meminta data tambahan saat briefing proyek.\n"
                 .'ACH — Peserta menyepakati target di atas baseline bersama atasan langsung.',
-            'id_pengguna_pengunggah' => $konsultan->id,
+            'id_pengguna_pengunggah' => $admin->id,
         ]);
     }
 }
