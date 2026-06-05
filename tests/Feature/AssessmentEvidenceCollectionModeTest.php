@@ -32,6 +32,7 @@ class AssessmentEvidenceCollectionModeTest extends TestCase
             ->post(route('asesmen.bukti.store', $asesmen), [
                 'id_alat_penilaian' => $alat->id,
                 'id_kompetensi' => $kompetensi->id,
+                'jenis_sumber' => 'teks',
                 'teks_mentah' => 'Teks uji',
             ])
             ->assertRedirect(route('asesmen.show', $asesmen))
@@ -108,6 +109,7 @@ class AssessmentEvidenceCollectionModeTest extends TestCase
             ->post(route('asesmen.bukti.store', $asesmen), [
                 'id_alat_penilaian' => $alatAktif->id_alat_penilaian,
                 'id_kompetensi' => $kompetensi->id,
+                'jenis_sumber' => 'teks',
                 'teks_mentah' => 'Teks uji alat non matriks',
             ])
             ->assertRedirect(route('asesmen.show', $asesmen))

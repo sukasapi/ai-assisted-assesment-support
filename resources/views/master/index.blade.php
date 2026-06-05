@@ -9,9 +9,7 @@
 
     @php
         $links = [
-            ['route' => 'master.kelompok-kompetensi.index', 'icon' => 'category', 'label' => 'Kelompok kompetensi'],
-            ['route' => 'master.kompetensi.index', 'icon' => 'psychology', 'label' => 'Kompetensi'],
-            ['route' => 'master.tingkat-kompetensi.index', 'icon' => 'stairs', 'label' => 'Tingkat kompetensi'],
+            ['route' => 'master.kompetensi.index', 'icon' => 'account_tree', 'label' => 'Kompetensi', 'hint' => 'Kelompok, kompetensi, dan tingkat dalam satu halaman'],
             ['route' => 'master.alat-penilaian.index', 'icon' => 'construction', 'label' => 'Alat penilaian'],
             ['route' => 'master.versi-matriks.index', 'icon' => 'grid_view', 'label' => 'Versi matriks', 'hint' => 'Termasuk pemetaan per versi'],
             ['route' => 'master.peserta.index', 'icon' => 'group', 'label' => 'Peserta'],

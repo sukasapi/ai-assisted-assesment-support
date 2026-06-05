@@ -6,9 +6,14 @@ use App\Enums\AssessorAssignmentType;
 use App\Enums\AssessmentEvidenceCollectionMode;
 use App\Enums\AssessmentPurpose;
 use App\Enums\AssessmentStatus;
+use App\Enums\EvidenceSourceType;
+use App\Enums\EvidenceTranscriptionStatus;
 use App\Http\Requests\StoreAssessmentRequest;
 use App\Http\Requests\StoreAssessmentToolPayloadRequest;
 use App\Http\Requests\StoreEvidenceRequest;
+use App\Http\Requests\TranscribeEvidencePreviewRequest;
+use App\Http\Requests\TranscribeEvidenceRequest;
+use App\Http\Requests\UpdateEvidenceRequest;
 use App\Http\Requests\StoreKeyBehaviorRequest;
 use App\Enums\AssessmentToolPromptMode;
 use App\Http\Requests\UpdateAssessmentAiPromptTemplateRequest;
@@ -47,11 +52,14 @@ use App\Support\AiFeature;
 use App\Support\CatatAktivitas;
 use App\Support\BulkTextNormalizer;
 use App\Support\EvidenceTextNormalizer;
+use App\Services\Stt\EvidenceAudioStorage;
+use App\Services\Stt\EvidenceTranscriptionDispatcher;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\View\View;
+use Symfony\Component\HttpFoundation\BinaryFileResponse;
 
 class AssessmentController extends Controller
 {
@@ -417,6 +425,73 @@ class AssessmentController extends Controller
     public function storeEvidence(StoreEvidenceRequest $request, Assessment $asesmen): RedirectResponse
     {
         $this->authorize('update', $asesmen);
+
+        $jenis = EvidenceSourceType::from($request->string('jenis_sumber')->toString());
+        $storage = app(EvidenceAudioStorage::class);
+
+        if ($jenis === EvidenceSourceType::Wawancara) {
+            $berkas = $request->file('berkas_audio');
+            $simpan = $storage->simpanUpload($berkas, (int) $asesmen->id);
+            $teksDariForm = $request->filled('teks_mentah') ? trim($request->string('teks_mentah')->toString()) : '';
+
+            if ($this->transkripSudahDiisi($teksDariForm)) {
+                $teksRich = $request->filled('teks_mentah_rich') ? $request->string('teks_mentah_rich')->toString() : null;
+                $teksNormalized = EvidenceTextNormalizer::normalize(
+                    $teksRich,
+                    $request->input('teks_mentah_normalized', $teksDariForm)
+                );
+                $teksDisimpan = $teksNormalized !== '' ? $teksNormalized : $teksDariForm;
+
+                $asesmen->evidenceItems()->create([
+                    'id_alat_penilaian' => $request->integer('id_alat_penilaian'),
+                    'id_kompetensi' => $request->integer('id_kompetensi'),
+                    'jenis_sumber' => EvidenceSourceType::Wawancara,
+                    'teks_mentah' => $teksDisimpan,
+                    'teks_mentah_rich' => $teksRich,
+                    'teks_mentah_normalized' => $teksDisimpan,
+                    'teks_kerja' => $request->input('teks_kerja'),
+                    'path_audio' => $simpan['path'],
+                    'mime_audio' => $simpan['mime'],
+                    'status_transkripsi' => EvidenceTranscriptionStatus::Selesai,
+                ]);
+
+                return redirect()
+                    ->route('asesmen.show', $asesmen)
+                    ->withFragment('pengumpulan')
+                    ->with('status', 'Bukti wawancara disimpan.');
+            }
+
+            $bukti = $asesmen->evidenceItems()->create([
+                'id_alat_penilaian' => $request->integer('id_alat_penilaian'),
+                'id_kompetensi' => $request->integer('id_kompetensi'),
+                'jenis_sumber' => EvidenceSourceType::Wawancara,
+                'teks_mentah' => 'Transkripsi sedang diproses…',
+                'teks_mentah_normalized' => 'Transkripsi sedang diproses…',
+                'teks_kerja' => $request->input('teks_kerja'),
+                'path_audio' => $simpan['path'],
+                'mime_audio' => $simpan['mime'],
+                'status_transkripsi' => EvidenceTranscriptionStatus::Menunggu,
+            ]);
+
+            if (config('stt.aktif', false)) {
+                app(EvidenceTranscriptionDispatcher::class)->jadwalkan($bukti);
+                $pesan = EvidenceTranscriptionDispatcher::antrianAsyncAktif()
+                    ? 'Bukti wawancara disimpan. Transkripsi dijadwalkan.'
+                    : 'Bukti wawancara disimpan. Transkripsi selesai atau periksa status di halaman.';
+            } else {
+                $bukti->forceFill([
+                    'status_transkripsi' => EvidenceTranscriptionStatus::Gagal,
+                    'pesan_status_transkripsi' => 'Transkripsi otomatis nonaktif. Silakan isi transkrip manual.',
+                ])->save();
+                $pesan = 'Bukti wawancara disimpan. Isi transkrip manual karena STT nonaktif.';
+            }
+
+            return redirect()
+                ->route('asesmen.show', $asesmen)
+                ->withFragment('pengumpulan')
+                ->with('status', $pesan);
+        }
+
         $teksMentah = $request->string('teks_mentah')->toString();
         $teksRich = $request->filled('teks_mentah_rich') ? $request->string('teks_mentah_rich')->toString() : null;
         $teksNormalized = EvidenceTextNormalizer::normalize(
@@ -427,6 +502,7 @@ class AssessmentController extends Controller
         $asesmen->evidenceItems()->create([
             'id_alat_penilaian' => $request->integer('id_alat_penilaian'),
             'id_kompetensi' => $request->integer('id_kompetensi'),
+            'jenis_sumber' => EvidenceSourceType::Teks,
             'teks_mentah' => $teksNormalized !== '' ? $teksNormalized : $teksMentah,
             'teks_mentah_rich' => $teksRich,
             'teks_mentah_normalized' => $teksNormalized !== '' ? $teksNormalized : $teksMentah,
@@ -435,7 +511,231 @@ class AssessmentController extends Controller
 
         return redirect()
             ->route('asesmen.show', $asesmen)
+            ->withFragment('pengumpulan')
             ->with('status', 'Bukti penilaian ditambahkan.');
+    }
+
+    public function updateEvidence(UpdateEvidenceRequest $request, Assessment $asesmen, Evidence $bukti): RedirectResponse
+    {
+        $this->authorize('update', $asesmen);
+
+        if ((int) $bukti->id_asesmen !== (int) $asesmen->id) {
+            abort(404);
+        }
+
+        if ($asesmen->status === AssessmentStatus::SelesaiFinal) {
+            return redirect()
+                ->route('asesmen.show', $asesmen)
+                ->withFragment('pengumpulan')
+                ->withErrors(['bukti' => 'Asesmen sudah difinalisasi.']);
+        }
+
+        $jenisBaru = EvidenceSourceType::from($request->string('jenis_sumber')->toString());
+        $storage = app(EvidenceAudioStorage::class);
+        $dispatcher = app(EvidenceTranscriptionDispatcher::class);
+        $pathLama = $bukti->path_audio;
+
+        if ($request->hasFile('berkas_audio')) {
+            $simpan = $storage->simpanUpload($request->file('berkas_audio'), (int) $asesmen->id);
+            $storage->hapus($pathLama);
+            $teksDariForm = $request->filled('teks_mentah') ? trim($request->string('teks_mentah')->toString()) : '';
+
+            if ($this->transkripSudahDiisi($teksDariForm)) {
+                $teksRich = $request->filled('teks_mentah_rich') ? $request->string('teks_mentah_rich')->toString() : null;
+                $teksNormalized = EvidenceTextNormalizer::normalize(
+                    $teksRich,
+                    $request->input('teks_mentah_normalized', $teksDariForm)
+                );
+                $teksDisimpan = $teksNormalized !== '' ? $teksNormalized : $teksDariForm;
+
+                $bukti->resetAiFields();
+                $bukti->forceFill([
+                    'jenis_sumber' => EvidenceSourceType::Wawancara,
+                    'path_audio' => $simpan['path'],
+                    'mime_audio' => $simpan['mime'],
+                    'teks_mentah' => $teksDisimpan,
+                    'teks_mentah_rich' => $teksRich,
+                    'teks_mentah_normalized' => $teksDisimpan,
+                    'teks_kerja' => $request->input('teks_kerja', $bukti->teks_kerja),
+                    'status_transkripsi' => EvidenceTranscriptionStatus::Selesai,
+                    'pesan_status_transkripsi' => null,
+                ])->save();
+
+                return redirect()
+                    ->route('asesmen.show', $asesmen)
+                    ->withFragment('pengumpulan')
+                    ->with('status', 'Bukti wawancara diperbarui.');
+            }
+
+            $bukti->resetAiFields();
+            $bukti->forceFill([
+                'jenis_sumber' => EvidenceSourceType::Wawancara,
+                'path_audio' => $simpan['path'],
+                'mime_audio' => $simpan['mime'],
+                'teks_mentah' => 'Transkripsi sedang diproses…',
+                'teks_mentah_normalized' => 'Transkripsi sedang diproses…',
+                'teks_kerja' => $request->input('teks_kerja', $bukti->teks_kerja),
+                'status_transkripsi' => EvidenceTranscriptionStatus::Menunggu,
+                'pesan_status_transkripsi' => null,
+            ])->save();
+
+            if (config('stt.aktif', false)) {
+                $dispatcher->jadwalkan($bukti);
+                $pesan = 'Bukti wawancara disimpan. Transkripsi dijalankan.';
+            } else {
+                $bukti->forceFill([
+                    'status_transkripsi' => EvidenceTranscriptionStatus::Gagal,
+                    'pesan_status_transkripsi' => 'Transkripsi otomatis nonaktif. Silakan isi transkrip manual.',
+                ])->save();
+                $pesan = 'Bukti wawancara disimpan. Isi transkrip manual karena STT nonaktif.';
+            }
+
+            return redirect()
+                ->route('asesmen.show', $asesmen)
+                ->withFragment('pengumpulan')
+                ->with('status', $pesan);
+        }
+
+        $teksMentah = $request->string('teks_mentah')->toString();
+        $teksRich = $request->filled('teks_mentah_rich') ? $request->string('teks_mentah_rich')->toString() : null;
+        $teksNormalized = EvidenceTextNormalizer::normalize(
+            $teksRich,
+            $request->input('teks_mentah_normalized', $teksMentah)
+        );
+        $teksDisimpan = $teksNormalized !== '' ? $teksNormalized : $teksMentah;
+
+        if ($jenisBaru === EvidenceSourceType::Teks) {
+            $storage->hapus($pathLama);
+
+            $bukti->resetAiFields();
+            $bukti->forceFill([
+                'jenis_sumber' => EvidenceSourceType::Teks,
+                'path_audio' => null,
+                'mime_audio' => null,
+                'status_transkripsi' => null,
+                'pesan_status_transkripsi' => null,
+                'teks_mentah' => $teksDisimpan,
+                'teks_mentah_rich' => $teksRich,
+                'teks_mentah_normalized' => $teksDisimpan,
+                'teks_kerja' => $request->input('teks_kerja', $bukti->teks_kerja),
+            ])->save();
+
+            return redirect()
+                ->route('asesmen.show', $asesmen)
+                ->withFragment('pengumpulan')
+                ->with('status', 'Bukti diubah menjadi bukti teks.');
+        }
+
+        $bukti->resetAiFields();
+        $bukti->forceFill([
+            'jenis_sumber' => EvidenceSourceType::Wawancara,
+            'teks_mentah' => $teksDisimpan,
+            'teks_mentah_rich' => $teksRich,
+            'teks_mentah_normalized' => $teksDisimpan,
+            'teks_kerja' => $request->input('teks_kerja', $bukti->teks_kerja),
+            'status_transkripsi' => EvidenceTranscriptionStatus::Selesai,
+            'pesan_status_transkripsi' => null,
+        ])->save();
+
+        return redirect()
+            ->route('asesmen.show', $asesmen)
+            ->withFragment('pengumpulan')
+            ->with('status', 'Bukti wawancara diperbarui.');
+    }
+
+    public function transcribeEvidencePreview(TranscribeEvidencePreviewRequest $request, Assessment $asesmen): JsonResponse
+    {
+        $this->authorize('update', $asesmen);
+
+        $storage = app(EvidenceAudioStorage::class);
+        $dispatcher = app(EvidenceTranscriptionDispatcher::class);
+        $simpan = $storage->simpanUpload($request->file('berkas_audio'), (int) $asesmen->id);
+
+        try {
+            $pathAbsolut = $storage->pathAbsolut($simpan['path']);
+            if ($pathAbsolut === null) {
+                throw new \RuntimeException('Gagal membaca berkas audio.');
+            }
+
+            $teks = $dispatcher->transcribePathLangsung($pathAbsolut);
+
+            return response()->json([
+                'success' => true,
+                'text' => $teks,
+            ]);
+        } catch (\Throwable $e) {
+            return response()->json([
+                'success' => false,
+                'message' => $e->getMessage(),
+            ], 422);
+        } finally {
+            $storage->hapus($simpan['path']);
+        }
+    }
+
+    public function transcribeEvidence(TranscribeEvidenceRequest $request, Assessment $asesmen, Evidence $bukti): JsonResponse
+    {
+        $this->authorize('update', $asesmen);
+
+        if ((int) $bukti->id_asesmen !== (int) $asesmen->id) {
+            abort(404);
+        }
+
+        $storage = app(EvidenceAudioStorage::class);
+        $dispatcher = app(EvidenceTranscriptionDispatcher::class);
+        $pathSementara = null;
+
+        try {
+            if ($request->hasFile('berkas_audio')) {
+                $simpan = $storage->simpanUpload($request->file('berkas_audio'), (int) $asesmen->id);
+                $pathSementara = $simpan['path'];
+                $pathAbsolut = $storage->pathAbsolut($pathSementara);
+            } else {
+                $pathAbsolut = $storage->pathAbsolut($bukti->path_audio);
+            }
+
+            if ($pathAbsolut === null || ! is_file($pathAbsolut)) {
+                throw new \RuntimeException('Berkas audio tidak ditemukan.');
+            }
+
+            $teks = $dispatcher->transcribePathLangsung($pathAbsolut);
+
+            return response()->json([
+                'success' => true,
+                'text' => $teks,
+            ]);
+        } catch (\Throwable $e) {
+            return response()->json([
+                'success' => false,
+                'message' => $e->getMessage(),
+            ], 422);
+        } finally {
+            $storage->hapus($pathSementara);
+        }
+    }
+
+    public function streamEvidenceAudio(Assessment $asesmen, Evidence $bukti): BinaryFileResponse
+    {
+        $this->authorize('view', $asesmen);
+
+        if ((int) $bukti->id_asesmen !== (int) $asesmen->id) {
+            abort(404);
+        }
+
+        $storage = app(EvidenceAudioStorage::class);
+        $pathAbsolut = $storage->pathAbsolut($bukti->path_audio);
+        if ($pathAbsolut === null || ! is_file($pathAbsolut)) {
+            abort(404);
+        }
+
+        $mime = is_string($bukti->mime_audio) && $bukti->mime_audio !== ''
+            ? $bukti->mime_audio
+            : 'audio/mpeg';
+
+        return response()->file($pathAbsolut, [
+            'Content-Type' => $mime,
+            'Content-Disposition' => 'inline; filename="'.addslashes(basename($pathAbsolut)).'"',
+        ]);
     }
 
     public function storeKeyBehavior(StoreKeyBehaviorRequest $request, Assessment $asesmen): RedirectResponse
@@ -1025,5 +1325,15 @@ class AssessmentController extends Controller
         }
 
         return $rows;
+    }
+
+    private function transkripSudahDiisi(?string $teks): bool
+    {
+        $teks = trim((string) $teks);
+        if ($teks === '') {
+            return false;
+        }
+
+        return ! str_contains($teks, 'Transkripsi sedang diproses');
     }
 }

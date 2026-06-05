@@ -115,6 +115,7 @@ final class AssessmentToolAvailabilityDiagnostic
     private static function pemetaanUntukVersi(int $idVersiMatriks): Collection
     {
         return CompetencyToolMapping::query()
+            ->with('competency')
             ->where('id_versi_matriks', $idVersiMatriks)
             ->where(function ($query): void {
                 $query->where('aktif', true)->orWhereNull('aktif');

@@ -22,31 +22,33 @@ class MasterDataController extends Controller
 
     public function competencyGroups(): View
     {
-        $items = CompetencyGroup::query()->orderBy('kode')->paginate(25);
-
-        return view('master.competency-groups', compact('items'));
+        return $this->competencies();
     }
 
     public function competencies(): View
     {
-        $items = Competency::query()
-            ->with('group')
-            ->orderBy('kode_kompetensi')
-            ->paginate(25);
+        $kelompok = CompetencyGroup::query()
+            ->with([
+                'competencies' => fn ($q) => $q->orderBy('kode_kompetensi'),
+                'competencies.levels' => fn ($q) => $q->orderBy('tingkat'),
+            ])
+            ->orderBy('kode')
+            ->get();
 
-        return view('master.competencies', compact('items'));
+        $jumlahBaris = $kelompok->sum(function (CompetencyGroup $g): int {
+            return 1 + $g->competencies->sum(fn (Competency $c): int => 1 + $c->levels->count());
+        });
+
+        return view('master.competencies', [
+            'kelompok' => $kelompok,
+            'jumlahBaris' => $jumlahBaris,
+            'bolehUbah' => auth()->user()?->role === 'admin',
+        ]);
     }
 
     public function competencyLevels(): View
     {
-        $items = CompetencyLevel::query()
-            ->whereHas('competency')
-            ->with('competency')
-            ->orderBy('id_kompetensi')
-            ->orderBy('tingkat')
-            ->paginate(40);
-
-        return view('master.competency-levels', compact('items'));
+        return $this->competencies();
     }
 
     public function assessmentTools(): View

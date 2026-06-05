@@ -3,48 +3,44 @@
 namespace App\Http\Controllers\Master;
 
 use App\Http\Controllers\Controller;
+use App\Http\Controllers\Master\Concerns\RedirectsToCompetencyStructure;
 use App\Http\Requests\Master\StoreCompetencyLevelRequest;
 use App\Http\Requests\Master\UpdateCompetencyLevelRequest;
 use App\Models\Competency;
 use App\Models\CompetencyLevel;
 use Illuminate\Http\RedirectResponse;
-use Illuminate\View\View;
 
 class CompetencyLevelController extends Controller
 {
-    public function create(): View
+    use RedirectsToCompetencyStructure;
+    public function create(): RedirectResponse
     {
-        return view('master.competency-levels.create', [
-            'kompetensi' => Competency::query()->orderBy('kode_kompetensi')->get(),
-        ]);
+        return redirect()->route('master.kompetensi.index');
     }
 
     public function store(StoreCompetencyLevelRequest $request): RedirectResponse
     {
         CompetencyLevel::query()->create($request->validated());
 
-        return redirect()->route('master.tingkat-kompetensi.index')->with('status', 'Tingkat kompetensi disimpan.');
+        return $this->redirectToCompetencyStructure('Tingkat kompetensi disimpan.');
     }
 
-    public function edit(CompetencyLevel $tingkatKompetensi): View
+    public function edit(CompetencyLevel $tingkatKompetensi): RedirectResponse
     {
-        return view('master.competency-levels.edit', [
-            'item' => $tingkatKompetensi,
-            'kompetensi' => Competency::query()->orderBy('kode_kompetensi')->get(),
-        ]);
+        return redirect()->route('master.kompetensi.index');
     }
 
     public function update(UpdateCompetencyLevelRequest $request, CompetencyLevel $tingkatKompetensi): RedirectResponse
     {
         $tingkatKompetensi->update($request->validated());
 
-        return redirect()->route('master.tingkat-kompetensi.index')->with('status', 'Tingkat kompetensi diperbarui.');
+        return $this->redirectToCompetencyStructure('Tingkat kompetensi diperbarui.');
     }
 
     public function destroy(CompetencyLevel $tingkatKompetensi): RedirectResponse
     {
         $tingkatKompetensi->delete();
 
-        return redirect()->route('master.tingkat-kompetensi.index')->with('status', 'Tingkat kompetensi dihapus.');
+        return $this->redirectToCompetencyStructure('Tingkat kompetensi dihapus.');
     }
 }
