@@ -7,6 +7,7 @@ use App\Models\AssessmentTool;
 use App\Models\Competency;
 use App\Models\CompetencyLevel;
 use App\Models\Evidence;
+use App\Models\KeyBehavior;
 use App\Models\MatrixVersion;
 use App\Models\Participant;
 use App\Models\User;
@@ -89,6 +90,44 @@ class AiEvidenceAnalysisTest extends TestCase
             'jalur' => 'analisis_bukti_incremental',
             'status' => 'berhasil',
         ]);
+    }
+
+    public function test_transfer_hasil_ai_bukti_ke_mapping_membuat_perilaku_kunci_draft(): void
+    {
+        $this->seed(DatabaseSeeder::class);
+        $admin = User::query()->where('alamat_surel', 'admin@example.com')->firstOrFail();
+        $asesmen = $this->buatAsesmenDenganSatuBukti($admin);
+        $bukti = Evidence::query()->where('id_asesmen', $asesmen->id)->firstOrFail();
+        $tingkat = CompetencyLevel::query()
+            ->where('id_kompetensi', $bukti->id_kompetensi)
+            ->where('tingkat', 2)
+            ->firstOrFail();
+
+        $bukti->forceFill([
+            'ai_tingkat' => '2',
+            'ai_alasan' => 'AI menilai indikator level 2 terlihat.',
+            'ai_muatan' => [
+                'id_tingkat_kompetensi_usulan' => $tingkat->id,
+                'kutipan_dari_teks_mentah' => 'KUTIPAN_TEGAS',
+            ],
+            'ai_dinilai_pada' => now(),
+        ])->save();
+
+        $this->actingAs($admin)
+            ->post(route('asesmen.bukti.mapping', [$asesmen, $bukti]))
+            ->assertRedirect(route('asesmen.show', $asesmen).'#hasil-mapping')
+            ->assertSessionHas('status');
+
+        $pk = KeyBehavior::query()
+            ->where('id_asesmen', $asesmen->id)
+            ->where('id_bukti_penilaian', $bukti->id)
+            ->latest('id')
+            ->first();
+
+        $this->assertNotNull($pk);
+        $this->assertFalse((bool) $pk->tervalidasi);
+        $this->assertSame($tingkat->id, $pk->id_tingkat_kompetensi);
+        $this->assertSame('KUTIPAN_TEGAS', $pk->kutipan_referensi);
     }
 
     private function buatAsesmenDenganSatuBukti(User $admin): Assessment

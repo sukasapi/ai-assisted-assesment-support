@@ -67,6 +67,15 @@
                                     @endif
                                     {{ $b->ai_alasan ?: ($b->ai_muatan['kutipan_dari_teks_mentah'] ?? '') }}
                                 </p>
+                                @if ($isDraft && auth()->user()?->can('update', $asesmen))
+                                    <form method="POST" action="{{ route('asesmen.bukti.mapping', [$asesmen, $b]) }}" class="mt-4">
+                                        @csrf
+                                        <button type="submit" class="inline-flex items-center gap-2 rounded-lg border border-primary/30 bg-primary-fixed px-3 py-1.5 text-xs font-bold text-primary transition-colors hover:bg-primary-fixed/80">
+                                            <span class="material-symbols-outlined text-sm">account_tree</span>
+                                            Mapping
+                                        </button>
+                                    </form>
+                                @endif
                             </div>
                         @endif
 
