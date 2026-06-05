@@ -27,6 +27,28 @@ class MasterDataRbacTest extends TestCase
             ->assertOk();
     }
 
+    public function test_admin_dan_konsultan_dapat_melihat_halaman_struktur_kompetensi(): void
+    {
+        $this->seed(DatabaseSeeder::class);
+
+        $admin = User::query()->where('alamat_surel', 'admin@example.com')->firstOrFail();
+        $konsultan = User::query()->where('alamat_surel', 'konsultan@example.com')->firstOrFail();
+
+        $this->actingAs($admin)
+            ->get(route('master.kompetensi.index'))
+            ->assertOk()
+            ->assertSee('Struktur kompetensi', false);
+
+        $this->actingAs($konsultan)
+            ->get(route('master.kompetensi.index'))
+            ->assertOk()
+            ->assertDontSee('Tambah kompetensi', false);
+
+        $this->actingAs($konsultan)
+            ->get(route('master.kelompok-kompetensi.index'))
+            ->assertOk();
+    }
+
     public function test_konsultan_cannot_store_competency_group(): void
     {
         $this->seed(DatabaseSeeder::class);
@@ -198,14 +220,14 @@ class MasterDataRbacTest extends TestCase
                 'kode' => 'TST',
                 'nama' => 'Test Group',
             ])
-            ->assertRedirect(route('master.kelompok-kompetensi.index'));
+            ->assertRedirect(route('master.kompetensi.index'));
 
         $group = CompetencyGroup::query()->where('kode', 'TST')->firstOrFail();
         $this->assertDatabaseHas('ais_kelompok_kompetensi', ['kode' => 'TST', 'dihapus_pada' => null]);
 
         $this->actingAs($admin)
             ->delete(route('master.kelompok-kompetensi.destroy', $group))
-            ->assertRedirect(route('master.kelompok-kompetensi.index'));
+            ->assertRedirect(route('master.kompetensi.index'));
 
         $deleted = CompetencyGroup::query()->onlyTrashed()->where('kode', 'TST')->first();
         $this->assertNotNull($deleted);

@@ -6,6 +6,9 @@ use App\Models\Assessment;
 use App\Models\AssessmentSession;
 use App\Models\PersonalAccessToken;
 use App\Models\User;
+use App\Services\Stt\GroqSttTranscriber;
+use App\Services\Stt\OpenRouterSttTranscriber;
+use App\Services\Stt\TranscriberContract;
 use App\Policies\AssessmentPolicy;
 use App\Policies\AssessmentSessionPolicy;
 use App\Policies\UserPolicy;
@@ -29,7 +32,14 @@ class AppServiceProvider extends ServiceProvider
      */
     public function register(): void
     {
-        //
+        $this->app->bind(TranscriberContract::class, function ($app) {
+            $penyedia = (string) config('stt.penyedia', 'groq');
+
+            return match ($penyedia) {
+                'openrouter' => $app->make(OpenRouterSttTranscriber::class),
+                default => $app->make(GroqSttTranscriber::class),
+            };
+        });
     }
 
     /**

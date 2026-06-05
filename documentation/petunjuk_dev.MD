@@ -402,10 +402,46 @@ Gunakan dokumen rencana internal (`.cursor/plans/`) untuk detail fase berikutnya
 
 ---
 
+## 10b. Bukti wawancara (STT)
+
+Tab **Pengumpulan Bukti** (mode manual) mendukung **Bukti teks** atau **Bukti wawancara** (upload audio).
+
+### Penyedia STT
+
+| Penyedia | Biaya | Bahasa Indonesia | File besar |
+|----------|-------|------------------|------------|
+| **Groq** (`STT_PROVIDER=groq`) | **Gratis** (tier Groq, batas rate) | Ya (Whisper) | Chunk otomatis via FFmpeg jika &gt; 24 MB |
+| **OpenRouter** (`STT_PROVIDER=openrouter`) | **Berbayar** (~$0.006/menit Whisper) | Ya | Unggah max `STT_MAX_FILE_MB`; chunk FFmpeg sama |
+
+**Whisper di OpenRouter tidak gratis.** Tidak ada model STT `:free` di OpenRouter.
+
+Daftar kunci Groq gratis: [console.groq.com](https://console.groq.com) → API Keys.
+
+| Variabel `.env` | Fungsi |
+|-----------------|--------|
+| `STT_PROVIDER` | `groq` (default, gratis) atau `openrouter` (berbayar) |
+| `GROQ_API_KEY` | Wajib untuk Groq |
+| `GROQ_STT_MODEL` | Default `whisper-large-v3-turbo` |
+| `STT_AKTIF` | `false` mematikan transkripsi otomatis |
+| `STT_MODEL` | Model OpenRouter bila `STT_PROVIDER=openrouter` |
+| `STT_LANGUAGE` | Kode ISO, mis. `id` |
+| `STT_MAX_FILE_MB` | Batas unggah ke aplikasi (default 100 MB) |
+| `STT_CHUNK_MAX_MB` | Ukuran maks per request API (default 24 MB) |
+| `STT_FFMPEG_PATH` | Path FFmpeg jika tidak ada di PATH (Laragon: `C:\laragon\bin\ffmpeg\...\ffmpeg.exe`) |
+| `STT_QUEUE_CONNECTION` | `sync` = langsung; `database` = butuh worker |
+
+File audio &gt; 24 MB otomatis dipecah (10 menit/chunk, overlap 10 detik) selama FFmpeg terpasang.
+
+Jika kredit/kuota habis atau STT gagal, asesor dapat mengoreksi teks manual di **Perbarui bukti**.
+
+---
+
 ## 11. Pemecahan Masalah
 
 | Gejala | Solusi |
 |--------|--------|
+| Transkripsi wawancara gagal (502) | Gunakan model Whisper (`STT_MODEL=openai/whisper-large-v3-turbo`); Parakeet tidak mendukung Indonesia; perkecil audio &lt; 25 MB |
+| Transkripsi wawancara gagal | Cek kredit OpenRouter; isi transkrip manual; pastikan `STT_AKTIF=true` |
 | Tombol AI tidak muncul | Pastikan kunci OpenRouter terisi dan `AI_AKTIF` tidak `false` |
 | Analisis AI menggantung | Jalankan `php artisan queue:listen`; cek `failed_jobs` |
 | `429` saat trigger AI | Tunggu (throttle `AI_TRIGGER_PER_MINUTE`) |

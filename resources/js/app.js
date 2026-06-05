@@ -190,6 +190,7 @@ function bindWysiwygEditors() {
                 ],
             },
         });
+        textarea.__quill = quill;
 
         const initial = textarea.value || '';
         if (initial.trim() !== '') {
@@ -262,6 +263,23 @@ function bindWysiwygEditors() {
             });
         }
     });
+}
+
+/** Sinkronkan nilai ke textarea tersembunyi dan editor Quill (jika ada). */
+function applyTextToTextarea(textarea, text) {
+    if (!textarea) {
+        return;
+    }
+
+    const nilai = String(text ?? '');
+    textarea.value = nilai;
+
+    const quill = textarea.__quill;
+    if (quill && typeof quill.setText === 'function') {
+        quill.setText(nilai);
+    }
+
+    textarea.dispatchEvent(new Event('input', { bubbles: true }));
 }
 
 function normalizeBulkHtml(html, plainFallback = '') {
@@ -756,11 +774,284 @@ function initPkSahkanAjax() {
     });
 }
 
+function initEvidenceJenisToggle() {
+    const syncForm = (form) => {
+        const jenis = form.querySelector('input[name="jenis_sumber"]:checked')?.value || 'teks';
+        const isEdit = form.hasAttribute('data-evidence-edit-form');
+        const hasAudio = form.dataset.hasAudio === '1';
+        const fieldTeks = form.querySelector('.js-evidence-field-teks');
+        const fieldWawancara = form.querySelector('.js-evidence-field-wawancara');
+        const teksBlock = form.querySelector('.js-evidence-teks-block');
+        const teksLabel = teksBlock?.querySelector('.js-evidence-teks-label');
+        const textareaTeks =
+            fieldTeks?.querySelector('textarea[name="teks_mentah"]') ??
+            teksBlock?.querySelector('textarea[name="teks_mentah"]');
+        const inputAudio = fieldWawancara?.querySelector('input[name="berkas_audio"]');
+
+        if (fieldTeks) {
+            fieldTeks.classList.toggle('hidden', jenis !== 'teks');
+        }
+        if (fieldWawancara) {
+            fieldWawancara.classList.toggle('hidden', jenis !== 'wawancara');
+        }
+        if (teksBlock && !fieldTeks) {
+            teksBlock.classList.remove('hidden');
+        }
+        if (textareaTeks) {
+            textareaTeks.required = jenis === 'teks';
+            textareaTeks.placeholder =
+                jenis === 'wawancara'
+                    ? 'Koreksi atau isi transkrip wawancara…'
+                    : 'Tuliskan bukti observasi di sini…';
+        }
+        if (teksLabel) {
+            teksLabel.textContent = jenis === 'wawancara' ? 'Transkrip / teks bukti' : 'Teks bukti';
+        }
+        if (inputAudio) {
+            inputAudio.required = ! isEdit && jenis === 'wawancara';
+        }
+        if (jenis === 'wawancara') {
+            syncEvidencePlayButton(form);
+        }
+    };
+
+    document.querySelectorAll('[data-evidence-store-form], [data-evidence-edit-form]').forEach((form) => {
+        syncForm(form);
+        form.querySelectorAll('.js-evidence-jenis').forEach((radio) => {
+            radio.addEventListener('change', () => syncForm(form));
+        });
+        form.addEventListener('submit', (e) => {
+            const jenis = form.querySelector('input[name="jenis_sumber"]:checked')?.value || 'teks';
+            const isEdit = form.hasAttribute('data-evidence-edit-form');
+            const hasAudio = form.dataset.hasAudio === '1';
+            const audio = form.querySelector('input[name="berkas_audio"]');
+            const teks = form.querySelector('textarea[name="teks_mentah"]');
+            const teksTerisi = teks?.value?.trim();
+
+            if (jenis === 'wawancara' && audio && !audio.files?.length && !isEdit) {
+                e.preventDefault();
+                window.notifyError?.('Pilih berkas audio wawancara terlebih dahulu.');
+                return;
+            }
+
+            if (jenis === 'wawancara' && isEdit && !hasAudio && audio && !audio.files?.length && !teksTerisi) {
+                e.preventDefault();
+                window.notifyError?.('Unggah berkas audio wawancara atau isi transkrip manual.');
+                return;
+            }
+
+            if (jenis === 'teks' && !teksTerisi) {
+                e.preventDefault();
+                window.notifyError?.('Isi teks bukti terlebih dahulu.');
+            }
+        });
+    });
+}
+
+function initEvidenceTranscript() {
+    document.querySelectorAll('.js-evidence-transcript').forEach((btn) => {
+        btn.addEventListener('click', async () => {
+            const form = btn.closest('form');
+            if (!form) {
+                return;
+            }
+
+            const jenis = form.querySelector('input[name="jenis_sumber"]:checked')?.value || 'teks';
+            if (jenis !== 'wawancara') {
+                window.notifyError?.('Pilih jenis bukti wawancara terlebih dahulu.');
+                return;
+            }
+
+            const audioInput = form.querySelector('input[name="berkas_audio"]');
+            const hasNewFile = Boolean(audioInput?.files?.length);
+            const hasExistingAudio = form.dataset.hasAudio === '1';
+            const previewUrl = form.dataset.transcriptPreviewUrl;
+            const evidenceUrl = form.dataset.transcriptEvidenceUrl;
+            const textarea =
+                form.querySelector('.js-evidence-teks-block textarea[name="teks_mentah"]') ??
+                form.querySelector('textarea[name="teks_mentah"]');
+
+            if (!hasNewFile && !hasExistingAudio) {
+                window.notifyError?.('Pilih berkas audio wawancara terlebih dahulu.');
+                return;
+            }
+
+            const url = hasNewFile ? previewUrl : evidenceUrl;
+            if (!url) {
+                window.notifyError?.('URL transkripsi tidak tersedia.');
+                return;
+            }
+
+            const token = getCsrfToken();
+            const formData = new FormData();
+            if (hasNewFile && audioInput?.files?.[0]) {
+                formData.append('berkas_audio', audioInput.files[0]);
+            }
+
+            const labelAsli = btn.textContent;
+            btn.disabled = true;
+            btn.textContent = 'Memproses…';
+
+            try {
+                const res = await fetch(url, {
+                    method: 'POST',
+                    headers: {
+                        Accept: 'application/json',
+                        'X-CSRF-TOKEN': token,
+                        'X-Requested-With': 'XMLHttpRequest',
+                    },
+                    body: formData,
+                });
+
+                let data = {};
+                try {
+                    data = await res.json();
+                } catch {
+                    // abaikan
+                }
+
+                if (res.status === 419) {
+                    window.notifyError?.('Sesi kedaluwarsa. Muat ulang halaman lalu coba lagi.');
+                    return;
+                }
+
+                if (!res.ok || data.success === false) {
+                    const msg =
+                        data.message ||
+                        (Array.isArray(data.errors?.berkas_audio) ? data.errors.berkas_audio[0] : null) ||
+                        'Transkripsi gagal.';
+                    window.notifyError?.(msg);
+                    return;
+                }
+
+                if (textarea && typeof data.text === 'string') {
+                    applyTextToTextarea(textarea, data.text);
+                }
+
+                window.notifySuccess?.('Transkripsi selesai. Periksa teks lalu simpan.');
+            } catch {
+                window.notifyError?.('Gagal menghubungi server transkripsi.');
+            } finally {
+                btn.disabled = false;
+                btn.textContent = labelAsli;
+            }
+        });
+    });
+}
+
+function syncEvidencePlayButton(form) {
+    const audioInput = form.querySelector('input[name="berkas_audio"]');
+    const playBtn = form.querySelector('.js-evidence-play');
+    if (!audioInput || !playBtn) {
+        return;
+    }
+
+    const hasNewFile = Boolean(audioInput.files?.length);
+    const hasSavedAudio = form.dataset.hasAudio === '1' && Boolean(form.dataset.audioPlayUrl);
+    playBtn.classList.toggle('hidden', !(hasNewFile || hasSavedAudio));
+}
+
+function initEvidencePlay() {
+    document.querySelectorAll('[data-evidence-store-form], [data-evidence-edit-form]').forEach((form) => {
+        const audioInput = form.querySelector('input[name="berkas_audio"]');
+        const playBtn = form.querySelector('.js-evidence-play');
+        if (!audioInput || !playBtn) {
+            return;
+        }
+
+        const audioEl = document.createElement('audio');
+        audioEl.preload = 'none';
+        audioEl.className = 'sr-only';
+        form.appendChild(audioEl);
+
+        let blobUrl = null;
+
+        const revokeBlob = () => {
+            if (blobUrl) {
+                URL.revokeObjectURL(blobUrl);
+                blobUrl = null;
+            }
+        };
+
+        syncEvidencePlayButton(form);
+
+        audioInput.addEventListener('change', () => {
+            revokeBlob();
+            audioEl.pause();
+            audioEl.removeAttribute('src');
+            syncEvidencePlayButton(form);
+        });
+
+        playBtn.addEventListener('click', async () => {
+            const file = audioInput.files?.[0];
+            if (file) {
+                revokeBlob();
+                blobUrl = URL.createObjectURL(file);
+                audioEl.src = blobUrl;
+            } else if (form.dataset.audioPlayUrl) {
+                revokeBlob();
+                audioEl.src = form.dataset.audioPlayUrl;
+            } else {
+                window.notifyError?.('Tidak ada berkas audio untuk diputar.');
+                return;
+            }
+
+            try {
+                audioEl.currentTime = 0;
+                await audioEl.play();
+            } catch {
+                window.notifyError?.('Gagal memutar audio. Pastikan format didukung browser.');
+            }
+        });
+
+        audioEl.addEventListener('ended', () => {
+            playBtn.textContent = 'Play';
+        });
+    });
+}
+
+function initEvidenceEditToggle() {
+    document.querySelectorAll('.js-evidence-edit-toggle').forEach((btn) => {
+        btn.addEventListener('click', () => {
+            const targetId = btn.dataset.target;
+            const form = targetId ? document.getElementById(targetId) : null;
+            const row = btn.closest('[data-evidence-row]');
+            const view = row?.querySelector('[id^="evidence-view-"]');
+            if (form) {
+                form.classList.remove('hidden');
+            }
+            if (view) {
+                view.classList.add('hidden');
+            }
+            btn.classList.add('hidden');
+        });
+    });
+
+    document.querySelectorAll('.js-evidence-edit-cancel').forEach((btn) => {
+        btn.addEventListener('click', () => {
+            const view = document.getElementById(btn.dataset.view || '');
+            const form = document.getElementById(btn.dataset.form || '');
+            if (form) {
+                form.classList.add('hidden');
+            }
+            if (view) {
+                view.classList.remove('hidden');
+            }
+            const row = btn.closest('[data-evidence-row]');
+            row?.querySelector('.js-evidence-edit-toggle')?.classList.remove('hidden');
+        });
+    });
+}
+
 document.addEventListener('DOMContentLoaded', bindBulkPayloadPlainForms);
 document.addEventListener('DOMContentLoaded', initPayloadDetailModal);
 document.addEventListener('DOMContentLoaded', initPayloadBulkStatusPolling);
 document.addEventListener('DOMContentLoaded', initPayloadDeleteConfirm);
 document.addEventListener('DOMContentLoaded', initPkSahkanAjax);
+document.addEventListener('DOMContentLoaded', initEvidenceJenisToggle);
+document.addEventListener('DOMContentLoaded', initEvidenceTranscript);
+document.addEventListener('DOMContentLoaded', initEvidencePlay);
+document.addEventListener('DOMContentLoaded', initEvidenceEditToggle);
 
 /** Notifikasi dari kode lain (Livewire, fetch, dll.) */
 window.notifySuccess = (text, title = 'Berhasil') =>

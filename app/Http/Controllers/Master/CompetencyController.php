@@ -3,43 +3,39 @@
 namespace App\Http\Controllers\Master;
 
 use App\Http\Controllers\Controller;
+use App\Http\Controllers\Master\Concerns\RedirectsToCompetencyStructure;
 use App\Http\Requests\Master\StoreCompetencyRequest;
 use App\Http\Requests\Master\UpdateCompetencyRequest;
 use App\Models\Competency;
 use App\Models\CompetencyGroup;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Support\Facades\DB;
-use Illuminate\View\View;
 
 class CompetencyController extends Controller
 {
-    public function create(): View
+    use RedirectsToCompetencyStructure;
+    public function create(): RedirectResponse
     {
-        return view('master.competencies.create', [
-            'kelompok' => CompetencyGroup::query()->orderBy('kode')->get(),
-        ]);
+        return redirect()->route('master.kompetensi.index');
     }
 
     public function store(StoreCompetencyRequest $request): RedirectResponse
     {
         Competency::query()->create($request->validated());
 
-        return redirect()->route('master.kompetensi.index')->with('status', 'Kompetensi disimpan.');
+        return $this->redirectToCompetencyStructure('Kompetensi disimpan.');
     }
 
-    public function edit(Competency $kompetensi): View
+    public function edit(Competency $kompetensi): RedirectResponse
     {
-        return view('master.competencies.edit', [
-            'item' => $kompetensi,
-            'kelompok' => CompetencyGroup::query()->orderBy('kode')->get(),
-        ]);
+        return redirect()->route('master.kompetensi.index');
     }
 
     public function update(UpdateCompetencyRequest $request, Competency $kompetensi): RedirectResponse
     {
         $kompetensi->update($request->validated());
 
-        return redirect()->route('master.kompetensi.index')->with('status', 'Kompetensi diperbarui.');
+        return $this->redirectToCompetencyStructure('Kompetensi diperbarui.');
     }
 
     public function destroy(Competency $kompetensi): RedirectResponse
@@ -49,6 +45,6 @@ class CompetencyController extends Controller
             $kompetensi->delete();
         });
 
-        return redirect()->route('master.kompetensi.index')->with('status', 'Kompetensi dan tingkat terkait dihapus.');
+        return $this->redirectToCompetencyStructure('Kompetensi dan tingkat terkait dihapus.');
     }
 }

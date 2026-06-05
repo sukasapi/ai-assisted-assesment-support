@@ -2,6 +2,8 @@
 
 namespace App\Models;
 
+use App\Enums\EvidenceSourceType;
+use App\Enums\EvidenceTranscriptionStatus;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
@@ -18,10 +20,16 @@ class Evidence extends Model
         'id_asesmen',
         'id_alat_penilaian',
         'id_kompetensi',
+        'jenis_sumber',
         'teks_mentah',
         'teks_mentah_rich',
         'teks_mentah_normalized',
         'teks_kerja',
+        'path_audio',
+        'mime_audio',
+        'durasi_audio_detik',
+        'status_transkripsi',
+        'pesan_status_transkripsi',
         'ai_tingkat',
         'ai_alasan',
         'ai_keyakinan',
@@ -32,10 +40,23 @@ class Evidence extends Model
     protected function casts(): array
     {
         return [
+            'jenis_sumber' => EvidenceSourceType::class,
+            'status_transkripsi' => EvidenceTranscriptionStatus::class,
             'ai_muatan' => 'array',
             'ai_keyakinan' => 'decimal:4',
             'ai_dinilai_pada' => 'datetime',
         ];
+    }
+
+    public function resetAiFields(): void
+    {
+        $this->forceFill([
+            'ai_tingkat' => null,
+            'ai_alasan' => null,
+            'ai_keyakinan' => null,
+            'ai_muatan' => null,
+            'ai_dinilai_pada' => null,
+        ]);
     }
 
     public function assessment(): BelongsTo
