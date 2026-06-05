@@ -89,6 +89,9 @@ Route::middleware(['auth', 'user.aktif'])->group(function () {
             ->middleware('throttle:ai-analysis-trigger')
             ->scopeBindings()
             ->name('asesmen.bukti.analisis-ai');
+        Route::post('asesmen/{asesmen}/bukti/{bukti}/mapping', [AssessmentController::class, 'transferEvidenceAiToMapping'])
+            ->scopeBindings()
+            ->name('asesmen.bukti.mapping');
         Route::post('asesmen/{asesmen}/payload-alat', [AssessmentController::class, 'storeToolPayload'])->name('asesmen.payload-alat.store');
         Route::delete('asesmen/{asesmen}/payload-alat/{payload}', [AssessmentController::class, 'destroyToolPayload'])
             ->scopeBindings()

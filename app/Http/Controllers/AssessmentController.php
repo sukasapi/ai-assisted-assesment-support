@@ -965,6 +965,94 @@ class AssessmentController extends Controller
             ->with('status', 'Analisis AI untuk bukti #'.$bukti->id.' selesai.');
     }
 
+    public function transferEvidenceAiToMapping(Assessment $asesmen, Evidence $bukti): RedirectResponse
+    {
+        $this->authorize('update', $asesmen);
+        abort_unless((int) $bukti->id_asesmen === (int) $asesmen->id, 404);
+
+        if ($asesmen->status === AssessmentStatus::SelesaiFinal) {
+            return redirect()
+                ->route('asesmen.show', $asesmen)
+                ->withFragment('hasil-mapping')
+                ->withErrors(['perilaku_kunci' => 'Asesmen sudah difinalisasi. Mapping tidak dapat ditambah.']);
+        }
+
+        $muatanAi = is_array($bukti->ai_muatan) ? $bukti->ai_muatan : [];
+        $kutipan = trim((string) ($muatanAi['kutipan_dari_teks_mentah'] ?? ''));
+        $alasan = trim((string) ($bukti->ai_alasan ?? ''));
+        if ($kutipan === '' || $alasan === '') {
+            return redirect()
+                ->route('asesmen.show', $asesmen)
+                ->withFragment('pengumpulan')
+                ->withErrors(['ai' => 'Hasil AI belum lengkap untuk ditransfer ke mapping. Jalankan analisis AI ulang.']);
+        }
+
+        $idTingkat = null;
+        $idUsulan = $muatanAi['id_tingkat_kompetensi_usulan'] ?? null;
+        if (is_numeric($idUsulan)) {
+            $idTingkat = (int) $idUsulan;
+        } elseif (is_numeric($bukti->ai_tingkat)) {
+            $tingkat = (int) $bukti->ai_tingkat;
+            $idTingkat = CompetencyLevel::query()
+                ->where('id_kompetensi', $bukti->id_kompetensi)
+                ->where('tingkat', $tingkat)
+                ->value('id');
+            $idTingkat = $idTingkat !== null ? (int) $idTingkat : null;
+        }
+
+        if ($idTingkat === null) {
+            return redirect()
+                ->route('asesmen.show', $asesmen)
+                ->withFragment('pengumpulan')
+                ->withErrors(['ai' => 'AI belum memberikan rekomendasi level yang valid untuk mapping.']);
+        }
+
+        $teksPerilaku = CompetencyLevel::teksIndikatorResmi($idTingkat) ?: $alasan;
+
+        $pk = KeyBehavior::query()
+            ->where('id_asesmen', $asesmen->id)
+            ->where('id_bukti_penilaian', $bukti->id)
+            ->where('tervalidasi', false)
+            ->orderByDesc('id')
+            ->first();
+
+        if ($pk) {
+            $pk->update([
+                'id_tingkat_kompetensi' => $idTingkat,
+                'teks_perilaku' => $teksPerilaku,
+                'alasan_pemilihan' => $alasan,
+                'kutipan_referensi' => $kutipan,
+            ]);
+        } else {
+            $pk = $asesmen->keyBehaviors()->create([
+                'id_alat_penilaian' => $bukti->id_alat_penilaian,
+                'id_kompetensi' => $bukti->id_kompetensi,
+                'id_bukti_penilaian' => $bukti->id,
+                'id_tingkat_kompetensi' => $idTingkat,
+                'teks_perilaku' => $teksPerilaku,
+                'alasan_pemilihan' => $alasan,
+                'kutipan_referensi' => $kutipan,
+                'tervalidasi' => false,
+            ]);
+        }
+
+        CatatAktivitas::catat(
+            request()->user(),
+            'bukti.ai_ditransfer_ke_mapping',
+            KeyBehavior::class,
+            $pk->id,
+            [
+                'id_asesmen' => $asesmen->id,
+                'id_bukti_penilaian' => $bukti->id,
+            ],
+        );
+
+        return redirect()
+            ->route('asesmen.show', $asesmen)
+            ->withFragment('hasil-mapping')
+            ->with('status', 'Hasil analisis AI bukti #'.$bukti->id.' berhasil ditransfer ke mapping perilaku.');
+    }
+
     public function storeToolPayload(StoreAssessmentToolPayloadRequest $request, Assessment $asesmen): RedirectResponse
     {
         $this->authorize('update', $asesmen);
