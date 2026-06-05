@@ -102,6 +102,7 @@ class AiEvidenceAnalysisTest extends TestCase
             ->post(route('asesmen.bukti.store', $asesmen), [
                 'id_alat_penilaian' => $alat->id,
                 'id_kompetensi' => $kompetensi->id,
+                'jenis_sumber' => 'teks',
                 'teks_mentah' => "Ringkasan perilaku.\nKUTIPAN_TEGAS dalam konteks kerja.",
             ])
             ->assertRedirect();

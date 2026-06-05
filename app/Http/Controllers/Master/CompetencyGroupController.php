@@ -3,46 +3,47 @@
 namespace App\Http\Controllers\Master;
 
 use App\Http\Controllers\Controller;
+use App\Http\Controllers\Master\Concerns\RedirectsToCompetencyStructure;
 use App\Http\Requests\Master\StoreCompetencyGroupRequest;
 use App\Http\Requests\Master\UpdateCompetencyGroupRequest;
 use App\Models\CompetencyGroup;
 use Illuminate\Http\RedirectResponse;
-use Illuminate\View\View;
 
 class CompetencyGroupController extends Controller
 {
+    use RedirectsToCompetencyStructure;
     public function create(): View
     {
-        return view('master.competency-groups.create');
+        return redirect()->route('master.kompetensi.index');
     }
 
     public function store(StoreCompetencyGroupRequest $request): RedirectResponse
     {
         CompetencyGroup::query()->create($request->validated());
 
-        return redirect()->route('master.kelompok-kompetensi.index')->with('status', 'Kelompok kompetensi disimpan.');
+        return $this->redirectToCompetencyStructure('Kelompok kompetensi disimpan.');
     }
 
-    public function edit(CompetencyGroup $kelompokKompetensi): View
+    public function edit(CompetencyGroup $kelompokKompetensi): RedirectResponse
     {
-        return view('master.competency-groups.edit', ['item' => $kelompokKompetensi]);
+        return redirect()->route('master.kompetensi.index');
     }
 
     public function update(UpdateCompetencyGroupRequest $request, CompetencyGroup $kelompokKompetensi): RedirectResponse
     {
         $kelompokKompetensi->update($request->validated());
 
-        return redirect()->route('master.kelompok-kompetensi.index')->with('status', 'Kelompok kompetensi diperbarui.');
+        return $this->redirectToCompetencyStructure('Kelompok kompetensi diperbarui.');
     }
 
     public function destroy(CompetencyGroup $kelompokKompetensi): RedirectResponse
     {
         if ($kelompokKompetensi->competencies()->exists()) {
-            return redirect()->route('master.kelompok-kompetensi.index')->with('error', 'Tidak dapat menghapus: masih ada kompetensi pada kelompok ini.');
+            return $this->redirectToCompetencyStructure(error: 'Tidak dapat menghapus: masih ada kompetensi pada kelompok ini.');
         }
 
         $kelompokKompetensi->delete();
 
-        return redirect()->route('master.kelompok-kompetensi.index')->with('status', 'Kelompok kompetensi dihapus.');
+        return $this->redirectToCompetencyStructure('Kelompok kompetensi dihapus.');
     }
 }

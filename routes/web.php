@@ -72,6 +72,19 @@ Route::middleware(['auth', 'user.aktif'])->group(function () {
         Route::patch('asesmen/{asesmen}/template-prompt-ai', [AssessmentController::class, 'updateAiPromptTemplate'])->name('asesmen.template-prompt-ai.update');
         Route::patch('asesmen/{asesmen}/template-prompt-alat', [AssessmentController::class, 'updateToolAiPrompts'])->name('asesmen.template-prompt-alat.update');
         Route::post('asesmen/{asesmen}/bukti', [AssessmentController::class, 'storeEvidence'])->name('asesmen.bukti.store');
+        Route::post('asesmen/{asesmen}/bukti/transkrip', [AssessmentController::class, 'transcribeEvidencePreview'])
+            ->middleware('throttle:ai-analysis-trigger')
+            ->name('asesmen.bukti.transkrip.preview');
+        Route::patch('asesmen/{asesmen}/bukti/{bukti}', [AssessmentController::class, 'updateEvidence'])
+            ->scopeBindings()
+            ->name('asesmen.bukti.update');
+        Route::post('asesmen/{asesmen}/bukti/{bukti}/transkrip', [AssessmentController::class, 'transcribeEvidence'])
+            ->middleware('throttle:ai-analysis-trigger')
+            ->scopeBindings()
+            ->name('asesmen.bukti.transkrip');
+        Route::get('asesmen/{asesmen}/bukti/{bukti}/audio', [AssessmentController::class, 'streamEvidenceAudio'])
+            ->scopeBindings()
+            ->name('asesmen.bukti.audio');
         Route::post('asesmen/{asesmen}/bukti/{bukti}/analisis-ai', [AssessmentController::class, 'analyzeEvidenceAi'])
             ->middleware('throttle:ai-analysis-trigger')
             ->scopeBindings()
