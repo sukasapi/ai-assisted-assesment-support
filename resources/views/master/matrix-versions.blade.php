@@ -9,9 +9,12 @@
             <h1 class="mt-2 text-2xl font-semibold text-on-surface">Versi matriks</h1>
         </div>
         @if (auth()->user()->role === 'admin')
-            <a href="{{ route('master.versi-matriks.create') }}" class="rounded-lg accent-gradient px-3 py-2 text-sm font-medium text-white hover:opacity-90">Tambah</a>
+            <button type="button" data-open-modal="modal-matriks-tambah" class="rounded-lg accent-gradient px-3 py-2 text-sm font-medium text-white hover:opacity-90">Tambah</button>
         @endif
     </div>
+
+    <x-ui.table-toolbar placeholder="Cari kode atau nama versi..." />
+
     <div class="overflow-hidden rounded-lg border border-outline-variant/40 bg-surface-container-lowest shadow-sm">
         <table class="min-w-full divide-y divide-outline-variant/30 text-sm">
             <thead class="bg-surface-container-low text-left text-xs font-medium uppercase text-on-surface-variant">
@@ -38,8 +41,13 @@
                         </td>
                         @if (auth()->user()->role === 'admin')
                             <td class="px-4 py-3 text-right">
-                                <a href="{{ route('master.versi-matriks.edit', $row) }}" class="text-on-surface-variant underline">Ubah</a>
-                                <form action="{{ route('master.versi-matriks.destroy', $row) }}" method="POST" class="inline" onsubmit="return confirm('Hapus versi matriks ini?');">
+                                <button
+                                    type="button"
+                                    class="text-on-surface-variant underline"
+                                    data-open-modal="modal-matriks-ubah"
+                                    data-edit="{{ json_encode(['id' => $row->id, 'kode_versi' => $row->kode_versi, 'nama_versi' => $row->nama_versi, 'kunci_kamus' => $row->kunci_kamus, 'catatan_konteks' => $row->catatan_konteks, 'dipublikasikan_pada' => $row->dipublikasikan_pada?->format('Y-m-d\TH:i'), 'aktif' => $row->aktif, 'bawaan' => $row->bawaan], JSON_HEX_APOS | JSON_HEX_QUOT | JSON_UNESCAPED_UNICODE) }}"
+                                >Ubah</button>
+                                <form action="{{ route('master.versi-matriks.destroy', $row) }}" method="POST" class="inline" data-swal-confirm="Versi matriks yang dihapus tidak dapat dipulihkan." data-swal-confirm-title="Hapus versi matriks?" data-swal-confirm-yes="Ya, hapus" data-swal-confirm-danger="1">
                                     @csrf
                                     @method('DELETE')
                                     <button type="submit" class="ml-2 text-error underline">Hapus</button>
@@ -51,5 +59,14 @@
             </tbody>
         </table>
     </div>
-    <div class="mt-4">{{ $items->links() }}</div>
+    <x-ui.table-pagination :paginator="$items" />
+
+    @if (auth()->user()->role === 'admin')
+        @include('master.partials.matrix-version-modals')
+        <x-ui.crud-modal-script
+            :update-route="route('master.versi-matriks.update', ['versiMatriks' => 999999999])"
+            create-modal-id="modal-matriks-tambah"
+            edit-modal-id="modal-matriks-ubah"
+        />
+    @endif
 @endsection

@@ -8,16 +8,12 @@ use App\Http\Requests\Master\UpdateAiPromptTemplateRequest;
 use App\Models\AiPromptTemplate;
 use App\Models\AssessmentTool;
 use Illuminate\Http\RedirectResponse;
-use Illuminate\View\View;
 
 class AiPromptTemplateController extends Controller
 {
-    public function create(): View
+    public function create(): RedirectResponse
     {
-        return view('master.ai-prompt-templates.create', [
-            'alatPenilaian' => $this->daftarAlat(),
-            'alatTerpilih' => [],
-        ]);
+        return redirect()->route('master.template-prompt-ai.index');
     }
 
     public function store(StoreAiPromptTemplateRequest $request): RedirectResponse
@@ -29,15 +25,9 @@ class AiPromptTemplateController extends Controller
         return redirect()->route('master.template-prompt-ai.index')->with('status', 'Template prompt AI disimpan.');
     }
 
-    public function edit(AiPromptTemplate $templatePromptAi): View
+    public function edit(AiPromptTemplate $templatePromptAi): RedirectResponse
     {
-        $templatePromptAi->load('tools');
-
-        return view('master.ai-prompt-templates.edit', [
-            'item' => $templatePromptAi,
-            'alatPenilaian' => $this->daftarAlat(),
-            'alatTerpilih' => $templatePromptAi->tools->pluck('id')->all(),
-        ]);
+        return redirect()->route('master.template-prompt-ai.index');
     }
 
     public function update(UpdateAiPromptTemplateRequest $request, AiPromptTemplate $templatePromptAi): RedirectResponse
@@ -82,7 +72,7 @@ class AiPromptTemplateController extends Controller
     /**
      * @return \Illuminate\Database\Eloquent\Collection<int, AssessmentTool>
      */
-    private function daftarAlat(): \Illuminate\Database\Eloquent\Collection
+    public static function daftarAlatAktif(): \Illuminate\Database\Eloquent\Collection
     {
         return AssessmentTool::query()
             ->whereNull('dihapus_pada')

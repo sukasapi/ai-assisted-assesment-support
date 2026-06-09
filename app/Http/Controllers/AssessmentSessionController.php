@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Http\Requests\StoreAssessmentSessionRequest;
 use App\Http\Requests\UpdateAssessmentSessionRequest;
 use App\Models\AssessmentSession;
+use App\Support\TableSearch;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\View\View;
 
@@ -14,30 +15,33 @@ class AssessmentSessionController extends Controller
     {
         $this->authorize('viewAny', AssessmentSession::class);
 
-        $daftar = AssessmentSession::query()
+        $query = AssessmentSession::query()
             ->withCount('assessments')
-            ->orderByDesc('dibuat_pada')
-            ->paginate(15);
+            ->orderByDesc('dibuat_pada');
+
+        TableSearch::apply($query, request('q'), ['kode_sesi', 'nama']);
+
+        $daftar = $query->paginate(15)->withQueryString();
 
         return view('assessment-sessions.index', compact('daftar'));
     }
 
-    public function create(): View
+    public function create(): RedirectResponse
     {
         $this->authorize('create', AssessmentSession::class);
 
-        return view('assessment-sessions.create');
+        return redirect()->route('sesi-asesmen.index');
     }
 
     public function store(StoreAssessmentSessionRequest $request): RedirectResponse
     {
-        $sesi = AssessmentSession::query()->create([
+        AssessmentSession::query()->create([
             ...$request->validated(),
             'id_pengguna_pembuat' => $request->user()?->id,
         ]);
 
         return redirect()
-            ->route('sesi-asesmen.show', $sesi)
+            ->route('sesi-asesmen.index')
             ->with('status', 'Sesi assessment disimpan.');
     }
 
@@ -61,14 +65,15 @@ class AssessmentSessionController extends Controller
         return view('assessment-sessions.show', [
             'sesi' => $sesiAsesmen,
             'konsultanKandidat' => $konsultanKandidat,
+            'bukaModalAsesmenSesi' => session('buka_modal_asesmen_sesi'),
         ]);
     }
 
-    public function edit(AssessmentSession $sesiAsesmen): View
+    public function edit(AssessmentSession $sesiAsesmen): RedirectResponse
     {
         $this->authorize('update', $sesiAsesmen);
 
-        return view('assessment-sessions.edit', ['item' => $sesiAsesmen]);
+        return redirect()->route('sesi-asesmen.show', $sesiAsesmen);
     }
 
     public function update(UpdateAssessmentSessionRequest $request, AssessmentSession $sesiAsesmen): RedirectResponse

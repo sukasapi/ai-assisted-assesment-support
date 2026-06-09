@@ -62,6 +62,17 @@
                     </div>
                 </div>
                 <div class="flex shrink-0 flex-wrap items-center gap-2">
+                    @if ($bisaUbahAsesmen ?? false)
+                        <button
+                            type="button"
+                            class="inline-flex items-center gap-1.5 rounded-lg border border-outline-variant/50 bg-surface-container-lowest px-3 py-1.5 text-xs font-semibold text-primary transition-colors hover:bg-surface-container-low"
+                            data-open-modal="modal-asesmen-ubah"
+                            data-edit="{{ json_encode(['id' => $asesmen->id, 'label' => $asesmen->participant?->nama_lengkap ?? 'Asesmen', 'id_peserta' => $asesmen->id_peserta, 'id_versi_matriks' => $asesmen->id_versi_matriks, 'tujuan' => $asesmen->tujuan?->value, 'metode_koleksi_bukti' => $asesmen->metode_koleksi_bukti?->value, 'tanpa_intray' => $asesmen->tanpa_intray, 'id_template_prompt_ai' => $asesmen->id_template_prompt_ai, 'id_asesor' => $asesmen->assessorAssignments->pluck('id_pengguna')->all()], JSON_HEX_APOS | JSON_HEX_QUOT | JSON_UNESCAPED_UNICODE) }}"
+                        >
+                            <span class="material-symbols-outlined text-sm">edit</span>
+                            Ubah asesmen
+                        </button>
+                    @endif
                     <span class="inline-flex items-center gap-1.5 rounded-lg border border-outline-variant/50 bg-surface-container-low px-3 py-1.5 text-xs font-semibold text-on-surface-variant">
                         <span class="material-symbols-outlined text-sm">grid_view</span>
                         {{ $matrixLabel }}
@@ -660,10 +671,29 @@
 
             const buttons = root.querySelectorAll('[data-asesmen-tab]');
             const panels = root.querySelectorAll('[data-asesmen-panel]');
+            const valid = ['overview', 'konfigurasi', 'pengumpulan', 'hasil-mapping'];
+            const hashAliases = {
+                mapping: 'hasil-mapping',
+                ai: 'konfigurasi',
+                evidence: 'pengumpulan',
+            };
+
+            const normalizeTab = (id) => {
+                if (!id) return null;
+                const mapped = hashAliases[id] ?? id;
+                return valid.includes(mapped) ? mapped : null;
+            };
+
+            const getActiveTab = () => {
+                const active = root.querySelector('.asesmen-tab-nav__btn.is-active');
+                return active?.dataset.asesmenTab ?? 'overview';
+            };
 
             const activate = (id) => {
-                buttons.forEach((btn) => btn.classList.toggle('is-active', btn.dataset.asesmenTab === id));
-                panels.forEach((panel) => panel.classList.toggle('hidden', panel.dataset.asesmenPanel !== id));
+                const tab = normalizeTab(id);
+                if (!tab) return;
+                buttons.forEach((btn) => btn.classList.toggle('is-active', btn.dataset.asesmenTab === tab));
+                panels.forEach((panel) => panel.classList.toggle('hidden', panel.dataset.asesmenPanel !== tab));
             };
 
             buttons.forEach((btn) => {
@@ -678,17 +708,26 @@
                 });
             });
 
-            const hashAliases = {
-                mapping: 'hasil-mapping',
-                ai: 'konfigurasi',
-                evidence: 'pengumpulan',
-            };
-            const hash = (window.location.hash || '').replace('#', '');
-            const tabId = hashAliases[hash] ?? hash;
-            const valid = ['overview', 'konfigurasi', 'pengumpulan', 'hasil-mapping'];
-            if (valid.includes(tabId)) {
-                activate(tabId);
-            }
+            root.querySelectorAll('form').forEach((form) => {
+                form.addEventListener('submit', () => {
+                    let field = form.querySelector('[name="asesmen_tab"]');
+                    if (!field) {
+                        field = document.createElement('input');
+                        field.type = 'hidden';
+                        field.name = 'asesmen_tab';
+                        form.appendChild(field);
+                    }
+                    field.value = getActiveTab();
+                });
+            });
+
+            const oldTab = normalizeTab(@json(old('asesmen_tab')));
+            const hashTab = normalizeTab((window.location.hash || '').replace('#', ''));
+            activate(oldTab ?? hashTab ?? 'overview');
         })();
     </script>
+
+    @if ($bisaUbahAsesmen ?? false)
+        @include('assessments.partials.asesmen-form-modals')
+    @endif
 @endsection

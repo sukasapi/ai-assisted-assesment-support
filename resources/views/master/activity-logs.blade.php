@@ -9,6 +9,8 @@
         <p class="mt-1 text-sm text-on-surface-variant">Riwayat aksi penting (asesmen dibuat, sinkron pemetaan matriks, dll.).</p>
     </div>
 
+    <x-ui.table-toolbar placeholder="Cari aksi, subjek, atau pengguna..." />
+
     <div class="overflow-x-auto rounded-lg border border-outline-variant/40 bg-surface-container-lowest shadow-sm">
         <table class="min-w-full divide-y divide-outline-variant/30 text-sm">
             <thead class="bg-surface-container-low text-left text-xs font-medium uppercase text-on-surface-variant">
@@ -46,5 +48,5 @@
             </tbody>
         </table>
     </div>
-    <div class="mt-4">{{ $items->links() }}</div>
+    <x-ui.table-pagination :paginator="$items" />
 @endsection

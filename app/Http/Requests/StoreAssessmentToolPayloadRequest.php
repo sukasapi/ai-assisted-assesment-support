@@ -3,6 +3,7 @@
 namespace App\Http\Requests;
 
 use App\Enums\AssessmentEvidenceCollectionMode;
+use App\Http\Requests\Concerns\PreservesAssessmentTab;
 use App\Models\Assessment;
 use App\Models\AssessmentToolSelection;
 use App\Models\CompetencyToolMapping;
@@ -10,6 +11,8 @@ use Illuminate\Foundation\Http\FormRequest;
 
 class StoreAssessmentToolPayloadRequest extends FormRequest
 {
+    use PreservesAssessmentTab;
+
     public function authorize(): bool
     {
         $asesmen = $this->route('asesmen');

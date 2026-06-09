@@ -7,13 +7,12 @@ use App\Http\Requests\Master\StoreAssessmentToolRequest;
 use App\Http\Requests\Master\UpdateAssessmentToolRequest;
 use App\Models\AssessmentTool;
 use Illuminate\Http\RedirectResponse;
-use Illuminate\View\View;
 
 class AssessmentToolController extends Controller
 {
-    public function create(): View
+    public function create(): RedirectResponse
     {
-        return view('master.assessment-tools.create');
+        return redirect()->route('master.alat-penilaian.index');
     }
 
     public function store(StoreAssessmentToolRequest $request): RedirectResponse
@@ -23,9 +22,9 @@ class AssessmentToolController extends Controller
         return redirect()->route('master.alat-penilaian.index')->with('status', 'Alat penilaian disimpan.');
     }
 
-    public function edit(AssessmentTool $alatPenilaian): View
+    public function edit(AssessmentTool $alatPenilaian): RedirectResponse
     {
-        return view('master.assessment-tools.edit', ['item' => $alatPenilaian]);
+        return redirect()->route('master.alat-penilaian.index');
     }
 
     public function update(UpdateAssessmentToolRequest $request, AssessmentTool $alatPenilaian): RedirectResponse

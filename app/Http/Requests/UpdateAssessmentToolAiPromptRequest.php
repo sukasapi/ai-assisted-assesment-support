@@ -3,11 +3,14 @@
 namespace App\Http\Requests;
 
 use App\Enums\AssessmentToolPromptMode;
+use App\Http\Requests\Concerns\PreservesAssessmentTab;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
 
 class UpdateAssessmentToolAiPromptRequest extends FormRequest
 {
+    use PreservesAssessmentTab;
+
     public function authorize(): bool
     {
         $asesmen = $this->route('asesmen');

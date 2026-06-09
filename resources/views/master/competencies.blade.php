@@ -13,6 +13,8 @@
         @endif
     </x-ui.page-header>
 
+    <x-ui.table-toolbar placeholder="Cari kelompok, kompetensi, atau tingkat..." />
+
     <section class="card-depth overflow-hidden rounded-xl">
         <div class="overflow-x-auto">
             <table class="min-w-full text-sm" id="tabel-struktur-kompetensi">
@@ -63,9 +65,9 @@
                                             type="button"
                                             class="text-xs font-semibold text-primary hover:underline"
                                             data-open-modal="modal-kelompok-ubah"
-                                            data-edit="{{ e(json_encode(['id' => $grup->id, 'kode' => $grup->kode, 'nama' => $grup->nama])) }}"
+                                            data-edit="{{ json_encode(['id' => $grup->id, 'kode' => $grup->kode, 'nama' => $grup->nama], JSON_HEX_APOS | JSON_HEX_QUOT | JSON_UNESCAPED_UNICODE) }}"
                                         >Ubah</button>
-                                    <form action="{{ route('master.kelompok-kompetensi.destroy', $grup) }}" method="POST" class="inline" onsubmit="return confirm('Hapus kelompok ini?');">
+                                    <form action="{{ route('master.kelompok-kompetensi.destroy', $grup) }}" method="POST" class="inline" data-swal-confirm="Kelompok kompetensi yang dihapus tidak dapat dipulihkan." data-swal-confirm-title="Hapus kelompok?" data-swal-confirm-yes="Ya, hapus" data-swal-confirm-danger="1">
                                         @csrf
                                         @method('DELETE')
                                         <button type="submit" class="ml-2 text-xs font-semibold text-error hover:underline">Hapus</button>
@@ -115,9 +117,9 @@
                                             type="button"
                                             class="text-xs font-semibold text-primary hover:underline"
                                             data-open-modal="modal-kompetensi-ubah"
-                                            data-edit="{{ e(json_encode(['id' => $kompetensi->id, 'id_kelompok_kompetensi' => $kompetensi->id_kelompok_kompetensi, 'kode_kompetensi' => $kompetensi->kode_kompetensi, 'nama' => $kompetensi->nama, 'definisi' => $kompetensi->definisi, 'tingkat_maksimum' => $kompetensi->tingkat_maksimum, 'aktif' => $kompetensi->aktif])) }}"
+                                            data-edit="{{ json_encode(['id' => $kompetensi->id, 'id_kelompok_kompetensi' => $kompetensi->id_kelompok_kompetensi, 'kode_kompetensi' => $kompetensi->kode_kompetensi, 'nama' => $kompetensi->nama, 'definisi' => $kompetensi->definisi, 'tingkat_maksimum' => $kompetensi->tingkat_maksimum, 'aktif' => $kompetensi->aktif], JSON_HEX_APOS | JSON_HEX_QUOT | JSON_UNESCAPED_UNICODE) }}"
                                         >Ubah</button>
-                                        <form action="{{ route('master.kompetensi.destroy', $kompetensi) }}" method="POST" class="inline" onsubmit="return confirm('Hapus kompetensi dan semua tingkat terkait?');">
+                                        <form action="{{ route('master.kompetensi.destroy', $kompetensi) }}" method="POST" class="inline" data-swal-confirm="Kompetensi dan semua tingkat terkait akan dihapus." data-swal-confirm-title="Hapus kompetensi?" data-swal-confirm-yes="Ya, hapus" data-swal-confirm-danger="1">
                                             @csrf
                                             @method('DELETE')
                                             <button type="submit" class="ml-2 text-xs font-semibold text-error hover:underline">Hapus</button>
@@ -151,9 +153,9 @@
                                                 type="button"
                                                 class="text-xs font-semibold text-primary hover:underline"
                                                 data-open-modal="modal-tingkat-ubah"
-                                                data-edit="{{ e(json_encode(['id' => $tingkat->id, 'id_kompetensi' => $tingkat->id_kompetensi, 'kompetensi_nama' => $kompetensi->nama, 'tingkat' => $tingkat->tingkat, 'indikator_perilaku' => $tingkat->indikator_perilaku, 'etiket' => $tingkat->etiket, 'deskripsi' => $tingkat->deskripsi])) }}"
+                                                data-edit="{{ json_encode(['id' => $tingkat->id, 'id_kompetensi' => $tingkat->id_kompetensi, 'kompetensi_nama' => $kompetensi->nama, 'tingkat' => $tingkat->tingkat, 'indikator_perilaku' => $tingkat->indikator_perilaku, 'etiket' => $tingkat->etiket, 'deskripsi' => $tingkat->deskripsi], JSON_HEX_APOS | JSON_HEX_QUOT | JSON_UNESCAPED_UNICODE) }}"
                                             >Ubah</button>
-                                            <form action="{{ route('master.tingkat-kompetensi.destroy', $tingkat) }}" method="POST" class="inline" onsubmit="return confirm('Hapus tingkat ini?');">
+                                            <form action="{{ route('master.tingkat-kompetensi.destroy', $tingkat) }}" method="POST" class="inline" data-swal-confirm="Tingkat kompetensi yang dihapus tidak dapat dipulihkan." data-swal-confirm-title="Hapus tingkat?" data-swal-confirm-yes="Ya, hapus" data-swal-confirm-danger="1">
                                                 @csrf
                                                 @method('DELETE')
                                                 <button type="submit" class="ml-2 text-xs font-semibold text-error hover:underline">Hapus</button>
@@ -230,6 +232,22 @@
                 table.querySelectorAll('[data-expandable="1"]').forEach((row) => setExpanded(row, true));
             });
 
+            const parseEditPayload = (raw) => {
+                if (!raw) return null;
+                try {
+                    return JSON.parse(raw);
+                } catch {
+                    const textarea = document.createElement('textarea');
+                    textarea.innerHTML = raw;
+                    try {
+                        return JSON.parse(textarea.value);
+                    } catch {
+                        console.error('Gagal memuat data edit modal.');
+                        return null;
+                    }
+                }
+            };
+
             document.querySelectorAll('[data-open-modal]').forEach((btn) => {
                 btn.addEventListener('click', () => {
                     const modalId = btn.dataset.openModal;
@@ -248,7 +266,7 @@
                             if (label) label.textContent = btn.dataset.prefillKompetensiNama || '—';
                         }
                     }
-                    const editPayload = btn.dataset.edit ? JSON.parse(btn.dataset.edit) : null;
+                    const editPayload = parseEditPayload(btn.dataset.edit);
 
                     if (modalId === 'modal-kelompok-ubah' && editPayload) {
                         dialog.querySelector('form')?.setAttribute('action', replaceId(routes.kelompokUpdate, editPayload.id));
@@ -297,6 +315,8 @@
                     document.getElementById('modal-kelompok-tambah')?.showModal?.();
                 @elseif ($errors->has('kode_kompetensi') || $errors->has('id_kelompok_kompetensi'))
                     document.getElementById('modal-kompetensi-tambah')?.showModal?.();
+                @elseif (($errors->has('tingkat') || $errors->has('indikator_perilaku')) && @json(old('_method')) === 'PUT')
+                    document.getElementById('modal-tingkat-ubah')?.showModal?.();
                 @elseif ($errors->has('tingkat') || $errors->has('indikator_perilaku'))
                     document.getElementById('modal-tingkat-tambah')?.showModal?.();
                 @endif

@@ -31,19 +31,31 @@
         </div>
     @elseif ($kelompokKompetensi->isEmpty())
         <div class="rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
-            Tidak ada kelompok kompetensi dengan data kompetensi aktif.
+            @if (filled(request('q')))
+                Tidak ada kompetensi yang cocok dengan pencarian.
+            @else
+                Tidak ada kelompok kompetensi dengan data kompetensi aktif.
+            @endif
         </div>
     @elseif (auth()->user()->role === 'admin')
+        <x-ui.table-toolbar placeholder="Cari kode atau nama kompetensi..." />
+
         <form method="POST" action="{{ route('master.versi-matriks.pemetaan.sync', $versiMatriks) }}" class="space-y-4">
             @csrf
             <div class="overflow-x-auto rounded-lg border border-outline-variant/40 bg-surface-container-lowest shadow-sm">
-                <table class="min-w-max divide-y divide-outline-variant/30 text-sm">
+                <table class="w-full min-w-max table-fixed divide-y divide-outline-variant/30 text-sm">
+                    <colgroup>
+                        <col class="w-[min(28rem,35%)]">
+                        @foreach ($alat as $tool)
+                            <col>
+                        @endforeach
+                    </colgroup>
                     <thead class="bg-surface-container-low text-left text-xs font-medium uppercase text-on-surface-variant">
                         <tr>
                             <th class="sticky-col-header border-r border-outline-variant/40 px-3 py-2">Kompetensi</th>
                             @foreach ($alat as $tool)
                                 <th class="px-2 py-2 text-center" title="{{ $tool->nama }}">
-                                    <span class="block max-w-[5.5rem] truncate font-mono normal-case text-on-surface-variant">{{ $tool->kode }}</span>
+                                    <span class="block truncate font-mono normal-case text-on-surface-variant">{{ $tool->kode }}</span>
                                 </th>
                             @endforeach
                         </tr>
@@ -68,14 +80,22 @@
             </div>
         </form>
     @else
+        <x-ui.table-toolbar placeholder="Cari kode atau nama kompetensi..." />
+
         <div class="overflow-x-auto rounded-lg border border-outline-variant/40 bg-surface-container-lowest shadow-sm">
-            <table class="min-w-max divide-y divide-outline-variant/30 text-sm">
+            <table class="w-full min-w-max table-fixed divide-y divide-outline-variant/30 text-sm">
+                <colgroup>
+                    <col class="w-[min(28rem,35%)]">
+                    @foreach ($alat as $tool)
+                        <col>
+                    @endforeach
+                </colgroup>
                 <thead class="bg-surface-container-low text-left text-xs font-medium uppercase text-on-surface-variant">
                     <tr>
                         <th class="sticky-col-header border-r border-outline-variant/40 px-3 py-2">Kompetensi</th>
                         @foreach ($alat as $tool)
                             <th class="px-2 py-2 text-center" title="{{ $tool->nama }}">
-                                <span class="block max-w-[5.5rem] truncate font-mono normal-case text-on-surface-variant">{{ $tool->kode }}</span>
+                                <span class="block truncate font-mono normal-case text-on-surface-variant">{{ $tool->kode }}</span>
                             </th>
                         @endforeach
                     </tr>

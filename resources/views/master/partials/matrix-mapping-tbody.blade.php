@@ -10,13 +10,13 @@
     </tr>
     @foreach ($group->competencies as $c)
         <tr @class(['hover:bg-surface-container-low/80' => $editable])>
-            <th scope="row" class="sticky-col-header border-r border-outline-variant/40est px-3 py-2 text-left font-normal text-on-surface">
+            <th scope="row" class="sticky-col-header border-r border-outline-variant/40 px-3 py-2 text-left font-normal text-on-surface">
                 <span class="font-mono text-xs">{{ $c->kode_kompetensi }}</span>
                 <span class="mt-0.5 block truncate text-xs text-on-surface-variant" title="{{ $c->nama }}">{{ $c->nama }}</span>
             </th>
             @foreach ($alat as $tool)
                 @php $cellKey = $c->id.'-'.$tool->id; @endphp
-                <td class="px-1 py-1 text-center align-middle">
+                <td class="px-2 py-2 text-center align-middle">
                     @if ($editable)
                         <label class="inline-flex size-9 cursor-pointer items-center justify-center rounded-md hover:bg-surface-container">
                             <input type="checkbox" name="sel[]" value="{{ $cellKey }}" class="size-4 rounded border-outline-variant text-on-surface"

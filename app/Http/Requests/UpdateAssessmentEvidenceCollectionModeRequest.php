@@ -3,12 +3,15 @@
 namespace App\Http\Requests;
 
 use App\Enums\AssessmentEvidenceCollectionMode;
+use App\Http\Requests\Concerns\PreservesAssessmentTab;
 use App\Models\Assessment;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
 
 class UpdateAssessmentEvidenceCollectionModeRequest extends FormRequest
 {
+    use PreservesAssessmentTab;
+
     public function authorize(): bool
     {
         $asesmen = $this->route('asesmen');

@@ -49,7 +49,7 @@ class AiMasterAndTemplateTest extends TestCase
             ->patch(route('asesmen.template-prompt-ai.update', $asesmen), [
                 'id_template_prompt_ai' => $star->id,
             ])
-            ->assertRedirect(route('asesmen.show', $asesmen))
+            ->assertRedirect(route('asesmen.show', $asesmen).'#konfigurasi')
             ->assertSessionHas('status');
 
         $this->assertSame($star->id, $asesmen->fresh()->id_template_prompt_ai);
@@ -95,7 +95,7 @@ class AiMasterAndTemplateTest extends TestCase
                     ],
                 ],
             ])
-            ->assertRedirect(route('asesmen.show', $asesmen));
+            ->assertRedirect(route('asesmen.show', $asesmen).'#konfigurasi');
 
         $this->assertSame('', AiPromptTemplateResolver::teksInstruksiUntukAlat($asesmen->fresh(), (int) $bei->id));
     }
