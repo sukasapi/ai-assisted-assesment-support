@@ -144,6 +144,42 @@ function bindAiProcessingAlerts() {
 
 document.addEventListener('DOMContentLoaded', bindAiProcessingAlerts);
 
+function initSwalConfirmForms() {
+    if (!window.Swal) {
+        return;
+    }
+
+    document.querySelectorAll('form[data-swal-confirm]').forEach((form) => {
+        form.addEventListener('submit', (event) => {
+            if (form.dataset.swalConfirmSubmitted === '1') {
+                return;
+            }
+
+            event.preventDefault();
+
+            window.Swal.fire({
+                title: form.dataset.swalConfirmTitle || 'Konfirmasi',
+                text: form.dataset.swalConfirm || 'Lanjutkan tindakan ini?',
+                icon: 'warning',
+                showCancelButton: true,
+                confirmButtonText: form.dataset.swalConfirmYes || 'Ya',
+                cancelButtonText: form.dataset.swalConfirmCancel || 'Batal',
+                confirmButtonColor: form.dataset.swalConfirmDanger === '1' ? '#b3261e' : swalTheme.confirmButtonColor,
+                ...swalTheme,
+            }).then((result) => {
+                if (!result.isConfirmed) {
+                    return;
+                }
+
+                form.dataset.swalConfirmSubmitted = '1';
+                form.requestSubmit();
+            });
+        });
+    });
+}
+
+document.addEventListener('DOMContentLoaded', initSwalConfirmForms);
+
 function bindWysiwygEditors() {
     const areas = document.querySelectorAll(
         'textarea:not([data-no-wysiwyg]):not([disabled])'

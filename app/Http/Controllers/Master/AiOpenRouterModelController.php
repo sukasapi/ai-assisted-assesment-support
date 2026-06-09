@@ -8,13 +8,12 @@ use App\Http\Requests\Master\UpdateAiOpenRouterModelRequest;
 use App\Models\AiOpenRouterModel;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Support\Facades\DB;
-use Illuminate\View\View;
 
 class AiOpenRouterModelController extends Controller
 {
-    public function create(): View
+    public function create(): RedirectResponse
     {
-        return view('master.ai-models.create');
+        return redirect()->route('master.model-ai.index');
     }
 
     public function store(StoreAiOpenRouterModelRequest $request): RedirectResponse
@@ -30,9 +29,9 @@ class AiOpenRouterModelController extends Controller
         return redirect()->route('master.model-ai.index')->with('status', 'Model AI disimpan.');
     }
 
-    public function edit(AiOpenRouterModel $modelAi): View
+    public function edit(AiOpenRouterModel $modelAi): RedirectResponse
     {
-        return view('master.ai-models.edit', ['item' => $modelAi]);
+        return redirect()->route('master.model-ai.index');
     }
 
     public function update(UpdateAiOpenRouterModelRequest $request, AiOpenRouterModel $modelAi): RedirectResponse

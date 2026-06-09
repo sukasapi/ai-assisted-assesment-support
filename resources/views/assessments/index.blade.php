@@ -11,8 +11,14 @@
                     <x-ui.button type="submit" variant="secondary">Ganti token</x-ui.button>
                 </form>
             @endif
+            @can('create', App\Models\Assessment::class)
+                <x-ui.button type="button" variant="primary" data-open-modal="modal-pilih-sesi-asesmen">
+                    <span class="material-symbols-outlined text-lg">add</span>
+                    Buat asesmen
+                </x-ui.button>
+            @endcan
             @if (auth()->user()->role === 'admin')
-                <x-ui.button href="{{ route('sesi-asesmen.index') }}" variant="primary">
+                <x-ui.button href="{{ route('sesi-asesmen.index') }}" variant="secondary">
                     <span class="material-symbols-outlined text-lg">event</span>
                     Sesi assessment
                 </x-ui.button>
@@ -28,6 +34,8 @@
             @endif
         </p>
     @endif
+
+    <x-ui.table-toolbar placeholder="Cari peserta, sesi, atau matriks..." />
 
     <x-ui.data-table :colspan="6" empty="Belum ada asesmen yang dapat Anda akses.">
         <x-slot:head>
@@ -77,7 +85,10 @@
         @endforelse
     </x-ui.data-table>
 
-    <div class="mt-4">
-        {{ $daftar->links() }}
-    </div>
+    <x-ui.table-pagination :paginator="$daftar" />
+
+    @can('create', App\Models\Assessment::class)
+        @include('assessments.partials.pilih-sesi-modal', ['daftarSesi' => $daftarSesi])
+        @include('assessments.partials.asesmen-form-modals')
+    @endcan
 @endsection

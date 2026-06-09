@@ -108,6 +108,7 @@ Route::middleware(['auth', 'user.aktif'])->group(function () {
         Route::post('asesmen/{asesmen}/integrasi/hitung', [AssessmentController::class, 'hitungIntegrasiPratinjau'])->name('asesmen.integrasi.hitung');
         Route::patch('asesmen/{asesmen}/finalisasi', [AssessmentController::class, 'finalize'])->name('asesmen.finalisasi');
         Route::patch('asesmen/{asesmen}/batal-finalisasi', [AssessmentController::class, 'unfinalize'])->name('asesmen.batal-finalisasi');
+        Route::put('asesmen/{asesmen}', [AssessmentController::class, 'update'])->name('asesmen.update');
         Route::post('asesmen/{asesmen}/perilaku-kunci', [AssessmentController::class, 'storeKeyBehavior'])->name('asesmen.perilaku.store');
         Route::get('asesmen/{asesmen}/perilaku-kunci/{perilaku}/ubah', [AssessmentController::class, 'editKeyBehavior'])
             ->scopeBindings()

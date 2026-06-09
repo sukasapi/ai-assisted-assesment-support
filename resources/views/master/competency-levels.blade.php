@@ -33,7 +33,15 @@
                         @if (auth()->user()->role === 'admin')
                             <td class="px-4 py-3 text-right">
                                 <a href="{{ route('master.tingkat-kompetensi.edit', $row) }}" class="text-on-surface-variant underline">Ubah</a>
-                                <form action="{{ route('master.tingkat-kompetensi.destroy', $row) }}" method="POST" class="inline" onsubmit="return confirm('Hapus tingkat ini?');">
+                                <form
+                                    action="{{ route('master.tingkat-kompetensi.destroy', $row) }}"
+                                    method="POST"
+                                    class="inline"
+                                    data-swal-confirm="Tingkat kompetensi yang dihapus tidak dapat dipulihkan."
+                                    data-swal-confirm-title="Hapus tingkat?"
+                                    data-swal-confirm-yes="Ya, hapus"
+                                    data-swal-confirm-danger="1"
+                                >
                                     @csrf
                                     @method('DELETE')
                                     <button type="submit" class="ml-2 text-error underline">Hapus</button>

@@ -8,13 +8,12 @@ use App\Http\Requests\Master\UpdateMatrixVersionRequest;
 use App\Models\Assessment;
 use App\Models\MatrixVersion;
 use Illuminate\Http\RedirectResponse;
-use Illuminate\View\View;
 
 class MatrixVersionController extends Controller
 {
-    public function create(): View
+    public function create(): RedirectResponse
     {
-        return view('master.matrix-versions.create');
+        return redirect()->route('master.versi-matriks.index');
     }
 
     public function store(StoreMatrixVersionRequest $request): RedirectResponse
@@ -24,9 +23,9 @@ class MatrixVersionController extends Controller
         return redirect()->route('master.versi-matriks.index')->with('status', 'Versi matriks disimpan.');
     }
 
-    public function edit(MatrixVersion $versiMatriks): View
+    public function edit(MatrixVersion $versiMatriks): RedirectResponse
     {
-        return view('master.matrix-versions.edit', ['item' => $versiMatriks]);
+        return redirect()->route('master.versi-matriks.index');
     }
 
     public function update(UpdateMatrixVersionRequest $request, MatrixVersion $versiMatriks): RedirectResponse

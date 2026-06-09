@@ -10,9 +10,12 @@
             <p class="mt-1 text-sm text-on-surface-variant">Daftar model yang boleh dipilih asesor; menggantikan daftar dari .env bila ada data aktif di sini.</p>
         </div>
         @if (auth()->user()->role === 'admin')
-            <a href="{{ route('master.model-ai.create') }}" class="rounded-lg accent-gradient px-3 py-2 text-sm font-medium text-white hover:opacity-90">Tambah</a>
+            <button type="button" data-open-modal="modal-model-ai-tambah" class="rounded-lg accent-gradient px-3 py-2 text-sm font-medium text-white hover:opacity-90">Tambah</button>
         @endif
     </div>
+
+    <x-ui.table-toolbar placeholder="Cari ID model atau label..." />
+
     <div class="overflow-hidden rounded-lg border border-outline-variant/40 bg-surface-container-lowest shadow-sm">
         <table class="min-w-full divide-y divide-outline-variant/30 text-sm">
             <thead class="bg-surface-container-low text-left text-xs font-medium uppercase text-on-surface-variant">
@@ -37,8 +40,13 @@
                         <td class="px-4 py-3 text-on-surface-variant">{{ $row->aktif ? 'Ya' : 'Tidak' }}</td>
                         @if (auth()->user()->role === 'admin')
                             <td class="px-4 py-3 text-right">
-                                <a href="{{ route('master.model-ai.edit', $row) }}" class="text-on-surface-variant underline">Ubah</a>
-                                <form action="{{ route('master.model-ai.destroy', $row) }}" method="POST" class="inline" onsubmit="return confirm('Hapus model ini?');">
+                                <button
+                                    type="button"
+                                    class="text-on-surface-variant underline"
+                                    data-open-modal="modal-model-ai-ubah"
+                                    data-edit="{{ json_encode(['id' => $row->id, 'id_model_openrouter' => $row->id_model_openrouter, 'label' => $row->label, 'urutan' => $row->urutan, 'utama' => $row->utama, 'aktif' => $row->aktif], JSON_HEX_APOS | JSON_HEX_QUOT | JSON_UNESCAPED_UNICODE) }}"
+                                >Ubah</button>
+                                <form action="{{ route('master.model-ai.destroy', $row) }}" method="POST" class="inline" data-swal-confirm="Model AI yang dihapus tidak dapat dipulihkan." data-swal-confirm-title="Hapus model AI?" data-swal-confirm-yes="Ya, hapus" data-swal-confirm-danger="1">
                                     @csrf
                                     @method('DELETE')
                                     <button type="submit" class="ml-2 text-error underline">Hapus</button>
@@ -54,5 +62,14 @@
             </tbody>
         </table>
     </div>
-    <div class="mt-4">{{ $items->links() }}</div>
+    <x-ui.table-pagination :paginator="$items" />
+
+    @if (auth()->user()->role === 'admin')
+        @include('master.partials.ai-model-modals')
+        <x-ui.crud-modal-script
+            :update-route="route('master.model-ai.update', ['modelAi' => 999999999])"
+            create-modal-id="modal-model-ai-tambah"
+            edit-modal-id="modal-model-ai-ubah"
+        />
+    @endif
 @endsection

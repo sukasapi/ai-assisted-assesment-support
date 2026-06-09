@@ -28,6 +28,7 @@
         <form method="POST" action="{{ route('asesmen.perilaku.update', [$asesmen, $perilaku]) }}" class="space-y-6">
             @csrf
             @method('PATCH')
+            <input type="hidden" name="asesmen_tab" value="hasil-mapping">
 
             <div class="rounded-lg border border-outline-variant/30 bg-surface-container-low/50 p-4">
                 <p class="text-xs font-bold uppercase tracking-wider text-on-surface-variant">Indikator perilaku (master data)</p>

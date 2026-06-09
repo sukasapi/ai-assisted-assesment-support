@@ -124,7 +124,11 @@
     }
 
     /* Modal <dialog> — pusat layar (hindari w-full yang menempel kiri) */
-    dialog[data-competency-modal] {
+    dialog[data-competency-modal]:not([open]) {
+        display: none;
+    }
+
+    dialog[data-competency-modal][open] {
         position: fixed;
         top: 50%;
         left: 50%;
@@ -141,6 +145,24 @@
 
     dialog[data-competency-modal][data-modal-size='lg'] {
         width: min(calc(100vw - 2rem), 32rem);
+    }
+
+    dialog[data-competency-modal][data-modal-size='xl'] {
+        width: min(calc(100vw - 2rem), 42rem);
+    }
+
+    dialog[data-competency-modal][data-modal-size='fullscreen'] {
+        top: 0;
+        left: 0;
+        width: 100vw;
+        height: 100dvh;
+        max-height: 100dvh;
+        transform: none;
+        border-radius: 0;
+    }
+
+    dialog[data-competency-modal][data-modal-size='fullscreen']::backdrop {
+        background: rgb(25 27 35 / 0.72);
     }
 
     dialog[data-competency-modal]::backdrop {
@@ -165,6 +187,128 @@
 
     .competency-modal__footer {
         @apply shrink-0 border-t border-outline-variant/30 bg-surface-container-lowest px-6 py-4;
+    }
+
+    .asesmen-form-modal__form {
+        display: flex;
+        height: 100dvh;
+        min-height: 0;
+        flex-direction: column;
+        width: 100%;
+        background: var(--color-surface-container-low, #f3f4f8);
+    }
+
+    .asesmen-form-modal__header {
+        @apply flex shrink-0 items-center justify-between gap-4 border-b border-outline-variant/30 bg-surface-container-lowest px-6 py-4;
+    }
+
+    .asesmen-form-modal__close {
+        @apply shrink-0 rounded-lg p-2 text-on-surface-variant transition-colors hover:bg-surface-container-low hover:text-on-surface;
+    }
+
+    .asesmen-form-modal__body {
+        @apply min-h-0 flex-1 overflow-y-auto px-4 py-6 sm:px-8;
+    }
+
+    .asesmen-form-modal__footer {
+        @apply flex shrink-0 items-center justify-end gap-4 border-t border-outline-variant/30 bg-surface-container-lowest px-6 py-4;
+    }
+
+    .asesmen-form-modal__submit {
+        @apply inline-flex items-center gap-2 rounded-lg bg-primary px-5 py-2.5 text-sm font-semibold text-white shadow-md shadow-primary/20 transition-opacity hover:opacity-95;
+    }
+
+    .asesmen-form-page {
+        @apply mx-auto w-full max-w-4xl;
+    }
+
+    .asesmen-form-card {
+        @apply overflow-hidden rounded-xl border border-outline-variant/30 bg-surface-container-lowest shadow-sm;
+    }
+
+    .asesmen-form-card__header {
+        @apply flex items-center gap-2 border-b border-outline-variant/20 px-5 py-4 sm:px-6;
+    }
+
+    .asesmen-form-card__icon {
+        @apply text-xl text-primary;
+    }
+
+    .asesmen-form-card__title {
+        @apply text-sm font-bold uppercase tracking-wide text-primary;
+    }
+
+    .asesmen-form-card__body {
+        @apply px-5 py-5 sm:px-6 sm:py-6;
+    }
+
+    .asesmen-form-label {
+        @apply block text-sm font-semibold text-on-surface;
+    }
+
+    .asesmen-form-select {
+        @apply mt-1.5 w-full rounded-lg border border-outline-variant/60 bg-surface-container-lowest px-3 py-2.5 text-sm text-on-surface focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20;
+    }
+
+    .asesmen-metode-card {
+        @apply relative flex cursor-pointer flex-col rounded-xl border-2 border-outline-variant/50 bg-surface-container-lowest p-5 transition-colors hover:border-primary/40;
+    }
+
+    .asesmen-metode-card--active {
+        @apply border-primary bg-primary-fixed/20 ring-2 ring-primary/15;
+    }
+
+    .asesmen-metode-card__check {
+        @apply absolute right-3 top-3 text-2xl text-primary opacity-0 transition-opacity;
+    }
+
+    .asesmen-metode-card--active .asesmen-metode-card__check {
+        @apply opacity-100;
+    }
+
+    .asesmen-metode-card__title {
+        @apply text-base font-bold text-on-surface;
+    }
+
+    .asesmen-metode-card__subtitle {
+        @apply text-sm text-on-surface-variant;
+    }
+
+    .asesmen-metode-card__desc {
+        @apply mt-2 text-xs leading-relaxed text-on-surface-variant;
+    }
+
+    .asesmen-asesor-row {
+        @apply flex items-center gap-3 rounded-xl border border-primary/20 bg-primary-fixed/25 px-4 py-3;
+    }
+
+    .asesmen-asesor-row__avatar {
+        @apply flex size-9 shrink-0 items-center justify-center rounded-full bg-primary/15 text-primary;
+    }
+
+    .asesmen-asesor-row__remove {
+        @apply shrink-0 rounded-lg p-1 text-on-surface-variant transition-colors hover:bg-surface-container-low hover:text-error;
+    }
+
+    .asesmen-asesor-add {
+        @apply flex w-full items-center justify-center gap-2 rounded-xl border-2 border-dashed border-outline-variant/60 bg-surface-container-lowest px-4 py-3 text-sm font-semibold text-on-surface-variant transition-colors hover:border-primary/40 hover:text-primary;
+    }
+
+    .asesmen-peserta-trigger {
+        @apply flex min-h-[2.75rem] items-center gap-2 rounded-lg border border-outline-variant/60 bg-surface-container-lowest px-3 py-2.5 text-sm text-on-surface-variant transition-colors hover:border-primary/40 hover:text-on-surface;
+    }
+
+    .asesmen-peserta-chip {
+        @apply inline-flex items-center gap-1.5 rounded-lg border border-primary/25 bg-primary-fixed/30 py-1 pl-2.5 pr-1 text-xs font-semibold text-on-surface;
+    }
+
+    .asesmen-peserta-chip button {
+        @apply rounded p-0.5 text-on-surface-variant transition-colors hover:bg-surface-container-low hover:text-error;
+    }
+
+    .peserta-picker-row,
+    .asesor-picker-row {
+        @apply cursor-pointer;
     }
 
     .asesmen-tab-nav-card {

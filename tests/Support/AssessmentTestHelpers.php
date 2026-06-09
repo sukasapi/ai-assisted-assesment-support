@@ -42,7 +42,7 @@ final class AssessmentTestHelpers
 
         /** @var TestResponse $response */
         $response = $test->actingAs($admin)->post(route('sesi-asesmen.asesmen.store', $sesi), array_merge([
-            'id_peserta' => $peserta->id,
+            'id_peserta' => [$peserta->id],
             'id_versi_matriks' => $versi->id,
             'tujuan' => 'promosi',
             'metode_koleksi_bukti' => 'manual',
