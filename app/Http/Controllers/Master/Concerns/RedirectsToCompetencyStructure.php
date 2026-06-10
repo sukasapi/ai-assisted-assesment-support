@@ -6,9 +6,10 @@ use Illuminate\Http\RedirectResponse;
 
 trait RedirectsToCompetencyStructure
 {
-    protected function redirectToCompetencyStructure(?string $status = null, ?string $error = null): RedirectResponse
+    protected function redirectToCompetencyStructure(?string $status = null, ?string $error = null, ?string $expand = null): RedirectResponse
     {
-        $response = redirect()->route('master.kompetensi.index');
+        $params = array_filter(['expand' => $expand]);
+        $response = redirect()->route('master.kompetensi.index', $params);
 
         if ($error !== null) {
             return $response->with('error', $error);

@@ -183,6 +183,7 @@
     <form method="POST" action="#" class="competency-modal__form">
         @csrf
         @method('PUT')
+        <input type="hidden" name="_edit_id" value="">
         <header class="competency-modal__header flex items-start justify-between gap-3">
             <div class="min-w-0 pr-2">
                 <h3 class="text-lg font-bold text-on-surface">Ubah tingkat kompetensi</h3>
