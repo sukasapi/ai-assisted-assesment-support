@@ -302,7 +302,7 @@ function bindWysiwygEditors() {
 }
 
 /** Sinkronkan nilai ke textarea tersembunyi dan editor Quill (jika ada). */
-function applyTextToTextarea(textarea, text) {
+window.applyTextToTextarea = function applyTextToTextarea(textarea, text) {
     if (!textarea) {
         return;
     }
