@@ -17,15 +17,13 @@
         <input type="number" name="urutan" id="urutan" value="{{ old('urutan', $item?->urutan ?? 0) }}" min="0" required class="mt-1 w-full max-w-xs rounded-md border border-outline-variant px-3 py-2 text-sm">
     </div>
     <div class="flex items-center gap-2">
-        <input type="hidden" name="utama" value="0">
-        <input type="checkbox" name="utama" id="utama" value="1" class="size-4 rounded border-outline-variant" @checked(old('utama', $item?->utama ?? false))>
-        <label for="utama" class="text-sm text-on-surface">Model utama (default)</label>
-    </div>
-    <div class="flex items-center gap-2">
         <input type="hidden" name="aktif" value="0">
         <input type="checkbox" name="aktif" id="aktif" value="1" class="size-4 rounded border-outline-variant" @checked(old('aktif', $item?->aktif ?? true))>
         <label for="aktif" class="text-sm text-on-surface">Aktif</label>
     </div>
+    @if ($item === null)
+        <p class="text-xs text-on-surface-variant">Model utama dipilih lewat radio di tabel daftar.</p>
+    @endif
     <div class="flex gap-3">
         <button type="submit" class="rounded-lg accent-gradient px-4 py-2 text-sm text-white hover:opacity-90">Simpan</button>
         <a href="{{ route('master.model-ai.index') }}" class="rounded-md border border-outline-variant px-4 py-2 text-sm text-on-surface">Batal</a>

@@ -12,13 +12,11 @@ use App\Models\RecommendationConfigRevision;
 use App\Models\User;
 use App\Support\DefaultRecommendationConfig;
 use Database\Seeders\DatabaseSeeder;
-use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\Support\AssessmentTestHelpers;
 use Tests\TestCase;
 
 class MatrixRecommendationConfigTest extends TestCase
 {
-    use RefreshDatabase;
 
     public function test_seeder_membuat_revisi_awal_per_matriks(): void
     {

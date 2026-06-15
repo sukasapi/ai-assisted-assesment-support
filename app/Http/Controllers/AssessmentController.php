@@ -576,7 +576,7 @@ class AssessmentController extends Controller
                 $pesan = 'Bukti wawancara disimpan. Isi transkrip manual karena STT nonaktif.';
             }
 
-            return $this->redirectToAssessmentShow($asesmen, 'pengumpulan')
+            return $this->redirectToAssessmentShowDenganBukti($asesmen, $bukti)
                 ->with('status', $pesan);
         }
 
@@ -610,7 +610,7 @@ class AssessmentController extends Controller
         }
 
         if ($asesmen->status === AssessmentStatus::SelesaiFinal) {
-            return $this->redirectToAssessmentShow($asesmen, 'pengumpulan')
+            return $this->redirectToAssessmentShowDenganBukti($asesmen, $bukti)
                 ->withErrors(['bukti' => 'Asesmen sudah difinalisasi.']);
         }
 
@@ -645,7 +645,7 @@ class AssessmentController extends Controller
                     'pesan_status_transkripsi' => null,
                 ])->save();
 
-                return $this->redirectToAssessmentShow($asesmen, 'pengumpulan')
+                return $this->redirectToAssessmentShowDenganBukti($asesmen, $bukti)
                     ->with('status', 'Bukti wawancara diperbarui.');
             }
 
@@ -672,7 +672,7 @@ class AssessmentController extends Controller
                 $pesan = 'Bukti wawancara disimpan. Isi transkrip manual karena STT nonaktif.';
             }
 
-            return $this->redirectToAssessmentShow($asesmen, 'pengumpulan')
+            return $this->redirectToAssessmentShowDenganBukti($asesmen, $bukti)
                 ->with('status', $pesan);
         }
 
@@ -700,7 +700,7 @@ class AssessmentController extends Controller
                 'teks_kerja' => $request->input('teks_kerja', $bukti->teks_kerja),
             ])->save();
 
-            return $this->redirectToAssessmentShow($asesmen, 'pengumpulan')
+            return $this->redirectToAssessmentShowDenganBukti($asesmen, $bukti)
                 ->with('status', 'Bukti diubah menjadi bukti teks.');
         }
 
@@ -715,8 +715,54 @@ class AssessmentController extends Controller
             'pesan_status_transkripsi' => null,
         ])->save();
 
-        return $this->redirectToAssessmentShow($asesmen, 'pengumpulan')
+        return $this->redirectToAssessmentShowDenganBukti($asesmen, $bukti)
             ->with('status', 'Bukti wawancara diperbarui.');
+    }
+
+    public function destroyEvidence(Assessment $asesmen, Evidence $bukti): RedirectResponse
+    {
+        $this->authorize('update', $asesmen);
+
+        if ((int) $bukti->id_asesmen !== (int) $asesmen->id) {
+            abort(404);
+        }
+
+        if ($asesmen->status === AssessmentStatus::SelesaiFinal) {
+            return $this->redirectToAssessmentShowDenganBukti($asesmen, $bukti)
+                ->withErrors(['bukti' => 'Asesmen sudah difinalisasi.']);
+        }
+
+        if ($bukti->keyBehaviors()->where('tervalidasi', true)->exists()) {
+            return $this->redirectToAssessmentShowDenganBukti($asesmen, $bukti)
+                ->withErrors(['bukti' => 'Bukti tidak dapat dihapus karena sudah terhubung mapping PK disahkan.']);
+        }
+
+        $idBukti = $bukti->id;
+        $pathAudio = $bukti->path_audio;
+
+        DB::transaction(function () use ($bukti): void {
+            $bukti->keyBehaviors()->where('tervalidasi', false)->update(['id_bukti_penilaian' => null]);
+            $bukti->delete();
+        });
+
+        if ($pathAudio) {
+            app(EvidenceAudioStorage::class)->hapus($pathAudio);
+        }
+
+        CatatAktivitas::catat(
+            request()->user(),
+            'bukti.dihapus',
+            Evidence::class,
+            $idBukti,
+            [
+                'id_asesmen' => $asesmen->id,
+                'id_kompetensi' => $bukti->id_kompetensi,
+                'id_alat_penilaian' => $bukti->id_alat_penilaian,
+            ],
+        );
+
+        return $this->redirectToAssessmentShowDenganBukti($asesmen, $bukti)
+            ->with('status', 'Bukti penilaian dihapus.');
     }
 
     public function transcribeEvidencePreview(TranscribeEvidencePreviewRequest $request, Assessment $asesmen): JsonResponse
@@ -1003,18 +1049,18 @@ class AssessmentController extends Controller
         abort_unless((int) $bukti->id_asesmen === (int) $asesmen->id, 404);
 
         if ($asesmen->metode_koleksi_bukti !== AssessmentEvidenceCollectionMode::Manual) {
-            return $this->redirectToAssessmentShow($asesmen)
+            return $this->redirectToAssessmentShowDenganBukti($asesmen, $bukti)
                 ->withErrors(['ai' => 'Analisis AI per bukti hanya untuk metode manual. Ubah metode koleksi bukti atau gunakan analisis bulk pada payload.']);
         }
         if (! config('ai.aktif')) {
-            return $this->redirectToAssessmentShow($asesmen)
+            return $this->redirectToAssessmentShowDenganBukti($asesmen, $bukti)
                 ->withErrors(['ai' => 'Fitur AI tidak aktif (AI_AKTIF=false).']);
         }
 
         $analisis = app(EvidenceAiAnalyzer::class)->analisisInkremental($bukti, request()->user());
 
         if (! $analisis['berhasil']) {
-            return $this->redirectToAssessmentShow($asesmen)
+            return $this->redirectToAssessmentShowDenganBukti($asesmen, $bukti)
                 ->withErrors(['ai' => $analisis['pesan'] ?? 'Analisis AI gagal.']);
         }
 
@@ -1026,7 +1072,7 @@ class AssessmentController extends Controller
             ['id_asesmen' => $asesmen->id],
         );
 
-        return $this->redirectToAssessmentShow($asesmen)
+        return $this->redirectToAssessmentShowDenganBukti($asesmen, $bukti)
             ->with('status', 'Analisis AI untuk bukti #'.$bukti->id.' selesai.');
     }
 
@@ -1044,7 +1090,7 @@ class AssessmentController extends Controller
         $kutipan = trim((string) ($muatanAi['kutipan_dari_teks_mentah'] ?? ''));
         $alasan = trim((string) ($bukti->ai_alasan ?? ''));
         if ($kutipan === '' || $alasan === '') {
-            return $this->redirectToAssessmentShow($asesmen, 'pengumpulan')
+            return $this->redirectToAssessmentShowDenganBukti($asesmen, $bukti)
                 ->withErrors(['ai' => 'Hasil AI belum lengkap untuk ditransfer ke mapping. Jalankan analisis AI ulang.']);
         }
 
@@ -1062,7 +1108,7 @@ class AssessmentController extends Controller
         }
 
         if ($idTingkat === null) {
-            return $this->redirectToAssessmentShow($asesmen, 'pengumpulan')
+            return $this->redirectToAssessmentShowDenganBukti($asesmen, $bukti)
                 ->withErrors(['ai' => 'AI belum memberikan rekomendasi level yang valid untuk mapping.']);
         }
 
@@ -1467,12 +1513,17 @@ class AssessmentController extends Controller
         return ! str_contains($teks, 'Transkripsi sedang diproses');
     }
 
-    private function redirectToAssessmentShow(Assessment $asesmen, ?string $fallbackTab = null, ?Request $request = null): RedirectResponse
-    {
+    private function redirectToAssessmentShow(
+        Assessment $asesmen,
+        ?string $fallbackTab = null,
+        ?Request $request = null,
+        ?int $kompetensiId = null,
+        ?int $alatId = null,
+    ): RedirectResponse {
         if ($fallbackTab === null) {
             $fallbackTab = match (request()->route()?->getActionMethod()) {
                 'updateAiPromptTemplate', 'updateToolAiPrompts', 'updateEvidenceCollectionMode' => 'konfigurasi',
-                'storeEvidence', 'updateEvidence', 'analyzeEvidenceAi', 'storeToolPayload', 'destroyToolPayload',
+                'storeEvidence', 'updateEvidence', 'destroyEvidence', 'analyzeEvidenceAi', 'storeToolPayload', 'destroyToolPayload',
                 'analyzeToolPayloadAi', 'redirectToolPayloadAiGet' => 'pengumpulan',
                 'storeKeyBehavior', 'updateKeyBehavior', 'sahkanKeyBehavior', 'hitungIntegrasiPratinjau' => 'hasil-mapping',
                 'finalize', 'unfinalize' => 'overview',
@@ -1480,6 +1531,27 @@ class AssessmentController extends Controller
             };
         }
 
-        return AssessmentShowRedirect::fromRequest($asesmen, $request ?? request(), $fallbackTab);
+        return AssessmentShowRedirect::fromRequest(
+            $asesmen,
+            $request ?? request(),
+            $fallbackTab,
+            $kompetensiId,
+            $alatId,
+        );
+    }
+
+    private function redirectToAssessmentShowDenganBukti(
+        Assessment $asesmen,
+        Evidence $bukti,
+        ?string $fallbackTab = 'pengumpulan',
+    ): RedirectResponse {
+        return AssessmentShowRedirect::fromRequest(
+            $asesmen,
+            request(),
+            $fallbackTab,
+            (int) $bukti->id_kompetensi,
+            (int) $bukti->id_alat_penilaian,
+            (int) $bukti->id,
+        );
     }
 }

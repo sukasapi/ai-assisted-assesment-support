@@ -4,14 +4,12 @@ namespace Tests\Unit;
 
 use App\Models\AiOpenRouterModel;
 use App\Support\AiModelCatalog;
-use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Config;
 use Illuminate\Support\Facades\Schema;
 use Tests\TestCase;
 
 class AiModelCatalogTest extends TestCase
 {
-    use RefreshDatabase;
 
     public function test_daftar_model_dari_konfigurasi(): void
     {

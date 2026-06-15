@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Master;
 
 use App\Http\Controllers\Controller;
+use App\Http\Requests\Master\SetUtamaAiOpenRouterModelRequest;
 use App\Http\Requests\Master\StoreAiOpenRouterModelRequest;
 use App\Http\Requests\Master\UpdateAiOpenRouterModelRequest;
 use App\Models\AiOpenRouterModel;
@@ -38,7 +39,7 @@ class AiOpenRouterModelController extends Controller
     {
         DB::transaction(function () use ($request, $modelAi): void {
             $data = $request->validated();
-            if ($data['utama'] ?? false) {
+            if (array_key_exists('utama', $data) && ($data['utama'] ?? false)) {
                 AiOpenRouterModel::query()->whereKeyNot($modelAi->id)->update(['utama' => false]);
             }
             $modelAi->update($data);
@@ -52,5 +53,22 @@ class AiOpenRouterModelController extends Controller
         $modelAi->delete();
 
         return redirect()->route('master.model-ai.index')->with('status', 'Model AI dihapus.');
+    }
+
+    public function setUtama(SetUtamaAiOpenRouterModelRequest $request, AiOpenRouterModel $modelAi): RedirectResponse
+    {
+        DB::transaction(function () use ($request, $modelAi): void {
+            if ($request->boolean('utama')) {
+                AiOpenRouterModel::query()->whereKeyNot($modelAi->id)->update(['utama' => false]);
+                $modelAi->update(['utama' => true]);
+            } else {
+                $modelAi->update(['utama' => false]);
+            }
+        });
+
+        return back()->with(
+            'status',
+            $request->boolean('utama') ? 'Model utama diperbarui.' : 'Model tidak lagi menjadi utama.',
+        );
     }
 }

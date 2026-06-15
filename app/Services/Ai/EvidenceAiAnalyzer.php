@@ -8,6 +8,7 @@ use App\Models\Evidence;
 use App\Models\User;
 use App\Support\AiModelCatalog;
 use App\Support\AiPromptComposer;
+use App\Support\BulkTextNormalizer;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 
@@ -136,7 +137,7 @@ SYS;
             return ['berhasil' => false, 'pesan' => 'Model mengembalikan format yang tidak valid: '.$errorSchema];
         }
 
-        $kutipan = isset($parsed['kutipan_dari_teks_mentah']) ? (string) $parsed['kutipan_dari_teks_mentah'] : '';
+        $kutipan = isset($parsed['kutipan_dari_teks_mentah']) ? trim((string) $parsed['kutipan_dari_teks_mentah']) : '';
         if ($kutipan === '') {
             $logBaru->pesan_kesalahan = 'Kutipan kosong.';
             $logBaru->dibuat_pada = now();
@@ -144,13 +145,16 @@ SYS;
 
             return ['berhasil' => false, 'pesan' => 'Model wajib mengembalikan kutipan verbatim dari teks mentah.'];
         }
-        if (! $this->kutipanAdaDiTeksMentah($teksMentah, $kutipan)) {
+
+        $kutipanDitemukan = BulkTextNormalizer::selesaikanKutipan($this->sumberTeksBukti($bukti), $kutipan);
+        if ($kutipanDitemukan === null) {
             $logBaru->pesan_kesalahan = 'Kutipan tidak ditemukan verbatim di teks mentah.';
             $logBaru->dibuat_pada = now();
             $logBaru->save();
 
             return ['berhasil' => false, 'pesan' => 'Kutipan dari model tidak cocok dengan teks mentah (wajib substring verbatim).'];
         }
+        $kutipan = $kutipanDitemukan[1];
 
         $tingkatAngka = $parsed['tingkat'] ?? null;
         $idTingkat = isset($parsed['id_tingkat_kompetensi']) ? $parsed['id_tingkat_kompetensi'] : null;
@@ -199,16 +203,26 @@ SYS;
         return ['berhasil' => true];
     }
 
-    private function kutipanAdaDiTeksMentah(string $mentah, string $kutipan): bool
+    /**
+     * @return list<string>
+     */
+    private function sumberTeksBukti(Evidence $bukti): array
     {
-        if ($kutipan === '') {
-            return true;
-        }
-        if (str_contains($mentah, $kutipan)) {
-            return true;
+        $kandidat = [
+            $bukti->teks_mentah_normalized ? (string) $bukti->teks_mentah_normalized : null,
+            $bukti->teks_mentah ? (string) $bukti->teks_mentah : null,
+        ];
+
+        $unik = [];
+        foreach ($kandidat as $teks) {
+            $teks = trim((string) $teks);
+            if ($teks === '' || in_array($teks, $unik, true)) {
+                continue;
+            }
+            $unik[] = $teks;
         }
 
-        return mb_stripos($mentah, $kutipan) !== false;
+        return $unik;
     }
 
     /**

@@ -214,9 +214,9 @@
         </div>
 
         {{-- Tab: Konfigurasi Bukti (metode & template AI) --}}
-        <div data-asesmen-panel="konfigurasi" class="asesmen-tab-panel hidden space-y-8">
-        <section class="grid grid-cols-1 gap-6 lg:grid-cols-2">
-            <div class="card-depth rounded-xl bg-surface-container-lowest p-8">
+        <div data-asesmen-panel="konfigurasi" class="asesmen-tab-panel hidden space-y-6">
+        <section class="grid grid-cols-1 gap-6 lg:grid-cols-1">
+            <div class="card-depth rounded-xl bg-surface-container-lowest p-8 xl:col-span-2">
                 <p class="mb-6 text-section-header uppercase text-on-surface-variant">Metode Pengumpulan Bukti</p>
                 @can('update', $asesmen)
                     <form
@@ -409,7 +409,7 @@
 
         {{-- Preset alat (tabel) --}}
         <section class="card-depth overflow-hidden rounded-xl bg-surface-container-lowest">
-            <details class="group" open>
+            <details class="group" close>
                 <summary class="flex cursor-pointer list-none items-center justify-between p-8 transition-colors hover:bg-surface-container-low/50 [&::-webkit-details-marker]:hidden">
                     <div class="flex items-center gap-4">
                         <span class="material-symbols-outlined text-primary transition-transform group-open:rotate-180">expand_more</span>
@@ -457,6 +457,7 @@
                 'pemilihanAlatPreset' => $pemilihanAlatPreset,
                 'buktiPerAlat' => $buktiPerAlat,
                 'kompetensi' => $kompetensi,
+                'kelompokKompetensiMatriks' => $kelompokKompetensiMatriks,
                 'pemetaanKompetensiAlat' => $pemetaanKompetensiAlat,
                 'isDraft' => $isDraft,
                 'isFinal' => $isFinal,
@@ -700,10 +701,11 @@
                 btn.addEventListener('click', () => {
                     const id = btn.dataset.asesmenTab;
                     activate(id);
+                    const base = window.location.pathname + window.location.search;
                     if (id !== 'overview') {
-                        history.replaceState(null, '', '#' + id);
+                        history.replaceState(null, '', base + '#' + id);
                     } else {
-                        history.replaceState(null, '', window.location.pathname + window.location.search);
+                        history.replaceState(null, '', base);
                     }
                 });
             });

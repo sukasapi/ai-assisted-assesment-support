@@ -7,14 +7,19 @@ use App\Enums\EvidenceTranscriptionStatus;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\SoftDeletes;
 
 class Evidence extends Model
 {
+    use SoftDeletes;
+
     protected $table = 'ais_bukti_penilaian';
 
     public const CREATED_AT = 'dibuat_pada';
 
     public const UPDATED_AT = 'diperbarui_pada';
+
+    public const DELETED_AT = 'dihapus_pada';
 
     protected $fillable = [
         'id_asesmen',

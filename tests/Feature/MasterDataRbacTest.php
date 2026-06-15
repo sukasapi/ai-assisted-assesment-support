@@ -9,13 +9,11 @@ use App\Models\CompetencyToolMapping;
 use App\Models\MatrixVersion;
 use App\Models\User;
 use Database\Seeders\DatabaseSeeder;
-use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
 use Tests\TestCase;
 
 class MasterDataRbacTest extends TestCase
 {
-    use RefreshDatabase;
 
     public function test_konsultan_can_view_master_index(): void
     {
