@@ -15,6 +15,7 @@ class DatabaseSeeder extends Seeder
         $this->call(MasterDataSeeder::class);
         $this->call(AiMasterSeeder::class);
         $this->call(ContohVersiMatriksPaketSeeder::class);
+        $this->call(DefaultMatrixRecommendationConfigSeeder::class);
 
         User::factory()->admin()->create([
             'name' => 'Administrator',

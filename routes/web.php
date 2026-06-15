@@ -15,6 +15,7 @@ use App\Http\Controllers\Master\CompetencyController;
 use App\Http\Controllers\Master\CompetencyGroupController;
 use App\Http\Controllers\Master\CompetencyLevelController;
 use App\Http\Controllers\Master\CompetencyToolMappingController;
+use App\Http\Controllers\Master\MatrixRecommendationConfigController;
 use App\Http\Controllers\Master\MatrixVersionController;
 use App\Http\Controllers\Master\ParticipantMasterController;
 use App\Http\Controllers\Master\UserMasterController;
@@ -52,6 +53,7 @@ Route::middleware(['auth', 'user.aktif'])->group(function () {
         Route::get('master/alat-penilaian', [MasterDataController::class, 'assessmentTools'])->name('master.alat-penilaian.index');
         Route::get('master/versi-matriks', [MasterDataController::class, 'matrixVersions'])->name('master.versi-matriks.index');
         Route::get('master/versi-matriks/{versiMatriks}/pemetaan', [CompetencyToolMappingController::class, 'index'])->name('master.versi-matriks.pemetaan.index');
+        Route::get('master/versi-matriks/{versiMatriks}/konfigurasi-rekomendasi', [MatrixRecommendationConfigController::class, 'index'])->name('master.versi-matriks.konfigurasi-rekomendasi.index');
         Route::get('master/pemetaan-kompetensi-alat', function () {
             return redirect()
                 ->route('master.versi-matriks.index')
@@ -174,6 +176,7 @@ Route::middleware(['auth', 'user.aktif'])->group(function () {
         Route::delete('master/versi-matriks/{versiMatriks}', [MatrixVersionController::class, 'destroy'])->name('master.versi-matriks.destroy');
 
         Route::post('master/versi-matriks/{versiMatriks}/pemetaan/sinkron', [CompetencyToolMappingController::class, 'sync'])->name('master.versi-matriks.pemetaan.sync');
+        Route::post('master/versi-matriks/{versiMatriks}/konfigurasi-rekomendasi', [MatrixRecommendationConfigController::class, 'store'])->name('master.versi-matriks.konfigurasi-rekomendasi.store');
 
         Route::get('master/pemetaan-kompetensi-alat/buat', function () {
             return redirect()

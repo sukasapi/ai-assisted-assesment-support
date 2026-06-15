@@ -46,4 +46,10 @@ class MatrixVersion extends Model
     {
         return $this->hasMany(Participant::class, 'id_versi_matriks');
     }
+
+    public function recommendationConfigRevisions(): HasMany
+    {
+        return $this->hasMany(RecommendationConfigRevision::class, 'id_versi_matriks')
+            ->orderByDesc('nomor_revisi');
+    }
 }
