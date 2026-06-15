@@ -10,14 +10,16 @@ use App\Models\CompetencyGroup;
 use App\Models\CompetencyToolMapping;
 use App\Models\MatrixVersion;
 use App\Support\CatatAktivitas;
+use App\Support\CompetencyTreeFilter;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Http\RedirectResponse;
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\View\View;
 
 class CompetencyToolMappingController extends Controller
 {
-    public function index(MatrixVersion $versiMatriks): View
+    public function index(Request $request, MatrixVersion $versiMatriks): View
     {
         $urutanKelompok = ['INT' => 0, 'MNJ' => 1, 'LDR' => 2];
         $kelompokKompetensi = CompetencyGroup::query()
@@ -29,6 +31,8 @@ class CompetencyToolMappingController extends Controller
             ->sortBy(fn (CompetencyGroup $g) => $urutanKelompok[$g->kode] ?? 99)
             ->values()
             ->filter(fn (CompetencyGroup $g) => $g->competencies->isNotEmpty());
+
+        $kelompokKompetensi = CompetencyTreeFilter::filterGroups($kelompokKompetensi, $request->query('q'), includeLevels: false);
 
         $alat = self::alatAktifUntukGrid();
         $mapped = CompetencyToolMapping::query()

@@ -7,15 +7,14 @@ use App\Http\Requests\Master\StoreUserRequest;
 use App\Http\Requests\Master\UpdateUserRequest;
 use App\Models\User;
 use Illuminate\Http\RedirectResponse;
-use Illuminate\View\View;
 
 class UserMasterController extends Controller
 {
-    public function create(): View
+    public function create(): RedirectResponse
     {
         $this->authorize('create', User::class);
 
-        return view('master.users.create');
+        return redirect()->route('master.pengguna.index');
     }
 
     public function store(StoreUserRequest $request): RedirectResponse
@@ -25,11 +24,11 @@ class UserMasterController extends Controller
         return redirect()->route('master.pengguna.index')->with('status', 'Pengguna disimpan.');
     }
 
-    public function edit(User $pengguna): View
+    public function edit(User $pengguna): RedirectResponse
     {
         $this->authorize('update', $pengguna);
 
-        return view('master.users.edit', ['item' => $pengguna]);
+        return redirect()->route('master.pengguna.index');
     }
 
     public function update(UpdateUserRequest $request, User $pengguna): RedirectResponse

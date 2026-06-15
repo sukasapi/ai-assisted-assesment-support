@@ -13,7 +13,11 @@
         <div class="flex flex-wrap items-center gap-3 text-sm">
             <span class="rounded bg-surface-container px-2 py-1 text-on-surface-variant">Failed jobs antrean: <strong>{{ $failedJobCount }}</strong></span>
         </div>
-        <form method="GET" class="mt-3 grid gap-3 sm:grid-cols-3">
+        <form method="GET" class="mt-3 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+            <div>
+                <label for="q" class="block text-xs font-medium text-on-surface-variant">Cari</label>
+                <input type="search" id="q" name="q" value="{{ request('q') }}" placeholder="Jalur, model, error..." class="mt-1 w-full rounded-md border border-outline-variant bg-surface-container-lowest px-2 py-1.5 text-sm">
+            </div>
             <div>
                 <label for="status" class="block text-xs font-medium text-on-surface-variant">Status</label>
                 <select id="status" name="status" class="mt-1 w-full rounded-md border border-outline-variant px-2 py-1.5 text-sm">
@@ -31,8 +35,11 @@
                     @endforeach
                 </select>
             </div>
-            <div class="flex items-end">
-                <button type="submit" class="rounded-lg accent-gradient px-3 py-1.5 text-sm text-white hover:opacity-90">Terapkan filter</button>
+            <div class="flex flex-wrap items-end gap-2">
+                <button type="submit" class="rounded-lg accent-gradient px-3 py-1.5 text-sm text-white hover:opacity-90">Terapkan</button>
+                @if (filled(request('q')) || filled(request('status')) || filled(request('jalur')))
+                    <a href="{{ route('master.log-ai.index') }}" class="rounded-md border border-outline-variant px-3 py-1.5 text-sm text-on-surface">Reset</a>
+                @endif
             </div>
         </form>
     </section>
@@ -87,5 +94,5 @@
             </tbody>
         </table>
     </div>
-    <div class="mt-4">{{ $items->links() }}</div>
+    <x-ui.table-pagination :paginator="$items" />
 @endsection

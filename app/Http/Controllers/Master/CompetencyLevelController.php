@@ -20,9 +20,9 @@ class CompetencyLevelController extends Controller
 
     public function store(StoreCompetencyLevelRequest $request): RedirectResponse
     {
-        CompetencyLevel::query()->create($request->validated());
+        $tingkat = CompetencyLevel::query()->create($request->validated());
 
-        return $this->redirectToCompetencyStructure('Tingkat kompetensi disimpan.');
+        return $this->redirectToCompetencyStructure('Tingkat kompetensi disimpan.', expand: 'c-'.$tingkat->id_kompetensi);
     }
 
     public function edit(CompetencyLevel $tingkatKompetensi): RedirectResponse
@@ -34,13 +34,14 @@ class CompetencyLevelController extends Controller
     {
         $tingkatKompetensi->update($request->validated());
 
-        return $this->redirectToCompetencyStructure('Tingkat kompetensi diperbarui.');
+        return $this->redirectToCompetencyStructure('Tingkat kompetensi diperbarui.', expand: 'c-'.$tingkatKompetensi->id_kompetensi);
     }
 
     public function destroy(CompetencyLevel $tingkatKompetensi): RedirectResponse
     {
+        $idKompetensi = $tingkatKompetensi->id_kompetensi;
         $tingkatKompetensi->delete();
 
-        return $this->redirectToCompetencyStructure('Tingkat kompetensi dihapus.');
+        return $this->redirectToCompetencyStructure('Tingkat kompetensi dihapus.', expand: 'c-'.$idKompetensi);
     }
 }

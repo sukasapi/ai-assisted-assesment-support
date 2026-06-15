@@ -3,6 +3,7 @@
 namespace App\Http\Requests;
 
 use App\Enums\EvidenceSourceType;
+use App\Http\Requests\Concerns\PreservesAssessmentTab;
 use App\Http\Requests\Concerns\ValidatesEvidenceForAssessment;
 use App\Models\Assessment;
 use App\Models\Evidence;
@@ -11,6 +12,7 @@ use Illuminate\Validation\Validator;
 
 class UpdateEvidenceRequest extends FormRequest
 {
+    use PreservesAssessmentTab;
     use ValidatesEvidenceForAssessment;
 
     public function authorize(): bool

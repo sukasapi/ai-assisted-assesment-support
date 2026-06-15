@@ -2,6 +2,7 @@
 
 namespace App\Http\Requests;
 
+use App\Http\Requests\Concerns\PreservesAssessmentTab;
 use App\Models\Assessment;
 use App\Models\CompetencyLevel;
 use App\Models\KeyBehavior;
@@ -9,6 +10,8 @@ use Illuminate\Foundation\Http\FormRequest;
 
 class UpdateKeyBehaviorRequest extends FormRequest
 {
+    use PreservesAssessmentTab;
+
     public function authorize(): bool
     {
         $asesmen = $this->route('asesmen');

@@ -21,9 +21,9 @@ class CompetencyController extends Controller
 
     public function store(StoreCompetencyRequest $request): RedirectResponse
     {
-        Competency::query()->create($request->validated());
+        $kompetensi = Competency::query()->create($request->validated());
 
-        return $this->redirectToCompetencyStructure('Kompetensi disimpan.');
+        return $this->redirectToCompetencyStructure('Kompetensi disimpan.', expand: 'c-'.$kompetensi->id);
     }
 
     public function edit(Competency $kompetensi): RedirectResponse
@@ -35,16 +35,18 @@ class CompetencyController extends Controller
     {
         $kompetensi->update($request->validated());
 
-        return $this->redirectToCompetencyStructure('Kompetensi diperbarui.');
+        return $this->redirectToCompetencyStructure('Kompetensi diperbarui.', expand: 'c-'.$kompetensi->id);
     }
 
     public function destroy(Competency $kompetensi): RedirectResponse
     {
+        $idKelompok = $kompetensi->id_kelompok_kompetensi;
+
         DB::transaction(function () use ($kompetensi): void {
             $kompetensi->levels()->get()->each(fn ($level) => $level->delete());
             $kompetensi->delete();
         });
 
-        return $this->redirectToCompetencyStructure('Kompetensi dan tingkat terkait dihapus.');
+        return $this->redirectToCompetencyStructure('Kompetensi dan tingkat terkait dihapus.', expand: 'g-'.$idKelompok);
     }
 }

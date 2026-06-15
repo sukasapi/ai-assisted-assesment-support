@@ -4,6 +4,7 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
 
 class Participant extends Model
@@ -41,5 +42,10 @@ class Participant extends Model
     public function matrixVersion(): BelongsTo
     {
         return $this->belongsTo(MatrixVersion::class, 'id_versi_matriks');
+    }
+
+    public function assessments(): HasMany
+    {
+        return $this->hasMany(Assessment::class, 'id_peserta');
     }
 }

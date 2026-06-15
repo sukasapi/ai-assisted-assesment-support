@@ -10,8 +10,14 @@
             · {{ $sesi->assessments->count() }} asesmen
         </x-slot:description>
         <x-slot:actions>
-            <x-ui.button href="{{ route('sesi-asesmen.asesmen.create', $sesi) }}" variant="primary">Buat asesmen</x-ui.button>
-            <x-ui.button href="{{ route('sesi-asesmen.edit', $sesi) }}" variant="secondary">Ubah sesi</x-ui.button>
+            <x-ui.button
+                type="button"
+                variant="primary"
+                data-open-modal="modal-asesmen-tambah"
+                data-sesi-id="{{ $sesi->id }}"
+                data-sesi-label="{{ $sesi->kode_sesi }} — {{ $sesi->nama }}"
+            >Buat asesmen</x-ui.button>
+            <x-ui.button type="button" variant="secondary" data-open-modal="modal-sesi-ubah" data-edit="{{ json_encode(['id' => $sesi->id, 'kode_sesi' => $sesi->kode_sesi, 'nama' => $sesi->nama, 'tanggal_mulai' => $sesi->tanggal_mulai?->format('Y-m-d'), 'tanggal_selesai' => $sesi->tanggal_selesai?->format('Y-m-d'), 'status' => $sesi->status?->value, 'catatan' => $sesi->catatan], JSON_HEX_APOS | JSON_HEX_QUOT | JSON_UNESCAPED_UNICODE) }}">Ubah sesi</x-ui.button>
         </x-slot:actions>
     </x-ui.page-header>
 
@@ -26,7 +32,10 @@
         <div class="border-b border-outline-variant/30 px-6 py-4">
             <h2 class="text-section-header uppercase text-on-surface-variant">Asesmen dalam sesi</h2>
         </div>
-        <table class="min-w-full text-sm">
+        <div class="px-6 pt-4">
+            <x-ui.table-client-filter target="tabel-asesmen-sesi" placeholder="Cari peserta atau status..." />
+        </div>
+        <table class="min-w-full text-sm" id="tabel-asesmen-sesi">
             <thead class="bg-surface-container-low text-xs uppercase text-on-surface-variant">
                 <tr>
                     <th class="px-6 py-3 text-left">Peserta</th>
@@ -85,8 +94,10 @@
                 <button type="submit" class="rounded-lg bg-primary px-4 py-2 text-sm font-semibold text-white">Buat penugasan &amp; token</button>
             </form>
 
+            <x-ui.table-client-filter target="tabel-penugasan-sesi" placeholder="Cari konsultan atau token..." />
+
             <div class="overflow-x-auto rounded-lg border border-outline-variant/30">
-                <table class="min-w-full text-sm">
+                <table class="min-w-full text-sm" id="tabel-penugasan-sesi">
                     <thead class="bg-surface-container-low text-xs uppercase text-on-surface-variant">
                         <tr>
                             <th class="px-4 py-3 text-left">Konsultan</th>
@@ -194,25 +205,13 @@
         </dialog>
     @endforeach
 
-    <script>
-        document.querySelectorAll('[data-open-modal]').forEach((btn) => {
-            btn.addEventListener('click', () => {
-                const el = document.getElementById(btn.dataset.openModal);
-                el?.showModal?.();
-            });
-        });
-        document.querySelectorAll('[data-close-modal]').forEach((btn) => {
-            btn.addEventListener('click', () => {
-                const el = document.getElementById(btn.dataset.closeModal);
-                el?.close?.();
-            });
-        });
-        document.querySelectorAll('dialog').forEach((dialog) => {
-            dialog.addEventListener('click', (e) => {
-                if (e.target === dialog) {
-                    dialog.close();
-                }
-            });
-        });
-    </script>
+    @include('assessment-sessions.partials.session-modals')
+    @can('create', App\Models\Assessment::class)
+        @include('assessments.partials.asesmen-form-modals', ['bukaModalAsesmenSesi' => $bukaModalAsesmenSesi ?? null])
+    @endcan
+    <x-ui.crud-modal-script
+        :update-route="route('sesi-asesmen.update', ['sesiAsesmen' => 999999999])"
+        create-modal-id="modal-sesi-tambah"
+        edit-modal-id="modal-sesi-ubah"
+    />
 @endsection

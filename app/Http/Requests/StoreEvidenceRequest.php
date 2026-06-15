@@ -2,12 +2,14 @@
 
 namespace App\Http\Requests;
 
+use App\Http\Requests\Concerns\PreservesAssessmentTab;
 use App\Http\Requests\Concerns\ValidatesEvidenceForAssessment;
 use App\Models\Assessment;
 use Illuminate\Foundation\Http\FormRequest;
 
 class StoreEvidenceRequest extends FormRequest
 {
+    use PreservesAssessmentTab;
     use ValidatesEvidenceForAssessment;
 
     public function authorize(): bool

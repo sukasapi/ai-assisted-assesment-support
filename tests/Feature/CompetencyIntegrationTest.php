@@ -12,13 +12,11 @@ use App\Models\MatrixVersion;
 use App\Models\Participant;
 use App\Models\User;
 use Database\Seeders\DatabaseSeeder;
-use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\Support\AssessmentTestHelpers;
 use Tests\TestCase;
 
 class CompetencyIntegrationTest extends TestCase
 {
-    use RefreshDatabase;
 
     public function test_hitung_pratinjau_kosong_tanpa_pk_disahkan(): void
     {

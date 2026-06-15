@@ -9,6 +9,7 @@ use App\Enums\AssessmentStatus;
 use App\Enums\EvidenceSourceType;
 use App\Enums\EvidenceTranscriptionStatus;
 use App\Http\Requests\StoreAssessmentRequest;
+use App\Http\Requests\UpdateAssessmentRequest;
 use App\Http\Requests\StoreAssessmentToolPayloadRequest;
 use App\Http\Requests\StoreEvidenceRequest;
 use App\Http\Requests\TranscribeEvidencePreviewRequest;
@@ -46,8 +47,10 @@ use App\Services\Assessment\AlatAsesmenPreset;
 use App\Services\Assessment\AssessmentToolAvailabilityDiagnostic;
 use App\Services\Integration\CompetencyIntegrationService;
 use App\Support\AssessmentQueryScope;
+use App\Support\AssessmentShowRedirect;
 use App\Support\ConsultantAccessSession;
 use App\Support\MandatoryCompetencyCoverage;
+use App\Support\TableSearch;
 use App\Support\AiFeature;
 use App\Support\CatatAktivitas;
 use App\Support\BulkTextNormalizer;
@@ -74,32 +77,93 @@ class AssessmentController extends Controller
             AssessmentQueryScope::untukPengguna($query, $user);
         }
 
-        $daftar = $query->latest('dibuat_pada')->paginate(15);
+        TableSearch::apply($query, $request->query('q'), [
+            fn ($q, $term) => $q->orWhereHas('participant', fn ($p) => $p
+                ->where('nama_lengkap', 'like', '%'.$term.'%')
+                ->orWhere('kode_peserta', 'like', '%'.$term.'%')),
+            fn ($q, $term) => $q->orWhereHas('session', fn ($s) => $s
+                ->where('kode_sesi', 'like', '%'.$term.'%')
+                ->orWhere('nama', 'like', '%'.$term.'%')),
+            fn ($q, $term) => $q->orWhereHas('matrixVersion', fn ($m) => $m
+                ->where('kode_versi', 'like', '%'.$term.'%')),
+        ]);
+
+        $daftar = $query->latest('dibuat_pada')->paginate(15)->withQueryString();
+
+        $daftarSesi = collect();
+        if ($user !== null && $user->can('create', Assessment::class)) {
+            $daftarSesi = AssessmentSession::query()
+                ->orderByDesc('dibuat_pada')
+                ->get(['id', 'kode_sesi', 'nama']);
+        }
 
         return view('assessments.index', [
             'daftar' => $daftar,
+            'daftarSesi' => $daftarSesi,
             'penugasanKonsultan' => $user?->role === 'konsultan'
                 ? ConsultantAccessSession::penugasanAktif($user)
                 : null,
         ]);
     }
 
-    public function create(AssessmentSession $sesiAsesmen): View
+    public function create(AssessmentSession $sesiAsesmen): RedirectResponse
     {
         $this->authorize('create', Assessment::class);
         $this->authorize('view', $sesiAsesmen);
 
-        return view('assessments.create', [
-            'sesi' => $sesiAsesmen,
-            'peserta' => Participant::query()->where('aktif', true)->orderBy('nama_lengkap')->get(),
-            'versiMatriks' => MatrixVersion::query()->where('aktif', true)->orderBy('nama_versi')->get(),
-            'asesorKandidat' => User::query()
-                ->where('peran', 'admin')
-                ->where('aktif', true)
-                ->orderBy('nama')
-                ->get(),
-            'opsiTemplatePromptAi' => AiPromptComposer::opsiTemplateAktif(),
-        ]);
+        return redirect()
+            ->route('sesi-asesmen.show', $sesiAsesmen)
+            ->with('buka_modal_asesmen_sesi', [
+                'id' => $sesiAsesmen->id,
+                'label' => $sesiAsesmen->kode_sesi.' — '.$sesiAsesmen->nama,
+            ]);
+    }
+
+    public function update(UpdateAssessmentRequest $request, Assessment $asesmen): RedirectResponse
+    {
+        $tujuan = AssessmentPurpose::from($request->string('tujuan')->toString());
+        $metode = AssessmentEvidenceCollectionMode::from($request->string('metode_koleksi_bukti')->toString());
+        $idTemplate = $request->filled('id_template_prompt_ai')
+            ? $request->integer('id_template_prompt_ai')
+            : null;
+
+        DB::transaction(function () use ($request, $asesmen, $tujuan, $metode, $idTemplate): void {
+            $asesmen->update([
+                'id_peserta' => $request->integer('id_peserta'),
+                'id_versi_matriks' => $request->integer('id_versi_matriks'),
+                'tujuan' => $tujuan,
+                'tanpa_intray' => $request->boolean('tanpa_intray'),
+                'metode_koleksi_bukti' => $metode,
+                'id_template_prompt_ai' => $idTemplate,
+            ]);
+
+            $idsAsesor = array_unique(array_map('intval', $request->input('id_asesor', [])));
+            $pembuatId = $asesmen->id_pengguna_pembuat;
+            if ($pembuatId && ! in_array($pembuatId, $idsAsesor, true)) {
+                $idsAsesor[] = $pembuatId;
+            }
+
+            $asesmen->assessorAssignments()
+                ->whereNotIn('id_pengguna', $idsAsesor)
+                ->delete();
+
+            foreach ($idsAsesor as $idPengguna) {
+                AssessmentAssessor::query()->firstOrCreate(
+                    [
+                        'id_asesmen' => $asesmen->id,
+                        'id_pengguna' => $idPengguna,
+                    ],
+                    ['jenis_penugasan' => AssessorAssignmentType::Admin],
+                );
+            }
+
+            if ($idTemplate !== null) {
+                AiPromptTemplateResolver::terapkanKeSemuaAlatAktif($asesmen->fresh(), $idTemplate);
+            }
+        });
+
+        return $this->redirectToAssessmentShow($asesmen)
+            ->with('status', 'Asesmen diperbarui.');
     }
 
     public function store(StoreAssessmentRequest $request, AssessmentSession $sesiAsesmen): RedirectResponse
@@ -109,70 +173,99 @@ class AssessmentController extends Controller
 
         $tujuan = AssessmentPurpose::from($request->string('tujuan')->toString());
         $metode = AssessmentEvidenceCollectionMode::from($request->string('metode_koleksi_bukti')->toString());
+        $idTemplate = $request->filled('id_template_prompt_ai')
+            ? $request->integer('id_template_prompt_ai')
+            : null;
 
-        $asesmen = DB::transaction(function () use ($request, $tujuan, $metode, $sesiAsesmen): Assessment {
-            /** @var Assessment $row */
-            $idTemplate = $request->filled('id_template_prompt_ai')
-                ? $request->integer('id_template_prompt_ai')
-                : null;
-
-            $row = Assessment::query()->create([
-                'id_peserta' => $request->integer('id_peserta'),
-                'id_versi_matriks' => $request->integer('id_versi_matriks'),
-                'id_sesi_asesmen' => $sesiAsesmen->id,
-                'tujuan' => $tujuan,
-                'status' => AssessmentStatus::Draf,
-                'tanpa_intray' => $request->boolean('tanpa_intray'),
-                'metode_koleksi_bukti' => $metode,
-                'id_template_prompt_ai' => $idTemplate,
-                'id_pengguna_pembuat' => $request->user()?->id,
-            ]);
-
-            $idsAsesor = array_unique($request->input('id_asesor', []));
-            $pembuatId = $request->user()?->id;
-            if ($pembuatId && ! in_array($pembuatId, $idsAsesor, true)) {
-                $idsAsesor[] = $pembuatId;
-            }
-            foreach ($idsAsesor as $idPengguna) {
-                AssessmentAssessor::query()->create([
-                    'id_asesmen' => $row->id,
-                    'id_pengguna' => (int) $idPengguna,
-                    'jenis_penugasan' => AssessorAssignmentType::Admin,
-                ]);
+        $daftarAsesmen = DB::transaction(function () use ($request, $tujuan, $metode, $sesiAsesmen, $idTemplate): array {
+            $hasil = [];
+            foreach ($request->idsPeserta() as $idPeserta) {
+                $hasil[] = $this->buatSatuAsesmen(
+                    $request,
+                    $sesiAsesmen,
+                    $idPeserta,
+                    $tujuan,
+                    $metode,
+                    $idTemplate,
+                );
             }
 
-            AlatAsesmenPreset::buatPemilihan(
-                $row->id,
-                $row->id_versi_matriks,
-                $tujuan,
-                $row->tanpa_intray
-            );
-
-            AiPromptTemplateResolver::inisialisasiAlatAktifBilaPerlu($row);
-            if ($idTemplate !== null) {
-                AiPromptTemplateResolver::terapkanKeSemuaAlatAktif($row, $idTemplate);
-            }
-
-            return $row;
+            return $hasil;
         });
 
-        CatatAktivitas::catat(
-            $request->user(),
-            'asesmen.dibuat',
-            Assessment::class,
-            $asesmen->id,
-            [
-                'id_peserta' => $asesmen->id_peserta,
-                'id_versi_matriks' => $asesmen->id_versi_matriks,
-                'tujuan' => $asesmen->tujuan->value,
-                'tanpa_intray' => $asesmen->tanpa_intray,
-                'metode_koleksi_bukti' => $asesmen->metode_koleksi_bukti->value,
-            ],
-        );
+        foreach ($daftarAsesmen as $asesmen) {
+            CatatAktivitas::catat(
+                $request->user(),
+                'asesmen.dibuat',
+                Assessment::class,
+                $asesmen->id,
+                [
+                    'id_peserta' => $asesmen->id_peserta,
+                    'id_versi_matriks' => $asesmen->id_versi_matriks,
+                    'tujuan' => $asesmen->tujuan->value,
+                    'tanpa_intray' => $asesmen->tanpa_intray,
+                    'metode_koleksi_bukti' => $asesmen->metode_koleksi_bukti->value,
+                ],
+            );
+        }
+
+        $jumlah = count($daftarAsesmen);
+        if ($jumlah === 1) {
+            return $this->redirectToAssessmentShow($daftarAsesmen[0])
+                ->with('status', 'Asesmen berhasil dibuat.');
+        }
 
         return redirect()
-            ->route('asesmen.show', $asesmen)
-            ->with('status', 'Asesmen berhasil dibuat.');
+            ->route('sesi-asesmen.show', $sesiAsesmen)
+            ->with('status', "{$jumlah} asesmen berhasil dibuat.");
+    }
+
+    private function buatSatuAsesmen(
+        StoreAssessmentRequest $request,
+        AssessmentSession $sesiAsesmen,
+        int $idPeserta,
+        AssessmentPurpose $tujuan,
+        AssessmentEvidenceCollectionMode $metode,
+        ?int $idTemplate,
+    ): Assessment {
+        $row = Assessment::query()->create([
+            'id_peserta' => $idPeserta,
+            'id_versi_matriks' => $request->integer('id_versi_matriks'),
+            'id_sesi_asesmen' => $sesiAsesmen->id,
+            'tujuan' => $tujuan,
+            'status' => AssessmentStatus::Draf,
+            'tanpa_intray' => $request->boolean('tanpa_intray'),
+            'metode_koleksi_bukti' => $metode,
+            'id_template_prompt_ai' => $idTemplate,
+            'id_pengguna_pembuat' => $request->user()?->id,
+        ]);
+
+        $idsAsesor = array_unique(array_map('intval', $request->input('id_asesor', [])));
+        $pembuatId = $request->user()?->id;
+        if ($pembuatId && ! in_array($pembuatId, $idsAsesor, true)) {
+            $idsAsesor[] = $pembuatId;
+        }
+        foreach ($idsAsesor as $idPengguna) {
+            AssessmentAssessor::query()->create([
+                'id_asesmen' => $row->id,
+                'id_pengguna' => $idPengguna,
+                'jenis_penugasan' => AssessorAssignmentType::Admin,
+            ]);
+        }
+
+        AlatAsesmenPreset::buatPemilihan(
+            $row->id,
+            $row->id_versi_matriks,
+            $tujuan,
+            $row->tanpa_intray
+        );
+
+        AiPromptTemplateResolver::inisialisasiAlatAktifBilaPerlu($row);
+        if ($idTemplate !== null) {
+            AiPromptTemplateResolver::terapkanKeSemuaAlatAktif($row, $idTemplate);
+        }
+
+        return $row;
     }
 
     public function show(Assessment $asesmen): View
@@ -193,6 +286,7 @@ class AssessmentController extends Controller
             'keyBehaviors.competencyLevel',
             'toolPayloads.tool',
             'toolPayloads.uploader',
+            'lastRecommendationConfigRevision',
         ]);
 
         $kompetensi = Competency::query()->where('aktif', true)->orderBy('kode_kompetensi')->get();
@@ -264,6 +358,8 @@ class AssessmentController extends Controller
             'integrasiPratinjau' => $integrasiPratinjau,
             'opsiTemplatePromptAi' => AiPromptComposer::opsiTemplateAktif(),
             'ringkasanTemplatePerAlat' => AiPromptTemplateResolver::ringkasanPerAlatAktif($asesmen),
+            'bisaUbahAsesmen' => request()->user()?->can('update', $asesmen) === true
+                && $asesmen->status === AssessmentStatus::Draf,
         ]);
     }
 
@@ -276,8 +372,7 @@ class AssessmentController extends Controller
             : null;
 
         if ((int) $asesmen->id_template_prompt_ai === (int) $idBaru) {
-            return redirect()
-                ->route('asesmen.show', $asesmen)
+            return $this->redirectToAssessmentShow($asesmen)
                 ->with('status', 'Template prompt AI tidak berubah.');
         }
 
@@ -292,8 +387,7 @@ class AssessmentController extends Controller
             ['id_template_prompt_ai' => $idBaru, 'diterapkan_ke_semua_alat' => true],
         );
 
-        return redirect()
-            ->route('asesmen.show', $asesmen)
+        return $this->redirectToAssessmentShow($asesmen)
             ->with('status', 'Template diterapkan ke semua alat aktif. Sesuaikan per alat di bawah jika perlu.');
     }
 
@@ -326,8 +420,7 @@ class AssessmentController extends Controller
             ['jumlah_alat' => count($request->input('prompt_alat', []))],
         );
 
-        return redirect()
-            ->route('asesmen.show', $asesmen)
+        return $this->redirectToAssessmentShow($asesmen)
             ->with('status', 'Template prompt per alat diperbarui.');
     }
 
@@ -341,8 +434,7 @@ class AssessmentController extends Controller
         );
 
         if (! ($hasil['berhasil'] ?? false)) {
-            return redirect()
-                ->route('asesmen.show', $asesmen)
+            return $this->redirectToAssessmentShow($asesmen)
                 ->withErrors(['integrasi' => $hasil['pesan'] ?? 'Pratinjau integrasi gagal dihitung.']);
         }
 
@@ -355,6 +447,9 @@ class AssessmentController extends Controller
                 'jumlah_kompetensi' => $hasil['jumlah_kompetensi'] ?? 0,
                 'job_fit_persen' => $hasil['job_fit_persen'] ?? null,
                 'rekomendasi_agregat' => $hasil['rekomendasi_agregat'] ?? null,
+                'kode_rekomendasi_agregat' => $hasil['kode_rekomendasi_agregat'] ?? null,
+                'id_revisi_konfigurasi' => $hasil['id_revisi_konfigurasi'] ?? null,
+                'nomor_revisi_konfigurasi' => $hasil['nomor_revisi_konfigurasi'] ?? null,
             ],
         );
 
@@ -365,8 +460,7 @@ class AssessmentController extends Controller
                 .($jobFit !== null ? ' Job Fit pratinjau: '.number_format((float) $jobFit, 1).' %.' : '');
         }
 
-        return redirect()
-            ->route('asesmen.show', $asesmen)
+        return $this->redirectToAssessmentShow($asesmen)
             ->with('status', $pesan);
     }
 
@@ -389,8 +483,7 @@ class AssessmentController extends Controller
         $baru = AssessmentEvidenceCollectionMode::from($request->string('metode_koleksi_bukti')->toString());
         $lama = $asesmen->metode_koleksi_bukti;
         if ($lama === $baru) {
-            return redirect()
-                ->route('asesmen.show', $asesmen)
+            return $this->redirectToAssessmentShow($asesmen)
                 ->with('status', 'Metode koleksi bukti tidak berubah.');
         }
 
@@ -417,8 +510,7 @@ class AssessmentController extends Controller
             $pesan .= ' Mapping perilaku kunci dan indikator yang sudah dimasukkan tetap tersimpan; tampilan koleksi bukti menyesuaikan metode baru.';
         }
 
-        return redirect()
-            ->route('asesmen.show', $asesmen)
+        return $this->redirectToAssessmentShow($asesmen)
             ->with('status', $pesan);
     }
 
@@ -455,9 +547,7 @@ class AssessmentController extends Controller
                     'status_transkripsi' => EvidenceTranscriptionStatus::Selesai,
                 ]);
 
-                return redirect()
-                    ->route('asesmen.show', $asesmen)
-                    ->withFragment('pengumpulan')
+                return $this->redirectToAssessmentShow($asesmen, 'pengumpulan')
                     ->with('status', 'Bukti wawancara disimpan.');
             }
 
@@ -486,9 +576,7 @@ class AssessmentController extends Controller
                 $pesan = 'Bukti wawancara disimpan. Isi transkrip manual karena STT nonaktif.';
             }
 
-            return redirect()
-                ->route('asesmen.show', $asesmen)
-                ->withFragment('pengumpulan')
+            return $this->redirectToAssessmentShowDenganBukti($asesmen, $bukti)
                 ->with('status', $pesan);
         }
 
@@ -509,9 +597,7 @@ class AssessmentController extends Controller
             'teks_kerja' => $request->input('teks_kerja'),
         ]);
 
-        return redirect()
-            ->route('asesmen.show', $asesmen)
-            ->withFragment('pengumpulan')
+        return $this->redirectToAssessmentShow($asesmen, 'pengumpulan')
             ->with('status', 'Bukti penilaian ditambahkan.');
     }
 
@@ -524,9 +610,7 @@ class AssessmentController extends Controller
         }
 
         if ($asesmen->status === AssessmentStatus::SelesaiFinal) {
-            return redirect()
-                ->route('asesmen.show', $asesmen)
-                ->withFragment('pengumpulan')
+            return $this->redirectToAssessmentShowDenganBukti($asesmen, $bukti)
                 ->withErrors(['bukti' => 'Asesmen sudah difinalisasi.']);
         }
 
@@ -561,9 +645,7 @@ class AssessmentController extends Controller
                     'pesan_status_transkripsi' => null,
                 ])->save();
 
-                return redirect()
-                    ->route('asesmen.show', $asesmen)
-                    ->withFragment('pengumpulan')
+                return $this->redirectToAssessmentShowDenganBukti($asesmen, $bukti)
                     ->with('status', 'Bukti wawancara diperbarui.');
             }
 
@@ -590,9 +672,7 @@ class AssessmentController extends Controller
                 $pesan = 'Bukti wawancara disimpan. Isi transkrip manual karena STT nonaktif.';
             }
 
-            return redirect()
-                ->route('asesmen.show', $asesmen)
-                ->withFragment('pengumpulan')
+            return $this->redirectToAssessmentShowDenganBukti($asesmen, $bukti)
                 ->with('status', $pesan);
         }
 
@@ -620,9 +700,7 @@ class AssessmentController extends Controller
                 'teks_kerja' => $request->input('teks_kerja', $bukti->teks_kerja),
             ])->save();
 
-            return redirect()
-                ->route('asesmen.show', $asesmen)
-                ->withFragment('pengumpulan')
+            return $this->redirectToAssessmentShowDenganBukti($asesmen, $bukti)
                 ->with('status', 'Bukti diubah menjadi bukti teks.');
         }
 
@@ -637,10 +715,54 @@ class AssessmentController extends Controller
             'pesan_status_transkripsi' => null,
         ])->save();
 
-        return redirect()
-            ->route('asesmen.show', $asesmen)
-            ->withFragment('pengumpulan')
+        return $this->redirectToAssessmentShowDenganBukti($asesmen, $bukti)
             ->with('status', 'Bukti wawancara diperbarui.');
+    }
+
+    public function destroyEvidence(Assessment $asesmen, Evidence $bukti): RedirectResponse
+    {
+        $this->authorize('update', $asesmen);
+
+        if ((int) $bukti->id_asesmen !== (int) $asesmen->id) {
+            abort(404);
+        }
+
+        if ($asesmen->status === AssessmentStatus::SelesaiFinal) {
+            return $this->redirectToAssessmentShowDenganBukti($asesmen, $bukti)
+                ->withErrors(['bukti' => 'Asesmen sudah difinalisasi.']);
+        }
+
+        if ($bukti->keyBehaviors()->where('tervalidasi', true)->exists()) {
+            return $this->redirectToAssessmentShowDenganBukti($asesmen, $bukti)
+                ->withErrors(['bukti' => 'Bukti tidak dapat dihapus karena sudah terhubung mapping PK disahkan.']);
+        }
+
+        $idBukti = $bukti->id;
+        $pathAudio = $bukti->path_audio;
+
+        DB::transaction(function () use ($bukti): void {
+            $bukti->keyBehaviors()->where('tervalidasi', false)->update(['id_bukti_penilaian' => null]);
+            $bukti->delete();
+        });
+
+        if ($pathAudio) {
+            app(EvidenceAudioStorage::class)->hapus($pathAudio);
+        }
+
+        CatatAktivitas::catat(
+            request()->user(),
+            'bukti.dihapus',
+            Evidence::class,
+            $idBukti,
+            [
+                'id_asesmen' => $asesmen->id,
+                'id_kompetensi' => $bukti->id_kompetensi,
+                'id_alat_penilaian' => $bukti->id_alat_penilaian,
+            ],
+        );
+
+        return $this->redirectToAssessmentShowDenganBukti($asesmen, $bukti)
+            ->with('status', 'Bukti penilaian dihapus.');
     }
 
     public function transcribeEvidencePreview(TranscribeEvidencePreviewRequest $request, Assessment $asesmen): JsonResponse
@@ -767,8 +889,7 @@ class AssessmentController extends Controller
             'waktu_validasi' => now(),
         ]);
 
-        return redirect()
-            ->route('asesmen.show', $asesmen)
+        return $this->redirectToAssessmentShow($asesmen)
             ->with('status', 'Perilaku kunci ditambahkan.');
     }
 
@@ -822,8 +943,7 @@ class AssessmentController extends Controller
 
         if ($request->boolean('simpan_sebagai_mapping')) {
             if ($perilaku->id_tingkat_kompetensi === null && ! isset($data['id_tingkat_kompetensi'])) {
-                return redirect()
-                    ->route('asesmen.show', $asesmen)
+                return $this->redirectToAssessmentShow($asesmen, 'hasil-mapping')
                     ->withErrors([
                         'perilaku_kunci' => 'Pilih tingkat indikator perilaku sebelum menyimpan sebagai mapping resmi.',
                     ]);
@@ -838,8 +958,7 @@ class AssessmentController extends Controller
             $perilaku->update($data);
         }
 
-        return redirect()
-            ->route('asesmen.show', $asesmen)
+        return $this->redirectToAssessmentShow($asesmen)
             ->with('status', 'Perilaku kunci diperbarui.');
     }
 
@@ -863,8 +982,7 @@ class AssessmentController extends Controller
         if ($asesmen->status === AssessmentStatus::SelesaiFinal) {
             return $expectsJson
                 ? $jsonError('Asesmen sudah difinalisasi.')
-                : redirect()
-                    ->route('asesmen.show', $asesmen)
+                : $this->redirectToAssessmentShow($asesmen, 'hasil-mapping')
                     ->withErrors(['perilaku_kunci' => 'Asesmen sudah difinalisasi.']);
         }
 
@@ -873,8 +991,7 @@ class AssessmentController extends Controller
 
             return $expectsJson
                 ? $jsonSuccess($perilaku, 'Mapping sudah disahkan sebelumnya.')
-                : redirect()
-                    ->route('asesmen.show', $asesmen)
+                : $this->redirectToAssessmentShow($asesmen, 'hasil-mapping')
                     ->with('status', 'Mapping sudah disahkan sebelumnya.');
         }
 
@@ -883,8 +1000,7 @@ class AssessmentController extends Controller
 
             return $expectsJson
                 ? $jsonError($pesan)
-                : redirect()
-                    ->route('asesmen.show', $asesmen)
+                : $this->redirectToAssessmentShow($asesmen, 'hasil-mapping')
                     ->withErrors(['perilaku_kunci' => $pesan]);
         }
 
@@ -910,8 +1026,7 @@ class AssessmentController extends Controller
 
         return $expectsJson
             ? $jsonSuccess($perilaku, $pesan)
-            : redirect()
-                ->route('asesmen.show', $asesmen)
+            : $this->redirectToAssessmentShow($asesmen, 'hasil-mapping')
                 ->with('status', $pesan);
     }
 
@@ -934,21 +1049,18 @@ class AssessmentController extends Controller
         abort_unless((int) $bukti->id_asesmen === (int) $asesmen->id, 404);
 
         if ($asesmen->metode_koleksi_bukti !== AssessmentEvidenceCollectionMode::Manual) {
-            return redirect()
-                ->route('asesmen.show', $asesmen)
+            return $this->redirectToAssessmentShowDenganBukti($asesmen, $bukti)
                 ->withErrors(['ai' => 'Analisis AI per bukti hanya untuk metode manual. Ubah metode koleksi bukti atau gunakan analisis bulk pada payload.']);
         }
         if (! config('ai.aktif')) {
-            return redirect()
-                ->route('asesmen.show', $asesmen)
+            return $this->redirectToAssessmentShowDenganBukti($asesmen, $bukti)
                 ->withErrors(['ai' => 'Fitur AI tidak aktif (AI_AKTIF=false).']);
         }
 
         $analisis = app(EvidenceAiAnalyzer::class)->analisisInkremental($bukti, request()->user());
 
         if (! $analisis['berhasil']) {
-            return redirect()
-                ->route('asesmen.show', $asesmen)
+            return $this->redirectToAssessmentShowDenganBukti($asesmen, $bukti)
                 ->withErrors(['ai' => $analisis['pesan'] ?? 'Analisis AI gagal.']);
         }
 
@@ -960,9 +1072,88 @@ class AssessmentController extends Controller
             ['id_asesmen' => $asesmen->id],
         );
 
-        return redirect()
-            ->route('asesmen.show', $asesmen)
+        return $this->redirectToAssessmentShowDenganBukti($asesmen, $bukti)
             ->with('status', 'Analisis AI untuk bukti #'.$bukti->id.' selesai.');
+    }
+
+    public function transferEvidenceAiToMapping(Assessment $asesmen, Evidence $bukti): RedirectResponse
+    {
+        $this->authorize('update', $asesmen);
+        abort_unless((int) $bukti->id_asesmen === (int) $asesmen->id, 404);
+
+        if ($asesmen->status === AssessmentStatus::SelesaiFinal) {
+            return $this->redirectToAssessmentShow($asesmen, 'hasil-mapping')
+                ->withErrors(['perilaku_kunci' => 'Asesmen sudah difinalisasi. Mapping tidak dapat ditambah.']);
+        }
+
+        $muatanAi = is_array($bukti->ai_muatan) ? $bukti->ai_muatan : [];
+        $kutipan = trim((string) ($muatanAi['kutipan_dari_teks_mentah'] ?? ''));
+        $alasan = trim((string) ($bukti->ai_alasan ?? ''));
+        if ($kutipan === '' || $alasan === '') {
+            return $this->redirectToAssessmentShowDenganBukti($asesmen, $bukti)
+                ->withErrors(['ai' => 'Hasil AI belum lengkap untuk ditransfer ke mapping. Jalankan analisis AI ulang.']);
+        }
+
+        $idTingkat = null;
+        $idUsulan = $muatanAi['id_tingkat_kompetensi_usulan'] ?? null;
+        if (is_numeric($idUsulan)) {
+            $idTingkat = (int) $idUsulan;
+        } elseif (is_numeric($bukti->ai_tingkat)) {
+            $tingkat = (int) $bukti->ai_tingkat;
+            $idTingkat = CompetencyLevel::query()
+                ->where('id_kompetensi', $bukti->id_kompetensi)
+                ->where('tingkat', $tingkat)
+                ->value('id');
+            $idTingkat = $idTingkat !== null ? (int) $idTingkat : null;
+        }
+
+        if ($idTingkat === null) {
+            return $this->redirectToAssessmentShowDenganBukti($asesmen, $bukti)
+                ->withErrors(['ai' => 'AI belum memberikan rekomendasi level yang valid untuk mapping.']);
+        }
+
+        $teksPerilaku = CompetencyLevel::teksIndikatorResmi($idTingkat) ?: $alasan;
+
+        $pk = KeyBehavior::query()
+            ->where('id_asesmen', $asesmen->id)
+            ->where('id_bukti_penilaian', $bukti->id)
+            ->where('tervalidasi', false)
+            ->orderByDesc('id')
+            ->first();
+
+        if ($pk) {
+            $pk->update([
+                'id_tingkat_kompetensi' => $idTingkat,
+                'teks_perilaku' => $teksPerilaku,
+                'alasan_pemilihan' => $alasan,
+                'kutipan_referensi' => $kutipan,
+            ]);
+        } else {
+            $pk = $asesmen->keyBehaviors()->create([
+                'id_alat_penilaian' => $bukti->id_alat_penilaian,
+                'id_kompetensi' => $bukti->id_kompetensi,
+                'id_bukti_penilaian' => $bukti->id,
+                'id_tingkat_kompetensi' => $idTingkat,
+                'teks_perilaku' => $teksPerilaku,
+                'alasan_pemilihan' => $alasan,
+                'kutipan_referensi' => $kutipan,
+                'tervalidasi' => false,
+            ]);
+        }
+
+        CatatAktivitas::catat(
+            request()->user(),
+            'bukti.ai_ditransfer_ke_mapping',
+            KeyBehavior::class,
+            $pk->id,
+            [
+                'id_asesmen' => $asesmen->id,
+                'id_bukti_penilaian' => $bukti->id,
+            ],
+        );
+
+        return $this->redirectToAssessmentShow($asesmen, 'hasil-mapping')
+            ->with('status', 'Hasil analisis AI bukti #'.$bukti->id.' berhasil ditransfer ke mapping perilaku.');
     }
 
     public function storeToolPayload(StoreAssessmentToolPayloadRequest $request, Assessment $asesmen): RedirectResponse
@@ -984,8 +1175,7 @@ class AssessmentController extends Controller
             'id_pengguna_pengunggah' => $request->user()?->id,
         ]);
 
-        return redirect()
-            ->route('asesmen.show', $asesmen)
+        return $this->redirectToAssessmentShow($asesmen)
             ->with('status', 'Payload alat disimpan. Anda dapat menjalankan analisis AI bulk.');
     }
 
@@ -996,8 +1186,7 @@ class AssessmentController extends Controller
 
         $alasan = ToolPayloadDeletionGuard::alasanTidakDapatDihapus($payload);
         if ($alasan !== null) {
-            return redirect()
-                ->route('asesmen.show', $asesmen)
+            return $this->redirectToAssessmentShow($asesmen)
                 ->withErrors(['payload' => $alasan]);
         }
 
@@ -1016,8 +1205,7 @@ class AssessmentController extends Controller
             ['id_asesmen' => $asesmen->id],
         );
 
-        return redirect()
-            ->route('asesmen.show', $asesmen)
+        return $this->redirectToAssessmentShow($asesmen)
             ->with('status', 'Payload #'.$idPayload.' dihapus.');
     }
 
@@ -1056,8 +1244,7 @@ class AssessmentController extends Controller
     {
         $this->authorize('view', $asesmen);
 
-        return redirect()
-            ->route('asesmen.show', $asesmen)
+        return $this->redirectToAssessmentShow($asesmen)
             ->withErrors([
                 'ai' => 'Analisis AI bulk harus dipicu dari tombol pada halaman asesmen (bukan membuka URL ini langsung di browser).',
             ]);
@@ -1068,19 +1255,16 @@ class AssessmentController extends Controller
         $this->authorize('update', $asesmen);
 
         if ((int) $payload->id_asesmen !== (int) $asesmen->id) {
-            return redirect()
-                ->route('asesmen.show', $asesmen)
+            return $this->redirectToAssessmentShow($asesmen)
                 ->withErrors(['ai' => 'Payload tidak termasuk asesmen ini.']);
         }
 
         if ($asesmen->metode_koleksi_bukti !== AssessmentEvidenceCollectionMode::PayloadAlat) {
-            return redirect()
-                ->route('asesmen.show', $asesmen)
+            return $this->redirectToAssessmentShow($asesmen)
                 ->withErrors(['ai' => 'Analisis AI bulk hanya untuk metode otomatis (payload alat). Ubah metode koleksi bukti di atas.']);
         }
         if (! config('ai.aktif')) {
-            return redirect()
-                ->route('asesmen.show', $asesmen)
+            return $this->redirectToAssessmentShow($asesmen)
                 ->withErrors(['ai' => 'Fitur AI tidak aktif (AI_AKTIF=false).']);
         }
 
@@ -1092,14 +1276,12 @@ class AssessmentController extends Controller
         );
 
         if (! ($hasil['berhasil'] ?? false)) {
-            return redirect()
-                ->route('asesmen.show', $asesmen)
+            return $this->redirectToAssessmentShow($asesmen)
                 ->withErrors(['ai' => $hasil['pesan'] ?? 'Analisis AI bulk gagal.']);
         }
 
         if ($hasil['diantrian'] ?? false) {
-            return redirect()
-                ->route('asesmen.show', $asesmen)
+            return $this->redirectToAssessmentShow($asesmen)
                 ->with('status', $hasil['pesan'] ?? 'Analisis AI bulk dijadwalkan.');
         }
 
@@ -1116,8 +1298,7 @@ class AssessmentController extends Controller
 
         $n = (int) ($hasil['jumlah_perilaku_kunci'] ?? 0);
 
-        return redirect()
-            ->route('asesmen.show', $asesmen)
+        return $this->redirectToAssessmentShow($asesmen)
             ->with('status', 'Analisis AI untuk payload #'.$payload->id.' selesai. Perilaku kunci otomatis dibuat: '.$n.' entri.');
     }
 
@@ -1126,15 +1307,13 @@ class AssessmentController extends Controller
         $this->authorize('update', $asesmen);
 
         if ($asesmen->status === AssessmentStatus::SelesaiFinal) {
-            return redirect()
-                ->route('asesmen.show', $asesmen)
+            return $this->redirectToAssessmentShow($asesmen)
                 ->with('status', 'Asesmen sudah difinalisasi sebelumnya.');
         }
 
         $ringkasan = MandatoryCompetencyCoverage::ringkasan($asesmen);
         if ($ringkasan['total_kompetensi_kurang'] > 0) {
-            return redirect()
-                ->route('asesmen.show', $asesmen)
+            return $this->redirectToAssessmentShow($asesmen)
                 ->withErrors([
                     'finalisasi' => 'Finalisasi belum bisa dilakukan. Setiap kompetensi wajib harus punya minimal satu perilaku kunci disahkan (mapping resmi) dengan tingkat indikator terisi.',
                 ]);
@@ -1154,8 +1333,7 @@ class AssessmentController extends Controller
             ['status' => AssessmentStatus::SelesaiFinal->value]
         );
 
-        return redirect()
-            ->route('asesmen.show', $asesmen)
+        return $this->redirectToAssessmentShow($asesmen)
             ->with('status', 'Asesmen berhasil difinalisasi.');
     }
 
@@ -1165,8 +1343,7 @@ class AssessmentController extends Controller
         abort_unless((request()->user()?->peran ?? '') === 'admin', 403);
 
         if ($asesmen->status !== AssessmentStatus::SelesaiFinal) {
-            return redirect()
-                ->route('asesmen.show', $asesmen)
+            return $this->redirectToAssessmentShow($asesmen)
                 ->with('status', 'Asesmen belum berstatus final.');
         }
 
@@ -1184,8 +1361,7 @@ class AssessmentController extends Controller
             ['status' => AssessmentStatus::Draf->value]
         );
 
-        return redirect()
-            ->route('asesmen.show', $asesmen)
+        return $this->redirectToAssessmentShow($asesmen)
             ->with('status', 'Finalisasi asesmen dibatalkan. Status kembali ke draf.');
     }
 
@@ -1335,5 +1511,47 @@ class AssessmentController extends Controller
         }
 
         return ! str_contains($teks, 'Transkripsi sedang diproses');
+    }
+
+    private function redirectToAssessmentShow(
+        Assessment $asesmen,
+        ?string $fallbackTab = null,
+        ?Request $request = null,
+        ?int $kompetensiId = null,
+        ?int $alatId = null,
+    ): RedirectResponse {
+        if ($fallbackTab === null) {
+            $fallbackTab = match (request()->route()?->getActionMethod()) {
+                'updateAiPromptTemplate', 'updateToolAiPrompts', 'updateEvidenceCollectionMode' => 'konfigurasi',
+                'storeEvidence', 'updateEvidence', 'destroyEvidence', 'analyzeEvidenceAi', 'storeToolPayload', 'destroyToolPayload',
+                'analyzeToolPayloadAi', 'redirectToolPayloadAiGet' => 'pengumpulan',
+                'storeKeyBehavior', 'updateKeyBehavior', 'sahkanKeyBehavior', 'hitungIntegrasiPratinjau' => 'hasil-mapping',
+                'finalize', 'unfinalize' => 'overview',
+                default => null,
+            };
+        }
+
+        return AssessmentShowRedirect::fromRequest(
+            $asesmen,
+            $request ?? request(),
+            $fallbackTab,
+            $kompetensiId,
+            $alatId,
+        );
+    }
+
+    private function redirectToAssessmentShowDenganBukti(
+        Assessment $asesmen,
+        Evidence $bukti,
+        ?string $fallbackTab = 'pengumpulan',
+    ): RedirectResponse {
+        return AssessmentShowRedirect::fromRequest(
+            $asesmen,
+            request(),
+            $fallbackTab,
+            (int) $bukti->id_kompetensi,
+            (int) $bukti->id_alat_penilaian,
+            (int) $bukti->id,
+        );
     }
 }

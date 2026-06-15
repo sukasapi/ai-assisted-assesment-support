@@ -6,12 +6,10 @@ use App\Models\AiPromptTemplate;
 use App\Models\Assessment;
 use App\Support\AiPromptComposer;
 use Database\Seeders\DatabaseSeeder;
-use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
 class AiPromptComposerTest extends TestCase
 {
-    use RefreshDatabase;
 
     public function test_gabungkan_system_tanpa_template(): void
     {

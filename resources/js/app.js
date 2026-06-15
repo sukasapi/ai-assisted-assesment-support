@@ -113,36 +113,77 @@ function initSidebarCollapse() {
 document.addEventListener('DOMContentLoaded', initSidebarCollapse);
 
 function bindAiProcessingAlerts() {
-    const forms = document.querySelectorAll('.js-ai-processing-form');
-    if (!forms.length || !window.Swal) {
+    if (!window.Swal) {
         return;
     }
 
-    forms.forEach((form) => {
-        form.addEventListener('submit', () => {
-            const mode = form.dataset.aiMode === 'bulk' ? 'bulk' : 'incremental';
-            const title =
-                mode === 'bulk' ? 'Memproses AI bulk' : 'Memproses AI';
-            const text =
-                mode === 'bulk'
-                    ? 'Mohon tunggu, payload sedang dianalisis sekarang.'
-                    : 'Mohon tunggu, evidence sedang dianalisis sekarang.';
+    document.addEventListener('submit', (event) => {
+        const form = event.target;
+        if (!(form instanceof HTMLFormElement) || !form.classList.contains('js-ai-processing-form')) {
+            return;
+        }
 
-            window.Swal.fire({
-                title,
-                text,
-                allowOutsideClick: false,
-                allowEscapeKey: false,
-                didOpen: () => {
-                    window.Swal.showLoading();
-                },
-                ...swalTheme,
-            });
+        if (event.defaultPrevented) {
+            return;
+        }
+
+        const mode = form.dataset.aiMode === 'bulk' ? 'bulk' : 'incremental';
+        const title = mode === 'bulk' ? 'Memproses AI bulk' : 'Memproses AI';
+        const text =
+            mode === 'bulk'
+                ? 'Mohon tunggu, payload sedang dianalisis sekarang.'
+                : 'Mohon tunggu, evidence sedang dianalisis sekarang.';
+
+        window.Swal.fire({
+            title,
+            text,
+            allowOutsideClick: false,
+            allowEscapeKey: false,
+            didOpen: () => {
+                window.Swal.showLoading();
+            },
+            ...swalTheme,
         });
     });
 }
 
 document.addEventListener('DOMContentLoaded', bindAiProcessingAlerts);
+
+function initSwalConfirmForms() {
+    if (!window.Swal) {
+        return;
+    }
+
+    document.querySelectorAll('form[data-swal-confirm]').forEach((form) => {
+        form.addEventListener('submit', (event) => {
+            if (form.dataset.swalConfirmSubmitted === '1') {
+                return;
+            }
+
+            event.preventDefault();
+
+            window.Swal.fire({
+                title: form.dataset.swalConfirmTitle || 'Konfirmasi',
+                text: form.dataset.swalConfirm || 'Lanjutkan tindakan ini?',
+                icon: 'warning',
+                showCancelButton: true,
+                confirmButtonText: form.dataset.swalConfirmYes || 'Ya',
+                cancelButtonText: form.dataset.swalConfirmCancel || 'Batal',
+                confirmButtonColor: form.dataset.swalConfirmDanger === '1' ? '#b3261e' : swalTheme.confirmButtonColor,
+                ...swalTheme,
+            }).then((result) => {
+                if (!result.isConfirmed) {
+                    return;
+                }
+
+                form.dataset.swalConfirmSubmitted = '1';
+                form.requestSubmit();
+            });
+        });
+    });
+}
+
+document.addEventListener('DOMContentLoaded', initSwalConfirmForms);
 
 function bindWysiwygEditors() {
     const areas = document.querySelectorAll(
@@ -160,12 +201,15 @@ function bindWysiwygEditors() {
             return;
         }
         textarea.dataset.wysiwygBound = '1';
-        const wasRequired = textarea.required;
-        if (wasRequired) {
+        const wasRequired = textarea.required || textarea.dataset.evidenceTeksRequired === '1';
+        if (textarea.required) {
             // Hindari error HTML5 "invalid form control is not focusable"
             // karena textarea asli disembunyikan saat diganti Quill.
             textarea.required = false;
             textarea.removeAttribute('required');
+        }
+        if (wasRequired) {
+            textarea.dataset.evidenceTeksRequired = '1';
         }
 
         const wrapper = document.createElement('div');
@@ -224,7 +268,10 @@ function bindWysiwygEditors() {
                 richInput.value = html;
                 normalizedInput.value = normalized;
 
-                if (wasRequired && !normalized.trim()) {
+                if (
+                    (wasRequired || textarea.dataset.evidenceTeksRequired === '1') &&
+                    !normalized.trim()
+                ) {
                     event.preventDefault();
                     window.Swal.fire({
                         icon: 'error',
@@ -266,7 +313,7 @@ function bindWysiwygEditors() {
 }
 
 /** Sinkronkan nilai ke textarea tersembunyi dan editor Quill (jika ada). */
-function applyTextToTextarea(textarea, text) {
+window.applyTextToTextarea = function applyTextToTextarea(textarea, text) {
     if (!textarea) {
         return;
     }
@@ -401,6 +448,7 @@ function normalizePlain(text) {
         .trim();
 }
 
+document.addEventListener('DOMContentLoaded', initEvidenceJenisToggle);
 document.addEventListener('DOMContentLoaded', bindWysiwygEditors);
 
 /** Payload bulk: textarea polos (tanpa Quill) — normalisasi + preview sebelum simpan. */
@@ -774,6 +822,39 @@ function initPkSahkanAjax() {
     });
 }
 
+function evidenceTeksPlain(textarea) {
+    if (!textarea) {
+        return '';
+    }
+    const quill = textarea.__quill;
+    if (quill && typeof quill.getText === 'function') {
+        return quill.getText().replace(/\u00a0/g, ' ').trim();
+    }
+
+    return String(textarea.value || '').trim();
+}
+
+function setEvidenceTeksRequired(textarea, required) {
+    if (!textarea) {
+        return;
+    }
+
+    if (textarea.dataset.wysiwygBound === '1') {
+        textarea.required = false;
+        textarea.removeAttribute('required');
+        if (required) {
+            textarea.dataset.evidenceTeksRequired = '1';
+        } else {
+            delete textarea.dataset.evidenceTeksRequired;
+        }
+
+        return;
+    }
+
+    textarea.required = required;
+    delete textarea.dataset.evidenceTeksRequired;
+}
+
 function initEvidenceJenisToggle() {
     const syncForm = (form) => {
         const jenis = form.querySelector('input[name="jenis_sumber"]:checked')?.value || 'teks';
@@ -798,7 +879,7 @@ function initEvidenceJenisToggle() {
             teksBlock.classList.remove('hidden');
         }
         if (textareaTeks) {
-            textareaTeks.required = jenis === 'teks';
+            setEvidenceTeksRequired(textareaTeks, jenis === 'teks');
             textareaTeks.placeholder =
                 jenis === 'wawancara'
                     ? 'Koreksi atau isi transkrip wawancara…'
@@ -826,7 +907,7 @@ function initEvidenceJenisToggle() {
             const hasAudio = form.dataset.hasAudio === '1';
             const audio = form.querySelector('input[name="berkas_audio"]');
             const teks = form.querySelector('textarea[name="teks_mentah"]');
-            const teksTerisi = teks?.value?.trim();
+            const teksTerisi = evidenceTeksPlain(teks);
 
             if (jenis === 'wawancara' && audio && !audio.files?.length && !isEdit) {
                 e.preventDefault();
@@ -1010,6 +1091,648 @@ function initEvidencePlay() {
     });
 }
 
+function initEvidenceWorkspace() {
+    const workspace = document.querySelector('[data-evidence-workspace]');
+    if (!workspace) {
+        return;
+    }
+
+    let pemetaan = [];
+    try {
+        pemetaan = JSON.parse(workspace.dataset.pemetaan || '[]');
+    } catch {
+        pemetaan = [];
+    }
+
+    let idKompetensi = null;
+    let idAlat = null;
+
+    const hint = workspace.querySelector('.js-evidence-workspace-hint');
+    const unmapped = workspace.querySelector('.js-evidence-workspace-unmapped');
+    const header = workspace.querySelector('.js-evidence-workspace-header');
+    const form = workspace.querySelector('.js-evidence-workspace-form');
+    const readonly = workspace.querySelector('.js-evidence-workspace-readonly');
+    const inputAlat = workspace.querySelector('.js-evidence-input-alat');
+    const inputKompetensi = workspace.querySelector('.js-evidence-input-kompetensi');
+    const aiForm = workspace.querySelector('.js-evidence-ai-form');
+    const uploadedList = workspace.querySelector('#evidence-uploaded-list');
+    const filterEmpty = workspace.querySelector('.js-evidence-uploaded-filter-empty');
+    const globalEmpty = workspace.querySelector('.js-evidence-uploaded-empty');
+
+    const headerNama = workspace.querySelector('.js-evidence-header-nama');
+    const headerKode = workspace.querySelector('.js-evidence-header-kode');
+    const headerDef = workspace.querySelector('.js-evidence-header-definisi');
+    const headerAlat = workspace.querySelector('.js-evidence-header-alat');
+
+    const hintTitle = workspace.querySelector('.js-evidence-hint-title');
+    const hintSub = workspace.querySelector('.js-evidence-hint-sub');
+    const kompetensiSearch = workspace.querySelector('.js-evidence-kompetensi-search');
+    const kompetensiSearchClear = workspace.querySelector('.js-evidence-kompetensi-search-clear');
+    const kompetensiSearchEmpty = workspace.querySelector('.js-evidence-kompetensi-search-empty');
+    const kompetensiButtons = workspace.querySelectorAll('.js-evidence-pick-kompetensi');
+    const alatButtons = workspace.querySelectorAll('.js-evidence-pick-alat');
+
+    let activeKompetensiBtn = null;
+    let activeAlatBtn = null;
+    let buktiPasangan = new Set();
+    let buktiPasanganData = [];
+
+    const KOMPETENSI_TAB_CLASSES = [
+        'border', 'border-transparent', 'border-primary', 'border-emerald-200', 'border-emerald-500',
+        'bg-primary-fixed/40', 'bg-emerald-50', 'bg-emerald-100',
+        'shadow-sm', 'ring-1', 'ring-emerald-400',
+    ];
+    const ALAT_TAB_CLASSES = [
+        'border', 'border-transparent', 'border-primary', 'border-emerald-200', 'border-emerald-500',
+        'bg-primary-fixed/30', 'bg-emerald-50', 'bg-emerald-100',
+        'text-primary', 'text-emerald-800', 'text-on-surface-variant', 'shadow-sm', 'font-bold',
+    ];
+
+    const loadBuktiPasangan = () => {
+        buktiPasangan = new Set();
+        buktiPasanganData = [];
+        try {
+            buktiPasanganData = JSON.parse(workspace.dataset.buktiPasangan || '[]');
+            buktiPasanganData.forEach((p) => {
+                buktiPasangan.add(`${p.k}-${p.a}`);
+            });
+        } catch {
+            buktiPasangan = new Set();
+            buktiPasanganData = [];
+        }
+        uploadedList?.querySelectorAll('.evidence-uploaded-card').forEach((card) => {
+            const key = `${card.dataset.kompetensiId}-${card.dataset.alatId}`;
+            buktiPasangan.add(key);
+            const rowId = parseInt(card.dataset.evidenceRow ?? '', 10);
+            if (!Number.isNaN(rowId)) {
+                const existing = buktiPasanganData.find(
+                    (p) => String(p.k) === card.dataset.kompetensiId && String(p.a) === card.dataset.alatId,
+                );
+                if (!existing) {
+                    buktiPasanganData.push({
+                        k: parseInt(card.dataset.kompetensiId ?? '', 10),
+                        a: parseInt(card.dataset.alatId ?? '', 10),
+                        id: rowId,
+                    });
+                }
+            }
+        });
+    };
+
+    const buktiIdForPair = (k, a) => {
+        const fromCard = [...(uploadedList?.querySelectorAll('.evidence-uploaded-card') ?? [])].find(
+            (card) => card.dataset.kompetensiId === String(k) && card.dataset.alatId === String(a),
+        );
+        if (fromCard?.dataset.evidenceRow) {
+            return fromCard.dataset.evidenceRow;
+        }
+
+        const fromData = buktiPasanganData.find(
+            (p) => String(p.k) === String(k) && String(p.a) === String(a),
+        );
+
+        return fromData?.id != null ? String(fromData.id) : null;
+    };
+
+    const isMapped = (k, a) =>
+        pemetaan.some((p) => String(p.k) === String(k) && String(p.a) === String(a));
+
+    const pairHasBukti = (k, a) => buktiPasangan.has(`${k}-${a}`);
+
+    const kompetensiFilled = (k) => {
+        if (idAlat !== null) {
+            return isMapped(k, idAlat) && pairHasBukti(k, idAlat);
+        }
+
+        return pemetaan.some((p) => String(p.k) === String(k) && buktiPasangan.has(`${p.k}-${p.a}`));
+    };
+
+    const alatFilled = (a) => {
+        if (idKompetensi !== null) {
+            return isMapped(idKompetensi, a) && pairHasBukti(idKompetensi, a);
+        }
+
+        return pemetaan.some((p) => String(p.a) === String(a) && buktiPasangan.has(`${p.k}-${p.a}`));
+    };
+
+    const applyTabIndicators = () => {
+        kompetensiButtons.forEach((btn) => {
+            const filled = kompetensiFilled(btn.dataset.id);
+            const isActive = btn === activeKompetensiBtn;
+
+            btn.classList.remove(...KOMPETENSI_TAB_CLASSES);
+
+            if (isActive) {
+                if (filled) {
+                    btn.classList.add('border', 'border-emerald-500', 'bg-emerald-100', 'shadow-sm', 'ring-1', 'ring-emerald-400');
+                } else {
+                    btn.classList.add('border', 'border-primary', 'bg-primary-fixed/40', 'shadow-sm');
+                }
+            } else if (filled) {
+                btn.classList.add('border', 'border-emerald-200', 'bg-emerald-50');
+            } else {
+                btn.classList.add('border', 'border-transparent', 'bg-primary-fixed/15');
+            }
+
+            const kode = btn.querySelector('.js-evidence-kompetensi-kode');
+            if (kode) {
+                kode.classList.toggle('text-emerald-600', filled);
+                kode.classList.toggle('text-primary', !filled);
+            }
+        });
+
+        alatButtons.forEach((btn) => {
+            const filled = alatFilled(btn.dataset.id);
+            const isActive = btn === activeAlatBtn;
+
+            btn.classList.remove(...ALAT_TAB_CLASSES);
+
+            if (isActive) {
+                if (filled) {
+                    btn.classList.add('border', 'border-emerald-500', 'bg-emerald-100', 'font-bold', 'text-emerald-800', 'shadow-sm');
+                } else {
+                    btn.classList.add('border', 'border-primary', 'bg-primary-fixed/40', 'font-bold', 'text-primary', 'shadow-sm');
+                }
+            } else if (filled) {
+                btn.classList.add('border', 'border-emerald-200', 'bg-emerald-50', 'font-semibold', 'text-emerald-800');
+            } else {
+                btn.classList.add('border', 'border-transparent', 'font-semibold', 'text-primary', 'bg-primary-fixed/25');
+            }
+        });
+    };
+
+    const setActiveKompetensi = (btn) => {
+        activeKompetensiBtn = btn;
+    };
+
+    const setActiveAlat = (btn) => {
+        activeAlatBtn = btn;
+    };
+
+    const filterKompetensiList = () => {
+        const term = (kompetensiSearch?.value ?? '').trim().toLowerCase();
+        let visible = 0;
+
+        kompetensiSearchClear?.classList.toggle('hidden', term === '');
+
+        kompetensiButtons.forEach((btn) => {
+            const haystack = btn.dataset.search ?? '';
+            const show = term === '' || haystack.includes(term);
+            btn.classList.toggle('hidden', !show);
+            if (show) {
+                visible += 1;
+            }
+        });
+
+        kompetensiSearchEmpty?.classList.toggle('hidden', visible > 0);
+    };
+
+    const restoreFromUrl = () => {
+        loadBuktiPasangan();
+
+        const params = new URLSearchParams(window.location.search);
+        const urlBukti = params.get('bukti');
+        const urlKompetensi = params.get('kompetensi');
+        const urlAlat = params.get('alat');
+
+        if (urlBukti) {
+            const entry = buktiPasanganData.find((p) => String(p.id) === urlBukti);
+            if (entry) {
+                idKompetensi = String(entry.k);
+                idAlat = String(entry.a);
+            }
+        }
+
+        if (urlKompetensi) {
+            idKompetensi = urlKompetensi;
+        }
+        if (urlAlat) {
+            idAlat = urlAlat;
+        }
+
+        if (idKompetensi) {
+            const btnK = workspace.querySelector(`.js-evidence-pick-kompetensi[data-id="${idKompetensi}"]`);
+            if (btnK) {
+                activeKompetensiBtn = btnK;
+                if (kompetensiSearch?.value) {
+                    kompetensiSearch.value = '';
+                    filterKompetensiList();
+                }
+            }
+        }
+
+        if (idAlat) {
+            const btnA = workspace.querySelector(`.js-evidence-pick-alat[data-id="${idAlat}"]`);
+            if (btnA) {
+                activeAlatBtn = btnA;
+            }
+        }
+    };
+
+    const syncAiForm = () => {
+        if (!aiForm) {
+            return;
+        }
+
+        const aiKompetensi = aiForm.querySelector('.js-evidence-ai-kompetensi');
+        const aiAlat = aiForm.querySelector('.js-evidence-ai-alat');
+        const aiBukti = aiForm.querySelector('.js-evidence-ai-bukti');
+        const tpl = workspace.dataset.aiAnalyzeTemplate;
+        const hasPair = idKompetensi !== null && idAlat !== null;
+        const buktiId = hasPair ? buktiIdForPair(idKompetensi, idAlat) : null;
+
+        if (hasPair && buktiId && tpl) {
+            const targetUrl = tpl.replace(/__BUKTI__/g, String(buktiId));
+            aiForm.setAttribute('action', targetUrl);
+            if (aiKompetensi) {
+                aiKompetensi.value = String(idKompetensi);
+            }
+            if (aiAlat) {
+                aiAlat.value = String(idAlat);
+            }
+            if (aiBukti) {
+                aiBukti.value = String(buktiId);
+            }
+            aiForm.classList.remove('hidden');
+        } else {
+            aiForm.classList.add('hidden');
+        }
+    };
+
+    const syncEvidenceUrlParams = () => {
+        const url = new URL(window.location.href);
+        if (idKompetensi) {
+            url.searchParams.set('kompetensi', String(idKompetensi));
+        } else {
+            url.searchParams.delete('kompetensi');
+        }
+        if (idAlat) {
+            url.searchParams.set('alat', String(idAlat));
+        } else {
+            url.searchParams.delete('alat');
+        }
+        const buktiId =
+            idKompetensi !== null && idAlat !== null ? buktiIdForPair(idKompetensi, idAlat) : null;
+        if (buktiId) {
+            url.searchParams.set('bukti', buktiId);
+        } else {
+            url.searchParams.delete('bukti');
+        }
+        const next = url.pathname + url.search + url.hash;
+        const current = window.location.pathname + window.location.search + window.location.hash;
+        if (next !== current) {
+            history.replaceState(null, '', next);
+        }
+    };
+
+    const filterUploaded = () => {
+        const cards = uploadedList?.querySelectorAll('.evidence-uploaded-card') ?? [];
+        let visible = 0;
+        cards.forEach((card) => {
+            const k = card.dataset.kompetensiId;
+            const a = card.dataset.alatId;
+            const show =
+                (idKompetensi === null && idAlat === null) ||
+                (idKompetensi !== null && idAlat !== null && k === String(idKompetensi) && a === String(idAlat)) ||
+                (idKompetensi !== null && idAlat === null && k === String(idKompetensi)) ||
+                (idKompetensi === null && idAlat !== null && a === String(idAlat));
+            card.classList.toggle('hidden', !show);
+            if (show) {
+                visible += 1;
+            }
+        });
+
+        if (globalEmpty) {
+            globalEmpty.classList.toggle('hidden', cards.length > 0);
+        }
+        if (filterEmpty) {
+            const showFilterEmpty = cards.length > 0 && visible === 0 && (idKompetensi !== null || idAlat !== null);
+            filterEmpty.classList.toggle('hidden', !showFilterEmpty);
+        }
+
+        syncAiForm();
+    };
+
+    const syncWorkspace = () => {
+        loadBuktiPasangan();
+
+        hint?.classList.add('hidden');
+        unmapped?.classList.add('hidden');
+        header?.classList.add('hidden');
+        form?.classList.add('hidden');
+        readonly?.classList.add('hidden');
+
+        if (idKompetensi === null && idAlat === null) {
+            if (hintTitle) {
+                hintTitle.textContent = 'Pilih kompetensi di kiri, lalu pilih alat bukti di atas.';
+            }
+            if (hintSub) {
+                hintSub.textContent = 'Form input bukti akan muncul setelah keduanya dipilih dan terpetakan.';
+                hintSub.classList.remove('hidden');
+            }
+            hint?.classList.remove('hidden');
+            filterUploaded();
+            applyTabIndicators();
+            return;
+        }
+
+        if (idKompetensi !== null && idAlat === null) {
+            if (hintTitle) {
+                hintTitle.textContent = 'Kompetensi dipilih.';
+            }
+            if (hintSub) {
+                hintSub.textContent = 'Sekarang pilih alat bukti di tab atas.';
+                hintSub.classList.remove('hidden');
+            }
+            hint?.classList.remove('hidden');
+            filterUploaded();
+            applyTabIndicators();
+            return;
+        }
+
+        if (idKompetensi === null && idAlat !== null) {
+            if (hintTitle) {
+                hintTitle.textContent = 'Alat bukti dipilih.';
+            }
+            if (hintSub) {
+                hintSub.textContent = 'Pilih kompetensi di sidebar kiri untuk melanjutkan.';
+                hintSub.classList.remove('hidden');
+            }
+            hint?.classList.remove('hidden');
+            filterUploaded();
+            applyTabIndicators();
+            return;
+        }
+
+        if (!isMapped(idKompetensi, idAlat)) {
+            unmapped?.classList.remove('hidden');
+            filterUploaded();
+            applyTabIndicators();
+            return;
+        }
+        header?.classList.remove('hidden');
+
+        const btnK = workspace.querySelector(`.js-evidence-pick-kompetensi[data-id="${idKompetensi}"]`);
+        const btnA = workspace.querySelector(`.js-evidence-pick-alat[data-id="${idAlat}"]`);
+
+        if (headerNama) {
+            headerNama.textContent = btnK?.dataset.nama ?? '';
+        }
+        if (headerKode) {
+            headerKode.textContent = btnK?.dataset.kode ?? '';
+        }
+        if (headerDef) {
+            headerDef.textContent = btnK?.dataset.definisi ?? '';
+            headerDef.classList.toggle('hidden', !btnK?.dataset.definisi);
+        }
+        if (headerAlat) {
+            headerAlat.textContent = `${btnA?.dataset.kode ?? ''} — ${btnA?.dataset.nama ?? ''}`;
+        }
+
+        if (inputAlat) {
+            inputAlat.value = String(idAlat);
+        }
+        if (inputKompetensi) {
+            inputKompetensi.value = String(idKompetensi);
+        }
+
+        if (form) {
+            form.classList.remove('hidden');
+        } else if (readonly) {
+            readonly.classList.remove('hidden');
+        }
+
+        filterUploaded();
+        applyTabIndicators();
+    };
+
+    kompetensiSearch?.addEventListener('input', filterKompetensiList);
+
+    kompetensiSearchClear?.addEventListener('click', () => {
+        if (kompetensiSearch) {
+            kompetensiSearch.value = '';
+            kompetensiSearch.focus();
+        }
+        filterKompetensiList();
+    });
+
+    kompetensiButtons.forEach((btn) => {
+        btn.addEventListener('click', () => {
+            idKompetensi = btn.dataset.id ?? null;
+            setActiveKompetensi(btn);
+            syncEvidenceUrlParams();
+            syncWorkspace();
+        });
+    });
+
+    workspace.addEventListener('evidence:select-pair', (e) => {
+        const { kompetensiId, alatId } = e.detail ?? {};
+        if (!kompetensiId || !alatId) {
+            return;
+        }
+        idKompetensi = String(kompetensiId);
+        idAlat = String(alatId);
+        activeKompetensiBtn =
+            workspace.querySelector(`.js-evidence-pick-kompetensi[data-id="${idKompetensi}"]`) ?? null;
+        activeAlatBtn = workspace.querySelector(`.js-evidence-pick-alat[data-id="${idAlat}"]`) ?? null;
+        if (kompetensiSearch?.value) {
+            kompetensiSearch.value = '';
+            filterKompetensiList();
+        }
+        syncEvidenceUrlParams();
+        syncWorkspace();
+    });
+
+    alatButtons.forEach((btn) => {
+        btn.addEventListener('click', () => {
+            idAlat = btn.dataset.id ?? null;
+            setActiveAlat(btn);
+            syncEvidenceUrlParams();
+            syncWorkspace();
+        });
+    });
+
+    workspace.querySelector('.js-evidence-form-reset')?.addEventListener('click', () => {
+        idKompetensi = null;
+        idAlat = null;
+        activeKompetensiBtn = null;
+        activeAlatBtn = null;
+        const teks = form?.querySelector('textarea[name="teks_mentah"]');
+        if (teks?.__quill) {
+            teks.__quill.setText('');
+        } else if (teks) {
+            teks.value = '';
+        }
+        syncEvidenceUrlParams();
+        syncWorkspace();
+    });
+
+    const bindEvidenceAiFormSubmit = () => {
+        if (!aiForm) {
+            return;
+        }
+
+        aiForm.addEventListener('submit', (event) => {
+            syncAiForm();
+
+            const action = aiForm.getAttribute('action') ?? '';
+            if (!action || !action.includes('analisis-ai')) {
+                event.preventDefault();
+                if (window.Swal) {
+                    window.Swal.fire({
+                        icon: 'warning',
+                        title: 'Analisis belum siap',
+                        text: 'Pilih kompetensi dan alat bukti yang sudah memiliki bukti terlebih dahulu.',
+                        ...swalTheme,
+                    });
+                }
+                return;
+            }
+
+            let tabField = aiForm.querySelector('[name="asesmen_tab"]');
+            if (!tabField) {
+                tabField = document.createElement('input');
+                tabField.type = 'hidden';
+                tabField.name = 'asesmen_tab';
+                aiForm.appendChild(tabField);
+            }
+            tabField.value = 'pengumpulan';
+        });
+    };
+
+    bindEvidenceAiFormSubmit();
+
+    restoreFromUrl();
+    syncWorkspace();
+}
+
+function initEvidencePreviewModal() {
+    const dialog = document.getElementById('modal-evidence-preview');
+    if (!dialog) {
+        return;
+    }
+
+    const titleEl = dialog.querySelector('.js-evidence-preview-modal-title');
+    const metaEl = dialog.querySelector('.js-evidence-preview-modal-meta');
+    const kompetensiEl = dialog.querySelector('.js-evidence-preview-modal-kompetensi');
+    const teksEl = dialog.querySelector('.js-evidence-preview-modal-teks');
+    const aiBlock = dialog.querySelector('.js-evidence-preview-modal-ai');
+    const aiTingkat = dialog.querySelector('.js-evidence-preview-modal-ai-tingkat');
+    const aiAlasan = dialog.querySelector('.js-evidence-preview-modal-ai-alasan');
+    const aiKutipan = dialog.querySelector('.js-evidence-preview-modal-ai-kutipan');
+    const audioBlock = dialog.querySelector('.js-evidence-preview-modal-audio');
+    const audioBtn = dialog.querySelector('.js-evidence-preview-modal-play');
+    let audioPlayer = null;
+
+    const openPreview = (card) => {
+        if (!card) {
+            return;
+        }
+
+        const toolKode = card.dataset.previewTool ?? '—';
+        const toolNama = card.dataset.previewToolNama ?? '';
+        const tanggal = card.dataset.previewTanggal ?? '—';
+        const jenis = card.dataset.previewJenis ?? '';
+        const tpl = card.querySelector('.js-evidence-preview-teks');
+
+        if (titleEl) {
+            titleEl.textContent = `${toolKode}${toolNama ? ` — ${toolNama}` : ''}`;
+        }
+        if (metaEl) {
+            metaEl.textContent = `${jenis} · ${tanggal}`;
+        }
+        if (kompetensiEl) {
+            kompetensiEl.textContent = card.dataset.previewKompetensi ?? '';
+        }
+        if (teksEl) {
+            teksEl.textContent = tpl?.content?.textContent?.trim() ?? '';
+        }
+
+        const tingkat = card.dataset.previewAiTingkat ?? '';
+        const alasan = card.dataset.previewAiAlasan ?? '';
+        const kutipan = card.dataset.previewAiKutipan ?? '';
+        const hasAi = tingkat !== '' || alasan !== '' || kutipan !== '';
+
+        aiBlock?.classList.toggle('hidden', !hasAi);
+        if (hasAi) {
+            if (aiTingkat) {
+                aiTingkat.textContent = tingkat ? `Level ${tingkat}` : '';
+                aiTingkat.classList.toggle('hidden', tingkat === '');
+            }
+            if (aiAlasan) {
+                aiAlasan.textContent = alasan;
+                aiAlasan.classList.toggle('hidden', alasan === '');
+            }
+            if (aiKutipan) {
+                aiKutipan.textContent = kutipan ? `“${kutipan}”` : '';
+                aiKutipan.classList.toggle('hidden', kutipan === '');
+            }
+        }
+
+        const audioUrl = card.dataset.previewAudioUrl ?? '';
+        audioBlock?.classList.toggle('hidden', audioUrl === '');
+        if (audioBtn) {
+            audioBtn.dataset.audioUrl = audioUrl;
+        }
+        if (audioPlayer) {
+            audioPlayer.pause();
+            audioPlayer = null;
+        }
+
+        dialog.showModal();
+    };
+
+    document.addEventListener('click', (e) => {
+        const btn = e.target.closest('.js-evidence-preview-open');
+        if (!btn) {
+            return;
+        }
+
+        const card = btn.closest('.evidence-uploaded-card');
+        const workspace = document.querySelector('[data-evidence-workspace]');
+        if (workspace && card?.dataset.kompetensiId && card?.dataset.alatId) {
+            workspace.dispatchEvent(
+                new CustomEvent('evidence:select-pair', {
+                    detail: {
+                        kompetensiId: card.dataset.kompetensiId,
+                        alatId: card.dataset.alatId,
+                    },
+                }),
+            );
+        }
+
+        openPreview(card);
+    });
+
+    audioBtn?.addEventListener('click', () => {
+        const url = audioBtn.dataset.audioUrl ?? '';
+        if (!url) {
+            return;
+        }
+        if (!audioPlayer) {
+            audioPlayer = new Audio(url);
+        }
+        audioPlayer.play().catch(() => {});
+    });
+
+    dialog.querySelectorAll('[data-close-modal="modal-evidence-preview"]').forEach((btn) => {
+        btn.addEventListener('click', () => dialog.close());
+    });
+
+    dialog.addEventListener('click', (e) => {
+        if (e.target === dialog) {
+            dialog.close();
+        }
+    });
+
+    dialog.addEventListener('close', () => {
+        if (audioPlayer) {
+            audioPlayer.pause();
+            audioPlayer = null;
+        }
+    });
+}
+
 function initEvidenceEditToggle() {
     document.querySelectorAll('.js-evidence-edit-toggle').forEach((btn) => {
         btn.addEventListener('click', () => {
@@ -1048,7 +1771,8 @@ document.addEventListener('DOMContentLoaded', initPayloadDetailModal);
 document.addEventListener('DOMContentLoaded', initPayloadBulkStatusPolling);
 document.addEventListener('DOMContentLoaded', initPayloadDeleteConfirm);
 document.addEventListener('DOMContentLoaded', initPkSahkanAjax);
-document.addEventListener('DOMContentLoaded', initEvidenceJenisToggle);
+document.addEventListener('DOMContentLoaded', initEvidenceWorkspace);
+document.addEventListener('DOMContentLoaded', initEvidencePreviewModal);
 document.addEventListener('DOMContentLoaded', initEvidenceTranscript);
 document.addEventListener('DOMContentLoaded', initEvidencePlay);
 document.addEventListener('DOMContentLoaded', initEvidenceEditToggle);

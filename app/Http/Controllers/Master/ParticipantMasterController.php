@@ -5,18 +5,14 @@ namespace App\Http\Controllers\Master;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Master\StoreParticipantRequest;
 use App\Http\Requests\Master\UpdateParticipantRequest;
-use App\Models\MatrixVersion;
 use App\Models\Participant;
 use Illuminate\Http\RedirectResponse;
-use Illuminate\View\View;
 
 class ParticipantMasterController extends Controller
 {
-    public function create(): View
+    public function create(): RedirectResponse
     {
-        return view('master.participants.create', [
-            'versiMatriks' => MatrixVersion::query()->orderBy('kode_versi')->get(),
-        ]);
+        return redirect()->route('master.peserta.index');
     }
 
     public function store(StoreParticipantRequest $request): RedirectResponse
@@ -26,12 +22,9 @@ class ParticipantMasterController extends Controller
         return redirect()->route('master.peserta.index')->with('status', 'Peserta disimpan.');
     }
 
-    public function edit(Participant $peserta): View
+    public function edit(Participant $peserta): RedirectResponse
     {
-        return view('master.participants.edit', [
-            'item' => $peserta,
-            'versiMatriks' => MatrixVersion::query()->orderBy('kode_versi')->get(),
-        ]);
+        return redirect()->route('master.peserta.index');
     }
 
     public function update(UpdateParticipantRequest $request, Participant $peserta): RedirectResponse
@@ -43,6 +36,12 @@ class ParticipantMasterController extends Controller
 
     public function destroy(Participant $peserta): RedirectResponse
     {
+        if ($peserta->assessments()->exists()) {
+            return redirect()
+                ->route('master.peserta.index')
+                ->with('error', 'Tidak dapat menghapus: peserta masih memiliki asesmen.');
+        }
+
         $peserta->delete();
 
         return redirect()->route('master.peserta.index')->with('status', 'Peserta dihapus.');

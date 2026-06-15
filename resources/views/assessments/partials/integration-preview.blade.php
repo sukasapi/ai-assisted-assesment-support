@@ -1,6 +1,11 @@
 @php
     $jobFit = $asesmen->job_fit_persen_pratinjau;
     $punyaBaris = $integrasiPratinjau->isNotEmpty();
+    $detailAgregat = $asesmen->detail_rekomendasi_agregat ?? [];
+    $kodeAgregat = $asesmen->kode_rekomendasi_agregat;
+    $labelAgregat = is_array($detailAgregat) ? ($detailAgregat['label'] ?? null) : null;
+    $dimensiAgregat = is_array($detailAgregat) ? ($detailAgregat['dimensi'] ?? []) : [];
+    $nomorRevisi = $asesmen->lastRecommendationConfigRevision?->nomor_revisi;
     $labelRekomendasi = fn (?string $kode): string => match ($kode) {
         'fit' => 'Fit',
         'development' => 'Development',
@@ -11,6 +16,11 @@
         'fit' => 'border-emerald-200 bg-emerald-50 text-emerald-800',
         'development' => 'border-amber-200 bg-amber-50 text-amber-800',
         'not_fit' => 'border-rose-200 bg-rose-50 text-rose-800',
+        default => 'border-outline-variant/40 bg-surface-container text-on-surface-variant',
+    };
+    $kelasAgregat = match ($kodeAgregat) {
+        'qualified' => 'border-emerald-300 bg-emerald-50 text-emerald-900',
+        'not_qualified' => 'border-rose-300 bg-rose-50 text-rose-900',
         default => 'border-outline-variant/40 bg-surface-container text-on-surface-variant',
     };
 @endphp
@@ -38,10 +48,60 @@
                     {{ $jobFit !== null ? number_format((float) $jobFit, 1).'%' : '—' }}
                 </p>
             </div>
+            @if ($kodeAgregat !== null)
+                <div class="rounded-xl border px-5 py-4 {{ $kelasAgregat }}" data-testid="rekomendasi-agregat">
+                    <p class="text-xs font-bold uppercase tracking-wide opacity-80">Rekomendasi agregat</p>
+                    <p class="mt-1 font-display text-lg font-bold leading-snug">{{ $labelAgregat ?? ($kodeAgregat === 'qualified' ? 'Memenuhi Persyaratan' : 'Belum Memenuhi Persyaratan') }}</p>
+                    @if ($nomorRevisi !== null)
+                        <p class="mt-1 text-xs opacity-75">Revisi konfigurasi #{{ $nomorRevisi }} · bukan nilai final</p>
+                    @endif
+                </div>
+            @endif
             <span class="inline-flex rounded-full border border-dashed border-amber-300 bg-amber-50 px-3 py-1 text-xs font-bold text-amber-900">
                 Bukan nilai final
             </span>
         </div>
+
+        @if ($kodeAgregat !== null && $dimensiAgregat !== [])
+            <div class="mb-6 overflow-hidden rounded-xl border border-outline-variant/30">
+                <table class="w-full text-left text-sm">
+                    <thead class="bg-surface-container-low text-xs uppercase text-on-surface-variant">
+                        <tr>
+                            <th class="px-4 py-3">Dimensi</th>
+                            <th class="px-4 py-3 text-center">Status</th>
+                            <th class="px-4 py-3">Catatan</th>
+                        </tr>
+                    </thead>
+                    <tbody class="divide-y divide-outline-variant/15">
+                        @foreach ($dimensiAgregat as $kodeDim => $info)
+                            @php
+                                $lolos = (bool) ($info['lolos'] ?? false);
+                                $pelanggaran = is_array($info['pelanggaran'] ?? null) ? $info['pelanggaran'] : [];
+                            @endphp
+                            <tr>
+                                <td class="px-4 py-3 font-medium text-on-surface">{{ $info['label'] ?? $kodeDim }}</td>
+                                <td class="px-4 py-3 text-center">
+                                    <span class="inline-flex rounded-full px-2.5 py-0.5 text-xs font-bold {{ $lolos ? 'bg-emerald-100 text-emerald-800' : 'bg-rose-100 text-rose-800' }}">
+                                        {{ $lolos ? 'Lolos' : 'Gagal' }}
+                                    </span>
+                                </td>
+                                <td class="px-4 py-3 text-xs text-on-surface-variant">
+                                    @if ($pelanggaran === [])
+                                        —
+                                    @else
+                                        <ul class="list-disc pl-4 space-y-0.5">
+                                            @foreach ($pelanggaran as $p)
+                                                <li>{{ $p }}</li>
+                                            @endforeach
+                                        </ul>
+                                    @endif
+                                </td>
+                            </tr>
+                        @endforeach
+                    </tbody>
+                </table>
+            </div>
+        @endif
 
         @can('update', $asesmen)
             @if ($isDraft)

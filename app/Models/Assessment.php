@@ -30,6 +30,9 @@ class Assessment extends Model
         'catatan',
         'job_fit_persen_pratinjau',
         'integrasi_pratinjau_pada',
+        'id_revisi_konfigurasi_terakhir',
+        'kode_rekomendasi_agregat',
+        'detail_rekomendasi_agregat',
         'id_template_prompt_ai',
         'id_sesi_asesmen',
     ];
@@ -44,7 +47,13 @@ class Assessment extends Model
             'waktu_finalisasi' => 'datetime',
             'job_fit_persen_pratinjau' => 'decimal:2',
             'integrasi_pratinjau_pada' => 'datetime',
+            'detail_rekomendasi_agregat' => 'array',
         ];
+    }
+
+    public function lastRecommendationConfigRevision(): BelongsTo
+    {
+        return $this->belongsTo(RecommendationConfigRevision::class, 'id_revisi_konfigurasi_terakhir');
     }
 
     public function session(): BelongsTo

@@ -19,9 +19,9 @@ class CompetencyGroupController extends Controller
 
     public function store(StoreCompetencyGroupRequest $request): RedirectResponse
     {
-        CompetencyGroup::query()->create($request->validated());
+        $kelompok = CompetencyGroup::query()->create($request->validated());
 
-        return $this->redirectToCompetencyStructure('Kelompok kompetensi disimpan.');
+        return $this->redirectToCompetencyStructure('Kelompok kompetensi disimpan.', expand: 'g-'.$kelompok->id);
     }
 
     public function edit(CompetencyGroup $kelompokKompetensi): RedirectResponse
@@ -33,7 +33,7 @@ class CompetencyGroupController extends Controller
     {
         $kelompokKompetensi->update($request->validated());
 
-        return $this->redirectToCompetencyStructure('Kelompok kompetensi diperbarui.');
+        return $this->redirectToCompetencyStructure('Kelompok kompetensi diperbarui.', expand: 'g-'.$kelompokKompetensi->id);
     }
 
     public function destroy(CompetencyGroup $kelompokKompetensi): RedirectResponse

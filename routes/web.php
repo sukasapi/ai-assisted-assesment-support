@@ -15,6 +15,7 @@ use App\Http\Controllers\Master\CompetencyController;
 use App\Http\Controllers\Master\CompetencyGroupController;
 use App\Http\Controllers\Master\CompetencyLevelController;
 use App\Http\Controllers\Master\CompetencyToolMappingController;
+use App\Http\Controllers\Master\MatrixRecommendationConfigController;
 use App\Http\Controllers\Master\MatrixVersionController;
 use App\Http\Controllers\Master\ParticipantMasterController;
 use App\Http\Controllers\Master\UserMasterController;
@@ -52,6 +53,7 @@ Route::middleware(['auth', 'user.aktif'])->group(function () {
         Route::get('master/alat-penilaian', [MasterDataController::class, 'assessmentTools'])->name('master.alat-penilaian.index');
         Route::get('master/versi-matriks', [MasterDataController::class, 'matrixVersions'])->name('master.versi-matriks.index');
         Route::get('master/versi-matriks/{versiMatriks}/pemetaan', [CompetencyToolMappingController::class, 'index'])->name('master.versi-matriks.pemetaan.index');
+        Route::get('master/versi-matriks/{versiMatriks}/konfigurasi-rekomendasi', [MatrixRecommendationConfigController::class, 'index'])->name('master.versi-matriks.konfigurasi-rekomendasi.index');
         Route::get('master/pemetaan-kompetensi-alat', function () {
             return redirect()
                 ->route('master.versi-matriks.index')
@@ -78,6 +80,9 @@ Route::middleware(['auth', 'user.aktif'])->group(function () {
         Route::patch('asesmen/{asesmen}/bukti/{bukti}', [AssessmentController::class, 'updateEvidence'])
             ->scopeBindings()
             ->name('asesmen.bukti.update');
+        Route::delete('asesmen/{asesmen}/bukti/{bukti}', [AssessmentController::class, 'destroyEvidence'])
+            ->scopeBindings()
+            ->name('asesmen.bukti.destroy');
         Route::post('asesmen/{asesmen}/bukti/{bukti}/transkrip', [AssessmentController::class, 'transcribeEvidence'])
             ->middleware('throttle:ai-analysis-trigger')
             ->scopeBindings()
@@ -89,6 +94,9 @@ Route::middleware(['auth', 'user.aktif'])->group(function () {
             ->middleware('throttle:ai-analysis-trigger')
             ->scopeBindings()
             ->name('asesmen.bukti.analisis-ai');
+        Route::post('asesmen/{asesmen}/bukti/{bukti}/mapping', [AssessmentController::class, 'transferEvidenceAiToMapping'])
+            ->scopeBindings()
+            ->name('asesmen.bukti.mapping');
         Route::post('asesmen/{asesmen}/payload-alat', [AssessmentController::class, 'storeToolPayload'])->name('asesmen.payload-alat.store');
         Route::delete('asesmen/{asesmen}/payload-alat/{payload}', [AssessmentController::class, 'destroyToolPayload'])
             ->scopeBindings()
@@ -105,6 +113,7 @@ Route::middleware(['auth', 'user.aktif'])->group(function () {
         Route::post('asesmen/{asesmen}/integrasi/hitung', [AssessmentController::class, 'hitungIntegrasiPratinjau'])->name('asesmen.integrasi.hitung');
         Route::patch('asesmen/{asesmen}/finalisasi', [AssessmentController::class, 'finalize'])->name('asesmen.finalisasi');
         Route::patch('asesmen/{asesmen}/batal-finalisasi', [AssessmentController::class, 'unfinalize'])->name('asesmen.batal-finalisasi');
+        Route::put('asesmen/{asesmen}', [AssessmentController::class, 'update'])->name('asesmen.update');
         Route::post('asesmen/{asesmen}/perilaku-kunci', [AssessmentController::class, 'storeKeyBehavior'])->name('asesmen.perilaku.store');
         Route::get('asesmen/{asesmen}/perilaku-kunci/{perilaku}/ubah', [AssessmentController::class, 'editKeyBehavior'])
             ->scopeBindings()
@@ -170,6 +179,7 @@ Route::middleware(['auth', 'user.aktif'])->group(function () {
         Route::delete('master/versi-matriks/{versiMatriks}', [MatrixVersionController::class, 'destroy'])->name('master.versi-matriks.destroy');
 
         Route::post('master/versi-matriks/{versiMatriks}/pemetaan/sinkron', [CompetencyToolMappingController::class, 'sync'])->name('master.versi-matriks.pemetaan.sync');
+        Route::post('master/versi-matriks/{versiMatriks}/konfigurasi-rekomendasi', [MatrixRecommendationConfigController::class, 'store'])->name('master.versi-matriks.konfigurasi-rekomendasi.store');
 
         Route::get('master/pemetaan-kompetensi-alat/buat', function () {
             return redirect()
@@ -198,6 +208,7 @@ Route::middleware(['auth', 'user.aktif'])->group(function () {
         Route::post('master/model-ai', [AiOpenRouterModelController::class, 'store'])->name('master.model-ai.store');
         Route::get('master/model-ai/{modelAi}/ubah', [AiOpenRouterModelController::class, 'edit'])->name('master.model-ai.edit');
         Route::put('master/model-ai/{modelAi}', [AiOpenRouterModelController::class, 'update'])->name('master.model-ai.update');
+        Route::patch('master/model-ai/{modelAi}/utama', [AiOpenRouterModelController::class, 'setUtama'])->name('master.model-ai.set-utama');
         Route::delete('master/model-ai/{modelAi}', [AiOpenRouterModelController::class, 'destroy'])->name('master.model-ai.destroy');
 
         Route::get('master/pengguna', [MasterDataController::class, 'users'])->name('master.pengguna.index');

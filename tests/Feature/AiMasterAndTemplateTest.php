@@ -11,12 +11,10 @@ use App\Models\User;
 use App\Support\AiPromptTemplateResolver;
 use App\Support\AiModelCatalog;
 use Database\Seeders\DatabaseSeeder;
-use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
 class AiMasterAndTemplateTest extends TestCase
 {
-    use RefreshDatabase;
 
     public function test_admin_dapat_mengelola_template_prompt(): void
     {
@@ -49,7 +47,7 @@ class AiMasterAndTemplateTest extends TestCase
             ->patch(route('asesmen.template-prompt-ai.update', $asesmen), [
                 'id_template_prompt_ai' => $star->id,
             ])
-            ->assertRedirect(route('asesmen.show', $asesmen))
+            ->assertRedirect(route('asesmen.show', $asesmen).'#konfigurasi')
             ->assertSessionHas('status');
 
         $this->assertSame($star->id, $asesmen->fresh()->id_template_prompt_ai);
@@ -95,7 +93,7 @@ class AiMasterAndTemplateTest extends TestCase
                     ],
                 ],
             ])
-            ->assertRedirect(route('asesmen.show', $asesmen));
+            ->assertRedirect(route('asesmen.show', $asesmen).'#konfigurasi');
 
         $this->assertSame('', AiPromptTemplateResolver::teksInstruksiUntukAlat($asesmen->fresh(), (int) $bei->id));
     }
@@ -116,5 +114,58 @@ class AiMasterAndTemplateTest extends TestCase
         $ids = array_column(AiModelCatalog::daftarModel(), 'id');
         $this->assertContains('test/model-db', $ids);
         $this->assertSame('test/model-db', AiModelCatalog::modelDefault());
+    }
+
+    public function test_admin_set_utama_model_ai_lewat_radio(): void
+    {
+        $this->seed(DatabaseSeeder::class);
+        $admin = User::query()->where('alamat_surel', 'admin@example.com')->firstOrFail();
+
+        $utamaLama = AiOpenRouterModel::query()->where('utama', true)->first();
+        $model = AiOpenRouterModel::query()->create([
+            'id_model_openrouter' => 'test/set-utama',
+            'label' => 'Utama Test',
+            'urutan' => 50,
+            'utama' => false,
+            'aktif' => true,
+        ]);
+
+        $this->actingAs($admin)
+            ->from(route('master.model-ai.index'))
+            ->patch(route('master.model-ai.set-utama', $model), ['utama' => true])
+            ->assertRedirect(route('master.model-ai.index'))
+            ->assertSessionHas('status');
+
+        $this->assertTrue($model->fresh()->utama);
+        if ($utamaLama) {
+            $this->assertFalse($utamaLama->fresh()->utama);
+        }
+    }
+
+    public function test_update_model_ai_tidak_mengubah_status_utama(): void
+    {
+        $this->seed(DatabaseSeeder::class);
+        $admin = User::query()->where('alamat_surel', 'admin@example.com')->firstOrFail();
+
+        $model = AiOpenRouterModel::query()->create([
+            'id_model_openrouter' => 'test/preserve-utama',
+            'label' => 'Lama',
+            'urutan' => 51,
+            'utama' => true,
+            'aktif' => true,
+        ]);
+
+        $this->actingAs($admin)
+            ->put(route('master.model-ai.update', $model), [
+                'id_model_openrouter' => 'test/preserve-utama',
+                'label' => 'Baru',
+                'urutan' => 52,
+                'aktif' => true,
+            ])
+            ->assertRedirect(route('master.model-ai.index'));
+
+        $model->refresh();
+        $this->assertSame('Baru', $model->label);
+        $this->assertTrue($model->utama);
     }
 }

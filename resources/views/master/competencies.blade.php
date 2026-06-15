@@ -13,6 +13,8 @@
         @endif
     </x-ui.page-header>
 
+    <x-ui.table-toolbar placeholder="Cari kelompok, kompetensi, atau tingkat..." />
+
     <section class="card-depth overflow-hidden rounded-xl">
         <div class="overflow-x-auto">
             <table class="min-w-full text-sm" id="tabel-struktur-kompetensi">
@@ -63,9 +65,9 @@
                                             type="button"
                                             class="text-xs font-semibold text-primary hover:underline"
                                             data-open-modal="modal-kelompok-ubah"
-                                            data-edit="{{ e(json_encode(['id' => $grup->id, 'kode' => $grup->kode, 'nama' => $grup->nama])) }}"
+                                            data-edit-id="{{ $grup->id }}"
                                         >Ubah</button>
-                                    <form action="{{ route('master.kelompok-kompetensi.destroy', $grup) }}" method="POST" class="inline" onsubmit="return confirm('Hapus kelompok ini?');">
+                                    <form action="{{ route('master.kelompok-kompetensi.destroy', $grup) }}" method="POST" class="inline" data-swal-confirm="Kelompok kompetensi yang dihapus tidak dapat dipulihkan." data-swal-confirm-title="Hapus kelompok?" data-swal-confirm-yes="Ya, hapus" data-swal-confirm-danger="1">
                                         @csrf
                                         @method('DELETE')
                                         <button type="submit" class="ml-2 text-xs font-semibold text-error hover:underline">Hapus</button>
@@ -115,9 +117,9 @@
                                             type="button"
                                             class="text-xs font-semibold text-primary hover:underline"
                                             data-open-modal="modal-kompetensi-ubah"
-                                            data-edit="{{ e(json_encode(['id' => $kompetensi->id, 'id_kelompok_kompetensi' => $kompetensi->id_kelompok_kompetensi, 'kode_kompetensi' => $kompetensi->kode_kompetensi, 'nama' => $kompetensi->nama, 'definisi' => $kompetensi->definisi, 'tingkat_maksimum' => $kompetensi->tingkat_maksimum, 'aktif' => $kompetensi->aktif])) }}"
+                                            data-edit-id="{{ $kompetensi->id }}"
                                         >Ubah</button>
-                                        <form action="{{ route('master.kompetensi.destroy', $kompetensi) }}" method="POST" class="inline" onsubmit="return confirm('Hapus kompetensi dan semua tingkat terkait?');">
+                                        <form action="{{ route('master.kompetensi.destroy', $kompetensi) }}" method="POST" class="inline" data-swal-confirm="Kompetensi dan semua tingkat terkait akan dihapus." data-swal-confirm-title="Hapus kompetensi?" data-swal-confirm-yes="Ya, hapus" data-swal-confirm-danger="1">
                                             @csrf
                                             @method('DELETE')
                                             <button type="submit" class="ml-2 text-xs font-semibold text-error hover:underline">Hapus</button>
@@ -151,9 +153,9 @@
                                                 type="button"
                                                 class="text-xs font-semibold text-primary hover:underline"
                                                 data-open-modal="modal-tingkat-ubah"
-                                                data-edit="{{ e(json_encode(['id' => $tingkat->id, 'id_kompetensi' => $tingkat->id_kompetensi, 'kompetensi_nama' => $kompetensi->nama, 'tingkat' => $tingkat->tingkat, 'indikator_perilaku' => $tingkat->indikator_perilaku, 'etiket' => $tingkat->etiket, 'deskripsi' => $tingkat->deskripsi])) }}"
+                                                data-edit-id="{{ $tingkat->id }}"
                                             >Ubah</button>
-                                            <form action="{{ route('master.tingkat-kompetensi.destroy', $tingkat) }}" method="POST" class="inline" onsubmit="return confirm('Hapus tingkat ini?');">
+                                            <form action="{{ route('master.tingkat-kompetensi.destroy', $tingkat) }}" method="POST" class="inline" data-swal-confirm="Tingkat kompetensi yang dihapus tidak dapat dipulihkan." data-swal-confirm-title="Hapus tingkat?" data-swal-confirm-yes="Ya, hapus" data-swal-confirm-danger="1">
                                                 @csrf
                                                 @method('DELETE')
                                                 <button type="submit" class="ml-2 text-xs font-semibold text-error hover:underline">Hapus</button>
@@ -182,6 +184,43 @@
         </div>
     </section>
 
+    @php
+        $payloadKelompok = [];
+        $payloadKompetensi = [];
+        $payloadTingkat = [];
+        if ($bolehUbah) {
+            foreach ($kelompok as $grup) {
+                $payloadKelompok[$grup->id] = [
+                    'id' => $grup->id,
+                    'kode' => $grup->kode,
+                    'nama' => $grup->nama,
+                ];
+                foreach ($grup->competencies as $kompetensi) {
+                    $payloadKompetensi[$kompetensi->id] = [
+                        'id' => $kompetensi->id,
+                        'id_kelompok_kompetensi' => $kompetensi->id_kelompok_kompetensi,
+                        'kode_kompetensi' => $kompetensi->kode_kompetensi,
+                        'nama' => $kompetensi->nama,
+                        'definisi' => $kompetensi->definisi,
+                        'tingkat_maksimum' => $kompetensi->tingkat_maksimum,
+                        'aktif' => $kompetensi->aktif,
+                    ];
+                    foreach ($kompetensi->levels as $tingkat) {
+                        $payloadTingkat[$tingkat->id] = [
+                            'id' => $tingkat->id,
+                            'id_kompetensi' => $tingkat->id_kompetensi,
+                            'kompetensi_nama' => $kompetensi->nama,
+                            'tingkat' => $tingkat->tingkat,
+                            'indikator_perilaku' => $tingkat->indikator_perilaku,
+                            'etiket' => $tingkat->etiket,
+                            'deskripsi' => $tingkat->deskripsi,
+                        ];
+                    }
+                }
+            }
+        }
+    @endphp
+
     @if ($bolehUbah)
         @include('master.partials.competency-structure-modals', ['kelompok' => $kelompok])
     @endif
@@ -194,6 +233,9 @@
                 tingkatUpdate: @json(route('master.tingkat-kompetensi.update', ['tingkatKompetensi' => 999999999])),
             };
             const replaceId = (url, id) => url.replace('999999999', String(id));
+            const payloadKelompok = @json($payloadKelompok);
+            const payloadKompetensi = @json($payloadKompetensi);
+            const payloadTingkat = @json($payloadTingkat);
 
             const table = document.getElementById('tabel-struktur-kompetensi');
             if (!table) return;
@@ -217,6 +259,68 @@
                 });
             }
 
+            function expandToNode(treeId) {
+                if (!treeId) return;
+                const path = [];
+                let current = table.querySelector(`[data-tree-id="${treeId}"]`);
+                while (current) {
+                    path.unshift(current);
+                    const parentId = current.dataset.treeParent;
+                    current = parentId ? table.querySelector(`[data-tree-id="${parentId}"]`) : null;
+                }
+                path.forEach((row) => {
+                    if (row.dataset.expandable === '1') {
+                        setExpanded(row, true);
+                    }
+                });
+            }
+
+            const syncTextareaValue = (textarea, value) => {
+                const nilai = String(value ?? '');
+                textarea.value = nilai;
+                const quill = textarea.__quill;
+                if (quill) {
+                    if (nilai.trim() === '') {
+                        quill.setText('');
+                    } else if (nilai.includes('<')) {
+                        quill.clipboard.dangerouslyPasteHTML(nilai);
+                    } else {
+                        quill.setText(nilai);
+                    }
+                } else if (typeof window.applyTextToTextarea === 'function') {
+                    window.applyTextToTextarea(textarea, nilai);
+                    return;
+                }
+                textarea.dispatchEvent(new Event('input', { bubbles: true }));
+            };
+
+            const setFieldValue = (dialog, name, value) => {
+                const fields = dialog.querySelectorAll(`[name="${name}"]`);
+                if (!fields.length) return;
+                const first = fields[0];
+                if (first.type === 'radio') {
+                    fields.forEach((r) => {
+                        r.checked = String(value ? 1 : 0) === r.value;
+                    });
+                    return;
+                }
+                if (first.tagName === 'TEXTAREA') {
+                    syncTextareaValue(first, value);
+                    return;
+                }
+                first.value = value ?? '';
+            };
+
+            const resolveEditPayload = (btn, modalId) => {
+                const editId = btn.dataset.editId;
+                if (editId) {
+                    if (modalId === 'modal-kelompok-ubah') return payloadKelompok?.[editId] ?? null;
+                    if (modalId === 'modal-kompetensi-ubah') return payloadKompetensi?.[editId] ?? null;
+                    if (modalId === 'modal-tingkat-ubah') return payloadTingkat?.[editId] ?? null;
+                }
+                return parseEditPayload(btn.dataset.edit);
+            };
+
             table.querySelectorAll('.tree-toggle').forEach((btn) => {
                 btn.addEventListener('click', () => {
                     const row = btn.closest('tr');
@@ -229,6 +333,34 @@
             document.getElementById('tree-expand-all')?.addEventListener('click', () => {
                 table.querySelectorAll('[data-expandable="1"]').forEach((row) => setExpanded(row, true));
             });
+
+            @php
+                $expandNode = request()->query('expand');
+                if ($errors->any()) {
+                    if ($errors->has('tingkat') || $errors->has('indikator_perilaku')) {
+                        $expandNode = old('id_kompetensi') ? 'c-' . old('id_kompetensi') : $expandNode;
+                    } elseif ($errors->has('kode_kompetensi') || $errors->has('id_kelompok_kompetensi')) {
+                        $expandNode = old('id_kelompok_kompetensi') ? 'g-' . old('id_kelompok_kompetensi') : $expandNode;
+                    }
+                }
+            @endphp
+            expandToNode(@json($expandNode));
+
+            const parseEditPayload = (raw) => {
+                if (!raw) return null;
+                try {
+                    return JSON.parse(raw);
+                } catch {
+                    const textarea = document.createElement('textarea');
+                    textarea.innerHTML = raw;
+                    try {
+                        return JSON.parse(textarea.value);
+                    } catch {
+                        console.error('Gagal memuat data edit modal.');
+                        return null;
+                    }
+                }
+            };
 
             document.querySelectorAll('[data-open-modal]').forEach((btn) => {
                 btn.addEventListener('click', () => {
@@ -248,33 +380,32 @@
                             if (label) label.textContent = btn.dataset.prefillKompetensiNama || '—';
                         }
                     }
-                    const editPayload = btn.dataset.edit ? JSON.parse(btn.dataset.edit) : null;
+                    const editPayload = resolveEditPayload(btn, modalId);
 
                     if (modalId === 'modal-kelompok-ubah' && editPayload) {
                         dialog.querySelector('form')?.setAttribute('action', replaceId(routes.kelompokUpdate, editPayload.id));
-                        dialog.querySelector('[name="kode"]').value = editPayload.kode ?? '';
-                        dialog.querySelector('[name="nama"]').value = editPayload.nama ?? '';
+                        setFieldValue(dialog, 'kode', editPayload.kode);
+                        setFieldValue(dialog, 'nama', editPayload.nama);
                     }
                     if (modalId === 'modal-kompetensi-ubah' && editPayload) {
                         dialog.querySelector('form')?.setAttribute('action', replaceId(routes.kompetensiUpdate, editPayload.id));
-                        dialog.querySelector('[name="id_kelompok_kompetensi"]').value = editPayload.id_kelompok_kompetensi ?? '';
-                        dialog.querySelector('[name="kode_kompetensi"]').value = editPayload.kode_kompetensi ?? '';
-                        dialog.querySelector('[name="nama"]').value = editPayload.nama ?? '';
-                        dialog.querySelector('[name="definisi"]').value = editPayload.definisi ?? '';
-                        dialog.querySelector('[name="tingkat_maksimum"]').value = editPayload.tingkat_maksimum ?? '';
-                        dialog.querySelectorAll('[name="aktif"]').forEach((r) => {
-                            r.checked = String(editPayload.aktif ? 1 : 0) === r.value;
-                        });
+                        setFieldValue(dialog, 'id_kelompok_kompetensi', editPayload.id_kelompok_kompetensi);
+                        setFieldValue(dialog, 'kode_kompetensi', editPayload.kode_kompetensi);
+                        setFieldValue(dialog, 'nama', editPayload.nama);
+                        setFieldValue(dialog, 'definisi', editPayload.definisi);
+                        setFieldValue(dialog, 'tingkat_maksimum', editPayload.tingkat_maksimum);
+                        setFieldValue(dialog, 'aktif', editPayload.aktif);
                     }
                     if (modalId === 'modal-tingkat-ubah' && editPayload) {
                         dialog.querySelector('form')?.setAttribute('action', replaceId(routes.tingkatUpdate, editPayload.id));
+                        setFieldValue(dialog, '_edit_id', editPayload.id);
                         const label = dialog.querySelector('[data-kompetensi-label]');
                         if (label) label.textContent = editPayload.kompetensi_nama || '—';
-                        dialog.querySelector('[name="id_kompetensi"]').value = editPayload.id_kompetensi ?? '';
-                        dialog.querySelector('[name="tingkat"]').value = editPayload.tingkat ?? '';
-                        dialog.querySelector('[name="indikator_perilaku"]').value = editPayload.indikator_perilaku ?? '';
-                        dialog.querySelector('[name="etiket"]').value = editPayload.etiket ?? '';
-                        dialog.querySelector('[name="deskripsi"]').value = editPayload.deskripsi ?? '';
+                        setFieldValue(dialog, 'id_kompetensi', editPayload.id_kompetensi);
+                        setFieldValue(dialog, 'tingkat', editPayload.tingkat);
+                        setFieldValue(dialog, 'indikator_perilaku', editPayload.indikator_perilaku);
+                        setFieldValue(dialog, 'etiket', editPayload.etiket);
+                        setFieldValue(dialog, 'deskripsi', editPayload.deskripsi);
                     }
 
                     dialog.showModal?.();
@@ -297,6 +428,20 @@
                     document.getElementById('modal-kelompok-tambah')?.showModal?.();
                 @elseif ($errors->has('kode_kompetensi') || $errors->has('id_kelompok_kompetensi'))
                     document.getElementById('modal-kompetensi-tambah')?.showModal?.();
+                @elseif (($errors->has('tingkat') || $errors->has('indikator_perilaku')) && @json(old('_method')) === 'PUT')
+                    (function () {
+                        const dialog = document.getElementById('modal-tingkat-ubah');
+                        const editId = @json(old('_edit_id'));
+                        if (!dialog || !editId) return;
+                        dialog.querySelector('form')?.setAttribute('action', replaceId(routes.tingkatUpdate, editId));
+                        setFieldValue(dialog, '_edit_id', editId);
+                        setFieldValue(dialog, 'id_kompetensi', @json(old('id_kompetensi')));
+                        setFieldValue(dialog, 'tingkat', @json(old('tingkat')));
+                        setFieldValue(dialog, 'indikator_perilaku', @json(old('indikator_perilaku')));
+                        setFieldValue(dialog, 'etiket', @json(old('etiket')));
+                        setFieldValue(dialog, 'deskripsi', @json(old('deskripsi')));
+                        dialog.showModal?.();
+                    })();
                 @elseif ($errors->has('tingkat') || $errors->has('indikator_perilaku'))
                     document.getElementById('modal-tingkat-tambah')?.showModal?.();
                 @endif

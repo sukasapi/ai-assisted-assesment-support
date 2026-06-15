@@ -35,9 +35,15 @@ class UpdateAiOpenRouterModelRequest extends FormRequest
 
     protected function prepareForValidation(): void
     {
-        $this->merge([
-            'utama' => $this->boolean('utama'),
-            'aktif' => $this->boolean('aktif'),
-        ]);
+        $merge = [];
+        if ($this->has('utama')) {
+            $merge['utama'] = $this->boolean('utama');
+        }
+        if ($this->has('aktif')) {
+            $merge['aktif'] = $this->boolean('aktif');
+        }
+        if ($merge !== []) {
+            $this->merge($merge);
+        }
     }
 }

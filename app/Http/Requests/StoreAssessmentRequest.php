@@ -22,7 +22,12 @@ class StoreAssessmentRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'id_peserta' => ['required', 'integer', Rule::exists('ais_peserta', 'id')->whereNull('dihapus_pada')->where('aktif', true)],
+            'id_peserta' => ['required', 'array', 'min:1'],
+            'id_peserta.*' => [
+                'integer',
+                'distinct',
+                Rule::exists('ais_peserta', 'id')->whereNull('dihapus_pada')->where('aktif', true),
+            ],
             'id_versi_matriks' => ['required', 'integer', Rule::exists('ais_versi_matriks', 'id')->whereNull('dihapus_pada')],
             'tujuan' => ['required', 'string', Rule::enum(AssessmentPurpose::class)],
             'metode_koleksi_bukti' => ['required', 'string', Rule::enum(AssessmentEvidenceCollectionMode::class)],
@@ -42,23 +47,38 @@ class StoreAssessmentRequest extends FormRequest
         ];
     }
 
+    /**
+     * @return list<int>
+     */
+    public function idsPeserta(): array
+    {
+        return array_values(array_unique(array_map('intval', (array) $this->input('id_peserta', []))));
+    }
+
     public function withValidator($validator): void
     {
         $validator->after(function ($validator): void {
-            $idPeserta = $this->integer('id_peserta');
             $idVersi = $this->integer('id_versi_matriks');
-            $peserta = Participant::query()->find($idPeserta);
-            if ($peserta !== null && $peserta->id_versi_matriks !== null && (int) $peserta->id_versi_matriks !== $idVersi) {
-                $validator->errors()->add(
-                    'id_versi_matriks',
-                    'Versi matriks harus sama dengan yang terpasang pada peserta terpilih.'
-                );
+            foreach ($this->idsPeserta() as $idPeserta) {
+                $peserta = Participant::query()->find($idPeserta);
+                if ($peserta !== null && $peserta->id_versi_matriks !== null && (int) $peserta->id_versi_matriks !== $idVersi) {
+                    $validator->errors()->add(
+                        'id_versi_matriks',
+                        "Versi matriks harus sama dengan yang terpasang pada peserta {$peserta->nama_lengkap}."
+                    );
+                    break;
+                }
             }
         });
     }
 
     protected function prepareForValidation(): void
     {
+        $idPeserta = $this->input('id_peserta');
+        if ($idPeserta !== null && ! is_array($idPeserta)) {
+            $this->merge(['id_peserta' => [(int) $idPeserta]]);
+        }
+
         $this->merge([
             'tanpa_intray' => $this->boolean('tanpa_intray'),
             'metode_koleksi_bukti' => $this->filled('metode_koleksi_bukti')

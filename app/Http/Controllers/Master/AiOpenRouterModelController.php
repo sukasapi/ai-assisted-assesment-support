@@ -3,18 +3,18 @@
 namespace App\Http\Controllers\Master;
 
 use App\Http\Controllers\Controller;
+use App\Http\Requests\Master\SetUtamaAiOpenRouterModelRequest;
 use App\Http\Requests\Master\StoreAiOpenRouterModelRequest;
 use App\Http\Requests\Master\UpdateAiOpenRouterModelRequest;
 use App\Models\AiOpenRouterModel;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Support\Facades\DB;
-use Illuminate\View\View;
 
 class AiOpenRouterModelController extends Controller
 {
-    public function create(): View
+    public function create(): RedirectResponse
     {
-        return view('master.ai-models.create');
+        return redirect()->route('master.model-ai.index');
     }
 
     public function store(StoreAiOpenRouterModelRequest $request): RedirectResponse
@@ -30,16 +30,16 @@ class AiOpenRouterModelController extends Controller
         return redirect()->route('master.model-ai.index')->with('status', 'Model AI disimpan.');
     }
 
-    public function edit(AiOpenRouterModel $modelAi): View
+    public function edit(AiOpenRouterModel $modelAi): RedirectResponse
     {
-        return view('master.ai-models.edit', ['item' => $modelAi]);
+        return redirect()->route('master.model-ai.index');
     }
 
     public function update(UpdateAiOpenRouterModelRequest $request, AiOpenRouterModel $modelAi): RedirectResponse
     {
         DB::transaction(function () use ($request, $modelAi): void {
             $data = $request->validated();
-            if ($data['utama'] ?? false) {
+            if (array_key_exists('utama', $data) && ($data['utama'] ?? false)) {
                 AiOpenRouterModel::query()->whereKeyNot($modelAi->id)->update(['utama' => false]);
             }
             $modelAi->update($data);
@@ -53,5 +53,22 @@ class AiOpenRouterModelController extends Controller
         $modelAi->delete();
 
         return redirect()->route('master.model-ai.index')->with('status', 'Model AI dihapus.');
+    }
+
+    public function setUtama(SetUtamaAiOpenRouterModelRequest $request, AiOpenRouterModel $modelAi): RedirectResponse
+    {
+        DB::transaction(function () use ($request, $modelAi): void {
+            if ($request->boolean('utama')) {
+                AiOpenRouterModel::query()->whereKeyNot($modelAi->id)->update(['utama' => false]);
+                $modelAi->update(['utama' => true]);
+            } else {
+                $modelAi->update(['utama' => false]);
+            }
+        });
+
+        return back()->with(
+            'status',
+            $request->boolean('utama') ? 'Model utama diperbarui.' : 'Model tidak lagi menjadi utama.',
+        );
     }
 }
