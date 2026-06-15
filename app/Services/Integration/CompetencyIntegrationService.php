@@ -8,6 +8,8 @@ use App\Models\Assessment;
 use App\Models\Competency;
 use App\Models\CompetencyIntegration;
 use App\Models\KeyBehavior;
+use App\Services\Recommendation\RecommendationConfigService;
+use App\Services\Recommendation\RecommendationEvaluator;
 use App\Support\KeyBehaviorPresentation;
 use App\Support\MandatoryCompetencyCoverage;
 use Illuminate\Support\Collection;
@@ -20,13 +22,21 @@ class CompetencyIntegrationService
     /** Level target default bila belum ada RCL per kamus (MVP). */
     public const TARGET_DEFAULT_TALENT = 4;
 
+    public function __construct(
+        private readonly RecommendationConfigService $recommendationConfigService,
+        private readonly RecommendationEvaluator $recommendationEvaluator,
+    ) {}
+
     /**
      * @return array{
      *   berhasil: bool,
      *   pesan?: string,
      *   jumlah_kompetensi?: int,
      *   job_fit_persen?: float|null,
-     *   rekomendasi_agregat?: string|null
+     *   rekomendasi_agregat?: string|null,
+     *   kode_rekomendasi_agregat?: string|null,
+     *   id_revisi_konfigurasi?: int|null,
+     *   nomor_revisi_konfigurasi?: int|null
      * }
      */
     public function hitungUlang(Assessment $asesmen, ?int $idPenggunaPemicu = null): array
@@ -47,6 +57,9 @@ class CompetencyIntegrationService
             $asesmen->update([
                 'job_fit_persen_pratinjau' => null,
                 'integrasi_pratinjau_pada' => null,
+                'id_revisi_konfigurasi_terakhir' => null,
+                'kode_rekomendasi_agregat' => null,
+                'detail_rekomendasi_agregat' => null,
             ]);
 
             return [
@@ -55,6 +68,9 @@ class CompetencyIntegrationService
                 'jumlah_kompetensi' => 0,
                 'job_fit_persen' => null,
                 'rekomendasi_agregat' => null,
+                'kode_rekomendasi_agregat' => null,
+                'id_revisi_konfigurasi' => null,
+                'nomor_revisi_konfigurasi' => null,
             ];
         }
 
@@ -111,22 +127,61 @@ class CompetencyIntegrationService
             }
 
             $jobFit = $this->hitungJobFitPersen($asesmen->id, $idKompetensiWajib);
+            $hasilRekomendasi = $this->evaluasiRekomendasiAgregat($asesmen, $idKompetensiWajib);
 
             $asesmen->update([
                 'job_fit_persen_pratinjau' => $jobFit,
                 'integrasi_pratinjau_pada' => $sekarang,
                 'status' => AssessmentStatus::Terintegrasi,
+                'id_revisi_konfigurasi_terakhir' => $hasilRekomendasi['id_revisi'] ?? null,
+                'kode_rekomendasi_agregat' => $hasilRekomendasi['kode'] ?? null,
+                'detail_rekomendasi_agregat' => $hasilRekomendasi['detail'] ?? null,
             ]);
         });
 
         $rekomendasiAgregat = $this->rekomendasiAgregat($asesmen->id, $idKompetensiWajib);
         $jobFit = Assessment::query()->whereKey($asesmen->id)->value('job_fit_persen_pratinjau');
+        $asesmen->refresh();
+        $asesmen->load('lastRecommendationConfigRevision');
 
         return [
             'berhasil' => true,
             'jumlah_kompetensi' => count($barisIntegrasi),
             'job_fit_persen' => $jobFit !== null ? (float) $jobFit : null,
             'rekomendasi_agregat' => $rekomendasiAgregat,
+            'kode_rekomendasi_agregat' => $asesmen->kode_rekomendasi_agregat,
+            'id_revisi_konfigurasi' => $asesmen->id_revisi_konfigurasi_terakhir,
+            'nomor_revisi_konfigurasi' => $asesmen->lastRecommendationConfigRevision?->nomor_revisi,
+        ];
+    }
+
+    /**
+     * @param  Collection<int, int>  $idKompetensiWajib
+     * @return array{id_revisi?: int, kode?: string, detail?: array<string, mixed>}
+     */
+    private function evaluasiRekomendasiAgregat(Assessment $asesmen, Collection $idKompetensiWajib): array
+    {
+        $revisi = $this->recommendationConfigService->revisiTerbaru((int) $asesmen->id_versi_matriks);
+        if ($revisi === null) {
+            return [];
+        }
+
+        $barisIntegrasi = CompetencyIntegration::query()
+            ->where('id_asesmen', $asesmen->id)
+            ->get();
+
+        $metaKompetensi = $this->recommendationEvaluator::metaKompetensiUntukAsesmen($asesmen);
+        $hasil = $this->recommendationEvaluator->evaluasi(
+            $barisIntegrasi,
+            $revisi->konfigurasi ?? [],
+            $metaKompetensi,
+            $idKompetensiWajib,
+        );
+
+        return [
+            'id_revisi' => $revisi->id,
+            'kode' => $hasil['kode'],
+            'detail' => $hasil,
         ];
     }
 

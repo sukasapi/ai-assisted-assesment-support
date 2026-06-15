@@ -286,6 +286,7 @@ class AssessmentController extends Controller
             'keyBehaviors.competencyLevel',
             'toolPayloads.tool',
             'toolPayloads.uploader',
+            'lastRecommendationConfigRevision',
         ]);
 
         $kompetensi = Competency::query()->where('aktif', true)->orderBy('kode_kompetensi')->get();
@@ -446,6 +447,9 @@ class AssessmentController extends Controller
                 'jumlah_kompetensi' => $hasil['jumlah_kompetensi'] ?? 0,
                 'job_fit_persen' => $hasil['job_fit_persen'] ?? null,
                 'rekomendasi_agregat' => $hasil['rekomendasi_agregat'] ?? null,
+                'kode_rekomendasi_agregat' => $hasil['kode_rekomendasi_agregat'] ?? null,
+                'id_revisi_konfigurasi' => $hasil['id_revisi_konfigurasi'] ?? null,
+                'nomor_revisi_konfigurasi' => $hasil['nomor_revisi_konfigurasi'] ?? null,
             ],
         );
 

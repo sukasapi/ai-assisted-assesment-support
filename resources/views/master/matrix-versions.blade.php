@@ -24,6 +24,7 @@
                     <th class="px-4 py-3">Aktif</th>
                     <th class="px-4 py-3">Bawaan</th>
                     <th class="px-4 py-3">Pemetaan</th>
+                    <th class="px-4 py-3">Rekomendasi</th>
                     @if (auth()->user()->role === 'admin')
                         <th class="px-4 py-3 text-right">Aksi</th>
                     @endif
@@ -37,21 +38,35 @@
                         <td class="px-4 py-3 text-on-surface-variant">{{ $row->aktif ? 'Ya' : 'Tidak' }}</td>
                         <td class="px-4 py-3 text-on-surface-variant">{{ $row->bawaan ? 'Ya' : 'Tidak' }}</td>
                         <td class="px-4 py-3">
-                            <a href="{{ route('master.versi-matriks.pemetaan.index', $row) }}" class="text-on-surface underline">Buka</a>
+                            <x-ui.button
+                                href="{{ route('master.versi-matriks.pemetaan.index', $row) }}"
+                                variant="secondary"
+                                class="!px-3 !py-1.5 text-xs"
+                            >Buka</x-ui.button>
+                        </td>
+                        <td class="px-4 py-3">
+                            <x-ui.button
+                                href="{{ route('master.versi-matriks.konfigurasi-rekomendasi.index', $row) }}"
+                                variant="secondary"
+                                class="!px-3 !py-1.5 text-xs"
+                            >Atur</x-ui.button>
                         </td>
                         @if (auth()->user()->role === 'admin')
                             <td class="px-4 py-3 text-right">
-                                <button
-                                    type="button"
-                                    class="text-on-surface-variant underline"
-                                    data-open-modal="modal-matriks-ubah"
-                                    data-edit="{{ json_encode(['id' => $row->id, 'kode_versi' => $row->kode_versi, 'nama_versi' => $row->nama_versi, 'kunci_kamus' => $row->kunci_kamus, 'catatan_konteks' => $row->catatan_konteks, 'dipublikasikan_pada' => $row->dipublikasikan_pada?->format('Y-m-d\TH:i'), 'aktif' => $row->aktif, 'bawaan' => $row->bawaan], JSON_HEX_APOS | JSON_HEX_QUOT | JSON_UNESCAPED_UNICODE) }}"
-                                >Ubah</button>
-                                <form action="{{ route('master.versi-matriks.destroy', $row) }}" method="POST" class="inline" data-swal-confirm="Versi matriks yang dihapus tidak dapat dipulihkan." data-swal-confirm-title="Hapus versi matriks?" data-swal-confirm-yes="Ya, hapus" data-swal-confirm-danger="1">
-                                    @csrf
-                                    @method('DELETE')
-                                    <button type="submit" class="ml-2 text-error underline">Hapus</button>
-                                </form>
+                                <div class="flex flex-wrap items-center justify-end gap-2">
+                                    <x-ui.button
+                                        type="button"
+                                        variant="secondary"
+                                        class="!px-3 !py-1.5 text-xs"
+                                        data-open-modal="modal-matriks-ubah"
+                                        data-edit="{{ json_encode(['id' => $row->id, 'kode_versi' => $row->kode_versi, 'nama_versi' => $row->nama_versi, 'kunci_kamus' => $row->kunci_kamus, 'catatan_konteks' => $row->catatan_konteks, 'dipublikasikan_pada' => $row->dipublikasikan_pada?->format('Y-m-d\TH:i'), 'aktif' => $row->aktif, 'bawaan' => $row->bawaan], JSON_HEX_APOS | JSON_HEX_QUOT | JSON_UNESCAPED_UNICODE) }}"
+                                    >Ubah</x-ui.button>
+                                    <form action="{{ route('master.versi-matriks.destroy', $row) }}" method="POST" class="inline" data-swal-confirm="Versi matriks yang dihapus tidak dapat dipulihkan." data-swal-confirm-title="Hapus versi matriks?" data-swal-confirm-yes="Ya, hapus" data-swal-confirm-danger="1">
+                                        @csrf
+                                        @method('DELETE')
+                                        <x-ui.button type="submit" variant="danger" class="!px-3 !py-1.5 text-xs">Hapus</x-ui.button>
+                                    </form>
+                                </div>
                             </td>
                         @endif
                     </tr>
