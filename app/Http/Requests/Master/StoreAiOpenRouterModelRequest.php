@@ -28,9 +28,10 @@ class StoreAiOpenRouterModelRequest extends FormRequest
 
     protected function prepareForValidation(): void
     {
-        $this->merge([
-            'utama' => $this->boolean('utama'),
-            'aktif' => $this->boolean('aktif'),
-        ]);
+        $merge = [
+            'utama' => $this->has('utama') ? $this->boolean('utama') : false,
+            'aktif' => $this->has('aktif') ? $this->boolean('aktif') : true,
+        ];
+        $this->merge($merge);
     }
 }

@@ -14,14 +14,12 @@ use App\Models\User;
 use App\Services\Ai\BulkToolPayloadAiAnalyzer;
 use App\Services\Ai\EvidenceAiAnalyzer;
 use Database\Seeders\DatabaseSeeder;
-use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Http;
 use Tests\Support\AssessmentTestHelpers;
 use Tests\TestCase;
 
 class AiQueueAndSchemaTest extends TestCase
 {
-    use RefreshDatabase;
 
     public function test_trigger_incremental_mengeksekusi_langsung(): void
     {

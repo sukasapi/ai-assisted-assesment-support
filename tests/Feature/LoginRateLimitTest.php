@@ -2,12 +2,10 @@
 
 namespace Tests\Feature;
 
-use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
 class LoginRateLimitTest extends TestCase
 {
-    use RefreshDatabase;
 
     public function test_login_dibatasi_setelah_lima_percobaan_gagal(): void
     {

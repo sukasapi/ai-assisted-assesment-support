@@ -8,12 +8,10 @@ use App\Models\Assessment;
 use App\Models\AssessmentTool;
 use App\Support\AiPromptTemplateResolver;
 use Database\Seeders\DatabaseSeeder;
-use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
 class AiPromptTemplateResolverTest extends TestCase
 {
-    use RefreshDatabase;
 
     public function test_master_star_hanya_untuk_bei(): void
     {

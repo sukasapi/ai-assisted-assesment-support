@@ -13,15 +13,11 @@
             <x-ui.form-input label="Label tampilan" name="label" :value="old('label')" required />
             <x-ui.form-input label="Urutan" name="urutan" type="number" :value="old('urutan', 0)" min="0" required />
             <div class="flex items-center gap-2">
-                <input type="hidden" name="utama" value="0">
-                <input type="checkbox" name="utama" id="modal-model-ai-tambah-utama" value="1" class="size-4 rounded border-outline-variant" @checked(old('utama'))>
-                <label for="modal-model-ai-tambah-utama" class="text-sm text-on-surface">Model utama (default)</label>
-            </div>
-            <div class="flex items-center gap-2">
                 <input type="hidden" name="aktif" value="0">
                 <input type="checkbox" name="aktif" id="modal-model-ai-tambah-aktif" value="1" class="size-4 rounded border-outline-variant" @checked(old('aktif', true))>
                 <label for="modal-model-ai-tambah-aktif" class="text-sm text-on-surface">Aktif</label>
             </div>
+            <p class="text-xs text-on-surface-variant">Model utama dipilih lewat radio di tabel daftar.</p>
         </div>
         <footer class="competency-modal__footer flex justify-end gap-3">
             <button type="button" data-close-modal="modal-model-ai-tambah" class="rounded-lg border border-outline-variant px-4 py-2 text-sm font-semibold text-on-surface">Batal</button>
@@ -45,11 +41,6 @@
             <x-ui.form-input label="ID model OpenRouter" name="id_model_openrouter" :value="old('id_model_openrouter')" required maxlength="191" />
             <x-ui.form-input label="Label tampilan" name="label" :value="old('label')" required />
             <x-ui.form-input label="Urutan" name="urutan" type="number" :value="old('urutan')" min="0" required />
-            <div class="flex items-center gap-2">
-                <input type="hidden" name="utama" value="0">
-                <input type="checkbox" name="utama" id="modal-model-ai-ubah-utama" value="1" class="size-4 rounded border-outline-variant">
-                <label for="modal-model-ai-ubah-utama" class="text-sm text-on-surface">Model utama (default)</label>
-            </div>
             <div class="flex items-center gap-2">
                 <input type="hidden" name="aktif" value="0">
                 <input type="checkbox" name="aktif" id="modal-model-ai-ubah-aktif" value="1" class="size-4 rounded border-outline-variant">

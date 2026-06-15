@@ -11,7 +11,6 @@ use App\Models\Evidence;
 use App\Models\User;
 use App\Services\Stt\TranscriberContract;
 use Database\Seeders\DatabaseSeeder;
-use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Storage;
 use Tests\Support\AssessmentTestHelpers;
@@ -19,7 +18,6 @@ use Tests\TestCase;
 
 class EvidenceUploadAndUpdateTest extends TestCase
 {
-    use RefreshDatabase;
 
     public function test_store_bukti_teks_berhasil(): void
     {
@@ -35,7 +33,7 @@ class EvidenceUploadAndUpdateTest extends TestCase
                 'jenis_sumber' => EvidenceSourceType::Teks->value,
                 'teks_mentah' => 'Observasi peserta menunjukkan inisiatif.',
             ])
-            ->assertRedirect(route('asesmen.show', $asesmen).'#pengumpulan');
+            ->assertRedirect($this->redirectPengumpulan($asesmen, $idKompetensi, $idAlat));
 
         $this->assertDatabaseHas('ais_bukti_penilaian', [
             'id_asesmen' => $asesmen->id,
@@ -77,7 +75,7 @@ class EvidenceUploadAndUpdateTest extends TestCase
                 'jenis_sumber' => EvidenceSourceType::Wawancara->value,
                 'berkas_audio' => $audio,
             ])
-            ->assertRedirect(route('asesmen.show', $asesmen).'#pengumpulan');
+            ->assertRedirect($this->redirectPengumpulan($asesmen, $idKompetensi, $idAlat));
 
         $bukti = Evidence::query()->where('id_asesmen', $asesmen->id)->latest('id')->first();
         $this->assertNotNull($bukti);
@@ -111,7 +109,7 @@ class EvidenceUploadAndUpdateTest extends TestCase
                 'jenis_sumber' => EvidenceSourceType::Wawancara->value,
                 'teks_mentah' => 'Transkrip manual oleh asesor.',
             ])
-            ->assertRedirect(route('asesmen.show', $asesmen).'#pengumpulan');
+            ->assertRedirect($this->redirectPengumpulan($asesmen, $idKompetensi, $idAlat));
 
         $bukti->refresh();
         $this->assertSame('Transkrip manual oleh asesor.', $bukti->teks_mentah);
@@ -187,7 +185,7 @@ class EvidenceUploadAndUpdateTest extends TestCase
                 'jenis_sumber' => EvidenceSourceType::Wawancara->value,
                 'berkas_audio' => $audio,
             ])
-            ->assertRedirect(route('asesmen.show', $asesmen).'#pengumpulan');
+            ->assertRedirect($this->redirectPengumpulan($asesmen, $idKompetensi, $idAlat));
 
         $bukti->refresh();
         $this->assertSame(EvidenceSourceType::Wawancara, $bukti->jenis_sumber);
@@ -224,7 +222,7 @@ class EvidenceUploadAndUpdateTest extends TestCase
                 'jenis_sumber' => EvidenceSourceType::Teks->value,
                 'teks_mentah' => 'Diubah menjadi bukti teks.',
             ])
-            ->assertRedirect(route('asesmen.show', $asesmen).'#pengumpulan');
+            ->assertRedirect($this->redirectPengumpulan($asesmen, $idKompetensi, $idAlat));
 
         $bukti->refresh();
         $this->assertSame(EvidenceSourceType::Teks, $bukti->jenis_sumber);
@@ -254,7 +252,7 @@ class EvidenceUploadAndUpdateTest extends TestCase
                 'jenis_sumber' => EvidenceSourceType::Wawancara->value,
                 'teks_mentah' => 'Transkrip wawancara manual tanpa audio.',
             ])
-            ->assertRedirect(route('asesmen.show', $asesmen).'#pengumpulan');
+            ->assertRedirect($this->redirectPengumpulan($asesmen, $idKompetensi, $idAlat));
 
         $bukti->refresh();
         $this->assertSame(EvidenceSourceType::Wawancara, $bukti->jenis_sumber);
@@ -317,7 +315,7 @@ class EvidenceUploadAndUpdateTest extends TestCase
                 'berkas_audio' => $audio,
                 'teks_mentah' => 'Transkrip dari tombol Transcript.',
             ])
-            ->assertRedirect(route('asesmen.show', $asesmen).'#pengumpulan');
+            ->assertRedirect($this->redirectPengumpulan($asesmen, $idKompetensi, $idAlat));
 
         $bukti = Evidence::query()->where('id_asesmen', $asesmen->id)->latest('id')->first();
         $this->assertNotNull($bukti);
@@ -371,6 +369,69 @@ class EvidenceUploadAndUpdateTest extends TestCase
             ->assertSessionHasErrors('metode_koleksi_bukti');
     }
 
+    public function test_destroy_bukti_soft_delete(): void
+    {
+        $this->seed(DatabaseSeeder::class);
+        Storage::fake('local');
+
+        $admin = User::query()->where('alamat_surel', 'admin@example.com')->firstOrFail();
+        $asesmen = AssessmentTestHelpers::buatAsesmen($this, $admin);
+        [$idAlat, $idKompetensi] = $this->pasanganAlatKompetensi($asesmen);
+
+        $pathAudio = 'asesmen/'.$asesmen->id.'/bukti/delete-test.mp3';
+        Storage::disk('local')->put($pathAudio, 'fake audio');
+
+        $bukti = $asesmen->evidenceItems()->create([
+            'id_alat_penilaian' => $idAlat,
+            'id_kompetensi' => $idKompetensi,
+            'jenis_sumber' => EvidenceSourceType::Wawancara,
+            'teks_mentah' => 'Bukti akan dihapus.',
+            'path_audio' => $pathAudio,
+            'mime_audio' => 'audio/mpeg',
+            'status_transkripsi' => EvidenceTranscriptionStatus::Selesai,
+        ]);
+
+        $this->actingAs($admin)
+            ->from(route('asesmen.show', $asesmen))
+            ->delete(route('asesmen.bukti.destroy', [$asesmen, $bukti]))
+            ->assertRedirect($this->redirectPengumpulan($asesmen, $idKompetensi, $idAlat))
+            ->assertSessionHas('status');
+
+        $buktiTerhapus = Evidence::withTrashed()->find($bukti->id);
+        $this->assertNotNull($buktiTerhapus?->dihapus_pada);
+        $this->assertSame(0, $asesmen->evidenceItems()->count());
+        Storage::disk('local')->assertMissing($pathAudio);
+    }
+
+    public function test_destroy_bukti_ditolak_saat_final(): void
+    {
+        $this->seed(DatabaseSeeder::class);
+        $admin = User::query()->where('alamat_surel', 'admin@example.com')->firstOrFail();
+        $asesmen = AssessmentTestHelpers::buatAsesmen($this, $admin);
+        [$idAlat, $idKompetensi] = $this->pasanganAlatKompetensi($asesmen);
+
+        $bukti = $asesmen->evidenceItems()->create([
+            'id_alat_penilaian' => $idAlat,
+            'id_kompetensi' => $idKompetensi,
+            'jenis_sumber' => EvidenceSourceType::Teks,
+            'teks_mentah' => 'Teks awal',
+        ]);
+
+        $asesmen->forceFill([
+            'status' => AssessmentStatus::SelesaiFinal,
+            'waktu_finalisasi' => now(),
+        ])->save();
+
+        $this->actingAs($admin)
+            ->from(route('asesmen.show', $asesmen))
+            ->delete(route('asesmen.bukti.destroy', [$asesmen, $bukti]))
+            ->assertRedirect($this->redirectPengumpulan($asesmen, $idKompetensi, $idAlat))
+            ->assertSessionHasErrors('bukti');
+
+        $bukti->refresh();
+        $this->assertNull($bukti->dihapus_pada);
+    }
+
     /**
      * @return array{0: int, 1: int}
      */
@@ -387,5 +448,18 @@ class EvidenceUploadAndUpdateTest extends TestCase
             ->firstOrFail();
 
         return [(int) $mapping->id_alat_penilaian, (int) $mapping->id_kompetensi];
+    }
+
+    private function redirectPengumpulan(Assessment $asesmen, ?int $kompetensiId = null, ?int $alatId = null): string
+    {
+        $params = ['asesmen' => $asesmen];
+        if ($kompetensiId !== null && $kompetensiId > 0) {
+            $params['kompetensi'] = $kompetensiId;
+        }
+        if ($alatId !== null && $alatId > 0) {
+            $params['alat'] = $alatId;
+        }
+
+        return route('asesmen.show', $params).'#pengumpulan';
     }
 }

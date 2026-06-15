@@ -7,13 +7,11 @@ use App\Models\AssessmentSession;
 use App\Models\User;
 use App\Support\ConsultantAccessSession;
 use Database\Seeders\DatabaseSeeder;
-use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\Support\AssessmentTestHelpers;
 use Tests\TestCase;
 
 class SessionUserAndTokenTest extends TestCase
 {
-    use RefreshDatabase;
 
     public function test_konsultan_tidak_boleh_crud_master_pengguna(): void
     {

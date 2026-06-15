@@ -80,6 +80,9 @@ Route::middleware(['auth', 'user.aktif'])->group(function () {
         Route::patch('asesmen/{asesmen}/bukti/{bukti}', [AssessmentController::class, 'updateEvidence'])
             ->scopeBindings()
             ->name('asesmen.bukti.update');
+        Route::delete('asesmen/{asesmen}/bukti/{bukti}', [AssessmentController::class, 'destroyEvidence'])
+            ->scopeBindings()
+            ->name('asesmen.bukti.destroy');
         Route::post('asesmen/{asesmen}/bukti/{bukti}/transkrip', [AssessmentController::class, 'transcribeEvidence'])
             ->middleware('throttle:ai-analysis-trigger')
             ->scopeBindings()
@@ -205,6 +208,7 @@ Route::middleware(['auth', 'user.aktif'])->group(function () {
         Route::post('master/model-ai', [AiOpenRouterModelController::class, 'store'])->name('master.model-ai.store');
         Route::get('master/model-ai/{modelAi}/ubah', [AiOpenRouterModelController::class, 'edit'])->name('master.model-ai.edit');
         Route::put('master/model-ai/{modelAi}', [AiOpenRouterModelController::class, 'update'])->name('master.model-ai.update');
+        Route::patch('master/model-ai/{modelAi}/utama', [AiOpenRouterModelController::class, 'setUtama'])->name('master.model-ai.set-utama');
         Route::delete('master/model-ai/{modelAi}', [AiOpenRouterModelController::class, 'destroy'])->name('master.model-ai.destroy');
 
         Route::get('master/pengguna', [MasterDataController::class, 'users'])->name('master.pengguna.index');
