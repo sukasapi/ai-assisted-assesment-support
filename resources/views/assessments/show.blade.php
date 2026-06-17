@@ -487,7 +487,19 @@
             use App\Support\KeyBehaviorPresentation;
         @endphp
         <section class="space-y-6">
-            <h2 class="font-display text-xl font-bold text-on-surface">Mapping Perilaku Kunci</h2>
+            <div class="flex flex-wrap items-center justify-between gap-3">
+                <h2 class="font-display text-xl font-bold text-on-surface">Mapping Perilaku Kunci</h2>
+                @if (! $asesmen->keyBehaviors->isEmpty())
+                    <button
+                        type="button"
+                        data-open-modal="modal-unduh-mapping-pk"
+                        class="inline-flex items-center gap-2 rounded-lg border border-outline-variant/40 bg-surface-container-lowest px-4 py-2 text-sm font-semibold text-on-surface shadow-sm transition-colors hover:bg-surface-container-low"
+                    >
+                        <span class="material-symbols-outlined text-base">download</span>
+                        Unduh Data
+                    </button>
+                @endif
+            </div>
             @error('perilaku_kunci')
                 <p class="rounded-lg border border-error/30 bg-error-container/20 px-4 py-2 text-sm text-on-error-container">{{ $message }}</p>
             @enderror
@@ -731,5 +743,9 @@
 
     @if ($bisaUbahAsesmen ?? false)
         @include('assessments.partials.asesmen-form-modals')
+    @endif
+
+    @if (! $asesmen->keyBehaviors->isEmpty())
+        @include('assessments.partials.unduh-mapping-modal', ['asesmen' => $asesmen])
     @endif
 @endsection
