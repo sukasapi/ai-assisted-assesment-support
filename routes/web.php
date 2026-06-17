@@ -114,6 +114,7 @@ Route::middleware(['auth', 'user.aktif'])->group(function () {
         Route::patch('asesmen/{asesmen}/finalisasi', [AssessmentController::class, 'finalize'])->name('asesmen.finalisasi');
         Route::patch('asesmen/{asesmen}/batal-finalisasi', [AssessmentController::class, 'unfinalize'])->name('asesmen.batal-finalisasi');
         Route::put('asesmen/{asesmen}', [AssessmentController::class, 'update'])->name('asesmen.update');
+        Route::get('asesmen/{asesmen}/perilaku-kunci/unduh-csv', [AssessmentController::class, 'exportKeyBehaviorsCsv'])->name('asesmen.perilaku.export-csv');
         Route::post('asesmen/{asesmen}/perilaku-kunci', [AssessmentController::class, 'storeKeyBehavior'])->name('asesmen.perilaku.store');
         Route::get('asesmen/{asesmen}/perilaku-kunci/{perilaku}/ubah', [AssessmentController::class, 'editKeyBehavior'])
             ->scopeBindings()

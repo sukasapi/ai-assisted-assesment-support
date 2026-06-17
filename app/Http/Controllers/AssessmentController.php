@@ -61,8 +61,10 @@ use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Validation\Rule;
 use Illuminate\View\View;
 use Symfony\Component\HttpFoundation\BinaryFileResponse;
+use Symfony\Component\HttpFoundation\StreamedResponse;
 
 class AssessmentController extends Controller
 {
@@ -857,6 +859,79 @@ class AssessmentController extends Controller
         return response()->file($pathAbsolut, [
             'Content-Type' => $mime,
             'Content-Disposition' => 'inline; filename="'.addslashes(basename($pathAbsolut)).'"',
+        ]);
+    }
+
+    public function exportKeyBehaviorsCsv(Request $request, Assessment $asesmen): StreamedResponse
+    {
+        $this->authorize('view', $asesmen);
+
+        $validated = $request->validate([
+            'delimiter' => ['required', 'string', Rule::in([',', ';'])],
+        ]);
+
+        $sep = $validated['delimiter'];
+        $asesmen->load([
+            'keyBehaviors.tool',
+            'keyBehaviors.competency.group',
+            'keyBehaviors.evidence',
+            'keyBehaviors.competencyLevel',
+        ]);
+
+        abort_if($asesmen->keyBehaviors->isEmpty(), 404);
+
+        $idPerilakuDariBulkAi = KeyBehaviorPresentation::idDariAnalisisBulk($asesmen);
+        $idLabel = str_pad((string) $asesmen->id, 4, '0', STR_PAD_LEFT);
+        $filename = $sep === ';'
+            ? "mapping-perilaku-kunci-asm-{$idLabel}-semicolon.csv"
+            : "mapping-perilaku-kunci-asm-{$idLabel}-comma.csv";
+
+        $columns = [
+            'alat_kode',
+            'kompetensi_kode',
+            'kompetensi_nama',
+            'kelompok_kompetensi',
+            'tingkat',
+            'sumber',
+            'status',
+            'teks_perilaku',
+            'alasan_pemilihan',
+            'kutipan_referensi',
+            'id_bukti_penilaian',
+        ];
+
+        return response()->streamDownload(function () use ($asesmen, $sep, $columns, $idPerilakuDariBulkAi): void {
+            $out = fopen('php://output', 'w');
+            if ($out === false) {
+                return;
+            }
+            fwrite($out, "\xEF\xBB\xBF");
+            fputcsv($out, $columns, $sep);
+
+            foreach ($asesmen->keyBehaviors as $pk) {
+                $badgeSumber = KeyBehaviorPresentation::badgeSumber($pk, $idPerilakuDariBulkAi);
+                $badgeStatus = KeyBehaviorPresentation::badgeStatus($pk);
+                $kutipan = $pk->kutipan_referensi
+                    ?: (is_array($pk->evidence?->ai_muatan) ? ($pk->evidence->ai_muatan['kutipan_dari_teks_mentah'] ?? null) : null);
+
+                fputcsv($out, [
+                    $pk->tool?->kode ?? '',
+                    $pk->competency?->kode_kompetensi ?? '',
+                    $pk->competency?->nama ?? '',
+                    $pk->competency?->group?->nama ?? '',
+                    $pk->competencyLevel?->tingkat ?? '',
+                    $badgeSumber['label'],
+                    $badgeStatus['label'],
+                    $pk->teks_perilaku ?? '',
+                    $pk->alasan_pemilihan ?? '',
+                    $kutipan ?? '',
+                    $pk->id_bukti_penilaian ?? '',
+                ], $sep);
+            }
+
+            fclose($out);
+        }, $filename, [
+            'Content-Type' => 'text/csv; charset=UTF-8',
         ]);
     }
 
