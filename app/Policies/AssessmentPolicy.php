@@ -11,12 +11,12 @@ class AssessmentPolicy
 {
     public function viewAny(User $user): bool
     {
-        return in_array($user->role, ['admin', 'konsultan'], true);
+        return $user->hasPeran('admin', 'konsultan');
     }
 
     public function view(User $user, Assessment $assessment): bool
     {
-        if ($user->role === 'admin') {
+        if ($user->isAdmin()) {
             return true;
         }
 
@@ -25,12 +25,12 @@ class AssessmentPolicy
 
     public function create(User $user): bool
     {
-        return $user->role === 'admin';
+        return $user->isAdmin();
     }
 
     public function update(User $user, Assessment $assessment): bool
     {
-        if ($user->role === 'konsultan') {
+        if ($user->isKonsultan()) {
             return $this->konsultanBolehAkses($user, $assessment);
         }
 
@@ -39,7 +39,7 @@ class AssessmentPolicy
 
     public function delete(User $user, Assessment $assessment): bool
     {
-        return $user->role === 'admin';
+        return $user->isAdmin();
     }
 
     private function adminDitugaskan(User $user, Assessment $assessment): bool

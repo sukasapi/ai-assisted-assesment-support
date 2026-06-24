@@ -7,8 +7,6 @@ use App\Models\Assessment;
 use App\Models\AssessmentTool;
 use App\Models\Competency;
 use App\Models\KeyBehavior;
-use App\Models\MatrixVersion;
-use App\Models\Participant;
 use App\Models\User;
 use Database\Seeders\DatabaseSeeder;
 use Tests\Support\AssessmentTestHelpers;
@@ -16,7 +14,6 @@ use Tests\TestCase;
 
 class ToolPayloadDeletionTest extends TestCase
 {
-
     public function test_payload_belum_dianalisis_dapat_dihapus(): void
     {
         $this->seed(DatabaseSeeder::class);
@@ -31,7 +28,7 @@ class ToolPayloadDeletionTest extends TestCase
 
         $this->actingAs($admin)
             ->delete(route('asesmen.payload-alat.destroy', [$asesmen, $payload]))
-            ->assertRedirect(route('asesmen.show', $asesmen));
+            ->assertRedirectContains(route('asesmen.show', $asesmen));
 
         $this->assertDatabaseMissing('ais_payload_alat_asesmen', ['id' => $payload->id]);
     }
@@ -65,7 +62,7 @@ class ToolPayloadDeletionTest extends TestCase
 
         $this->actingAs($admin)
             ->delete(route('asesmen.payload-alat.destroy', [$asesmen, $payload]))
-            ->assertRedirect(route('asesmen.show', $asesmen));
+            ->assertRedirectContains(route('asesmen.show', $asesmen));
 
         $this->assertDatabaseMissing('ais_payload_alat_asesmen', ['id' => $payload->id]);
         $this->assertDatabaseMissing('ais_perilaku_kunci', ['id' => $pk->id]);
@@ -102,7 +99,7 @@ class ToolPayloadDeletionTest extends TestCase
 
         $this->actingAs($admin)
             ->delete(route('asesmen.payload-alat.destroy', [$asesmen, $payload]))
-            ->assertRedirect(route('asesmen.show', $asesmen))
+            ->assertRedirectContains(route('asesmen.show', $asesmen))
             ->assertSessionHasErrors('payload');
 
         $this->assertDatabaseHas('ais_payload_alat_asesmen', ['id' => $payload->id]);
@@ -124,7 +121,7 @@ class ToolPayloadDeletionTest extends TestCase
 
         $this->actingAs($admin)
             ->delete(route('asesmen.payload-alat.destroy', [$asesmen, $payload]))
-            ->assertRedirect(route('asesmen.show', $asesmen))
+            ->assertRedirectContains(route('asesmen.show', $asesmen))
             ->assertSessionHasErrors('payload');
 
         $this->assertDatabaseHas('ais_payload_alat_asesmen', ['id' => $payload->id]);

@@ -40,7 +40,23 @@
         @endif
     </div>
 
+    @if (($pratinjauKedaluwarsa ?? false) && $punyaBaris)
+        <div class="flex items-start gap-3 rounded-xl border border-amber-300 bg-amber-50 px-4 py-3 text-sm text-amber-900" data-testid="pratinjau-kedaluwarsa">
+            <span class="material-symbols-outlined shrink-0">update</span>
+            <p>
+                <strong>Hasil pratinjau mungkin kedaluwarsa.</strong> Ada perilaku kunci disahkan yang berubah setelah perhitungan terakhir.
+                Klik «Hitung ulang pratinjau» agar GAP &amp; Job Fit memakai data terbaru.
+            </p>
+        </div>
+    @endif
+
     <div class="card-depth overflow-hidden rounded-xl bg-surface-container-lowest p-6 md:p-8">
+        @isset($strategiAgregasiAktif)
+            <p class="mb-4 inline-flex items-center gap-2 rounded-lg border border-outline-variant/30 bg-surface-container-low px-3 py-1.5 text-xs text-on-surface-variant">
+                <span class="material-symbols-outlined text-sm">tune</span>
+                Strategi agregasi antar PK per alat: <strong class="text-on-surface">{{ $strategiAgregasiAktif->label() }}</strong>
+            </p>
+        @endisset
         <div class="mb-6 flex flex-wrap items-center gap-4">
             <div class="rounded-xl border border-primary/20 bg-primary-fixed/30 px-5 py-4">
                 <p class="text-xs font-bold uppercase tracking-wide text-primary">Job Fit pratinjau</p>
@@ -144,6 +160,17 @@
                             @php
                                 $gap = (int) ($baris->selisih_gap ?? 0);
                                 $gapKelas = $gap > 0 ? 'text-rose-600 font-bold' : 'text-emerald-600 font-bold';
+                                // L-4: tandai capaian "ambang" (skor terbobot dekat X,5 → pembulatan menentukan level).
+                                $skorTerbobot = $baris->skor_terbobot !== null ? (float) $baris->skor_terbobot : null;
+                                $borderline = $skorTerbobot !== null && abs($skorTerbobot - round($skorTerbobot)) >= 0.35;
+                                // L-3: sebaran PK antar alat (agar asesor sadar bagaimana beberapa PK digabung).
+                                $detail = is_array($baris->detail_bobot) ? $baris->detail_bobot : [];
+                                $adaSebaran = collect($detail)->contains(fn ($d) => is_array($d) && (int) ($d['level_min'] ?? 0) !== (int) ($d['level_max'] ?? 0));
+                                $sebaranTeks = collect($detail)
+                                    ->map(fn ($d, $kode) => is_array($d)
+                                        ? $kode.': '.($d['jumlah_pk'] ?? 1).' PK (L'.($d['level_min'] ?? '?').'–L'.($d['level_max'] ?? '?').' → dipakai L'.($d['level'] ?? '?').')'
+                                        : null)
+                                    ->filter()->implode(' · ');
                             @endphp
                             <tr class="border-b border-outline-variant/15 hover:bg-surface-container-low/50">
                                 <td class="px-3 py-3">
@@ -151,7 +178,20 @@
                                     <span class="block text-xs text-on-surface-variant">{{ $baris->competency?->nama }}</span>
                                 </td>
                                 <td class="px-3 py-3 text-center font-mono">{{ $baris->tingkat_target ?? '—' }}</td>
-                                <td class="px-3 py-3 text-center font-mono">{{ $baris->tingkat_tercapai ?? '—' }}</td>
+                                <td class="px-3 py-3 text-center font-mono">
+                                    {{ $baris->tingkat_tercapai ?? '—' }}
+                                    @if ($borderline)
+                                        <span class="ml-1 inline-flex rounded-full border border-amber-300 bg-amber-50 px-1.5 py-0.5 text-[10px] font-bold text-amber-800 align-middle"
+                                              title="Ambang: skor terbobot {{ number_format($skorTerbobot, 2) }} berada dekat batas pembulatan antar tingkat. Tinjau bukti sebelum menyimpulkan.">
+                                            ambang
+                                        </span>
+                                    @endif
+                                    @if ($adaSebaran)
+                                        <span class="ml-1 inline-flex items-center align-middle text-on-surface-variant/70" title="Sebaran PK antar alat — {{ $sebaranTeks }}">
+                                            <span class="material-symbols-outlined text-sm">info</span>
+                                        </span>
+                                    @endif
+                                </td>
                                 <td class="px-3 py-3 text-center font-mono {{ $gapKelas }}">{{ $gap > 0 ? '+'.$gap : $gap }}</td>
                                 <td class="px-3 py-3">
                                     <span class="inline-flex rounded-full border px-2.5 py-0.5 text-xs font-bold {{ $kelasRekomendasi($baris->rekomendasi_kode) }}">

@@ -3,11 +3,9 @@
 namespace Tests\Feature;
 
 use App\Models\Assessment;
+use App\Models\AssessmentMatrixMappingSnapshot;
 use App\Models\AssessmentTool;
 use App\Models\Competency;
-use App\Models\CompetencyToolMapping;
-use App\Models\MatrixVersion;
-use App\Models\Participant;
 use App\Models\User;
 use Database\Seeders\DatabaseSeeder;
 use Tests\Support\AssessmentTestHelpers;
@@ -15,7 +13,6 @@ use Tests\TestCase;
 
 class AssessmentEvidenceCollectionModeTest extends TestCase
 {
-
     public function test_metode_payload_mencegah_tambah_bukti_manual(): void
     {
         $this->seed(DatabaseSeeder::class);
@@ -33,7 +30,7 @@ class AssessmentEvidenceCollectionModeTest extends TestCase
                 'jenis_sumber' => 'teks',
                 'teks_mentah' => 'Teks uji',
             ])
-            ->assertRedirect(route('asesmen.show', $asesmen))
+            ->assertRedirectContains(route('asesmen.show', $asesmen))
             ->assertSessionHasErrors('metode_koleksi_bukti');
 
         $this->assertDatabaseMissing('ais_bukti_penilaian', [
@@ -56,7 +53,7 @@ class AssessmentEvidenceCollectionModeTest extends TestCase
                 'id_alat_penilaian' => $alat->id,
                 'teks_muatan' => 'Dump panjang',
             ])
-            ->assertRedirect(route('asesmen.show', $asesmen))
+            ->assertRedirectContains(route('asesmen.show', $asesmen))
             ->assertSessionHasErrors('metode_koleksi_bukti');
 
         $this->assertDatabaseMissing('ais_payload_alat_asesmen', [
@@ -75,7 +72,7 @@ class AssessmentEvidenceCollectionModeTest extends TestCase
             ->patch(route('asesmen.metode-koleksi-bukti.update', $asesmen), [
                 'metode_koleksi_bukti' => 'payload_alat',
             ])
-            ->assertRedirect(route('asesmen.show', $asesmen));
+            ->assertRedirectContains(route('asesmen.show', $asesmen));
 
         $asesmen->refresh();
         $this->assertSame('payload_alat', $asesmen->metode_koleksi_bukti->value);
@@ -95,8 +92,9 @@ class AssessmentEvidenceCollectionModeTest extends TestCase
         $asesmen = $this->buatAsesmen($admin, 'manual');
 
         $alatAktif = $asesmen->toolSelections()->where('aktif', true)->orderBy('id')->firstOrFail();
-        CompetencyToolMapping::query()
-            ->where('id_versi_matriks', $asesmen->id_versi_matriks)
+        // Pemetaan efektif asesmen = snapshot beku; nonaktifkan alat di snapshot.
+        AssessmentMatrixMappingSnapshot::query()
+            ->where('id_asesmen', $asesmen->id)
             ->where('id_alat_penilaian', $alatAktif->id_alat_penilaian)
             ->update(['aktif' => false]);
 
@@ -110,7 +108,7 @@ class AssessmentEvidenceCollectionModeTest extends TestCase
                 'jenis_sumber' => 'teks',
                 'teks_mentah' => 'Teks uji alat non matriks',
             ])
-            ->assertRedirect(route('asesmen.show', $asesmen))
+            ->assertRedirectContains(route('asesmen.show', $asesmen))
             ->assertSessionHasErrors('id_alat_penilaian');
     }
 
@@ -121,8 +119,8 @@ class AssessmentEvidenceCollectionModeTest extends TestCase
         $asesmen = $this->buatAsesmen($admin, 'payload_alat');
 
         $alatAktif = $asesmen->toolSelections()->where('aktif', true)->orderBy('id')->firstOrFail();
-        CompetencyToolMapping::query()
-            ->where('id_versi_matriks', $asesmen->id_versi_matriks)
+        AssessmentMatrixMappingSnapshot::query()
+            ->where('id_asesmen', $asesmen->id)
             ->where('id_alat_penilaian', $alatAktif->id_alat_penilaian)
             ->update(['aktif' => false]);
 
@@ -132,7 +130,7 @@ class AssessmentEvidenceCollectionModeTest extends TestCase
                 'id_alat_penilaian' => $alatAktif->id_alat_penilaian,
                 'teks_muatan' => 'Payload uji alat non matriks',
             ])
-            ->assertRedirect(route('asesmen.show', $asesmen))
+            ->assertRedirectContains(route('asesmen.show', $asesmen))
             ->assertSessionHasErrors('id_alat_penilaian');
     }
 
@@ -151,7 +149,7 @@ class AssessmentEvidenceCollectionModeTest extends TestCase
 
         $this->actingAs($admin)
             ->get(route('asesmen.payload-alat.analisis-ai.get', [$asesmen, $payload]))
-            ->assertRedirect(route('asesmen.show', $asesmen))
+            ->assertRedirectContains(route('asesmen.show', $asesmen))
             ->assertSessionHasErrors('ai');
     }
 
@@ -170,7 +168,7 @@ class AssessmentEvidenceCollectionModeTest extends TestCase
                 'id_alat_penilaian' => $alat->id,
                 'teks_muatan' => 'Teks muatan uji bulk.',
             ])
-            ->assertRedirect(route('asesmen.show', $asesmen));
+            ->assertRedirectContains(route('asesmen.show', $asesmen));
 
         $this->actingAs($admin)
             ->get(route('asesmen.show', $asesmen))

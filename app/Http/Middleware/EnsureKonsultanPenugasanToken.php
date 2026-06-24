@@ -10,12 +10,12 @@ use Symfony\Component\HttpFoundation\Response;
 class EnsureKonsultanPenugasanToken
 {
     /**
-     * @param  \Closure(\Illuminate\Http\Request): (\Symfony\Component\HttpFoundation\Response)  $next
+     * @param  Closure(Request): (Response)  $next
      */
     public function handle(Request $request, Closure $next): Response
     {
         $user = $request->user();
-        if ($user === null || $user->role !== 'konsultan') {
+        if ($user === null || ! $user->isKonsultan()) {
             return $next($request);
         }
 

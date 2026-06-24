@@ -54,11 +54,57 @@ final class AiModelCatalog
         return $hasil;
     }
 
+    private static function penyedia(): string
+    {
+        return config('ai.penyedia') === 'gemini' ? 'gemini' : 'openrouter';
+    }
+
+    private static function fallbackOtomatis(): bool
+    {
+        return self::penyedia() === 'gemini'
+            ? (bool) config('ai.gemini.fallback_otomatis', true)
+            : (bool) config('ai.openrouter.fallback_otomatis', true);
+    }
+
+    /**
+     * Daftar model untuk penyedia Gemini (dari config, tanpa tabel DB OpenRouter).
+     *
+     * @return list<array{id: string, label: string}>
+     */
+    private static function daftarModelGemini(): array
+    {
+        $daftar = config('ai.gemini.daftar_model');
+        $hasil = [];
+        if (is_array($daftar)) {
+            foreach ($daftar as $baris) {
+                if (! is_array($baris)) {
+                    continue;
+                }
+                $id = trim((string) ($baris['id'] ?? ''));
+                if ($id === '') {
+                    continue;
+                }
+                $label = trim((string) ($baris['label'] ?? ''));
+                $hasil[] = ['id' => $id, 'label' => $label !== '' ? $label : self::labelDariId($id)];
+            }
+        }
+        if ($hasil === []) {
+            $id = (string) config('ai.gemini.nama_model', 'gemini-2.0-flash');
+            $hasil[] = ['id' => $id, 'label' => self::labelDariId($id)];
+        }
+
+        return $hasil;
+    }
+
     /**
      * @return list<array{id: string, label: string}>
      */
     public static function daftarModel(): array
     {
+        if (self::penyedia() === 'gemini') {
+            return self::daftarModelGemini();
+        }
+
         $dariDb = self::daftarModelDariDatabase();
         if ($dariDb !== []) {
             return $dariDb;
@@ -92,6 +138,15 @@ final class AiModelCatalog
 
     public static function modelDefault(): string
     {
+        if (self::penyedia() === 'gemini') {
+            $utama = trim((string) config('ai.gemini.nama_model', ''));
+            if ($utama !== '' && self::modelDiizinkan($utama)) {
+                return $utama;
+            }
+
+            return self::daftarModel()[0]['id'];
+        }
+
         $utamaDb = self::modelUtamaDariDatabase();
         if ($utamaDb !== null && self::modelDiizinkan($utamaDb)) {
             return $utamaDb;
@@ -211,7 +266,7 @@ final class AiModelCatalog
     public static function rantaiFallback(?string $modelPilihan): array
     {
         $utama = self::selesaikan($modelPilihan);
-        if (! config('ai.openrouter.fallback_otomatis', true)) {
+        if (! self::fallbackOtomatis()) {
             return [$utama];
         }
 

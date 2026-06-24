@@ -307,6 +307,35 @@
             </div>
 
             <div class="card-depth rounded-xl bg-surface-container-lowest p-8 xl:col-span-2">
+                <p class="mb-2 text-section-header uppercase text-on-surface-variant">Strategi agregasi antar PK (per alat)</p>
+                <p class="mb-6 text-xs text-on-surface-variant">
+                    Saat satu alat punya beberapa perilaku kunci untuk satu kompetensi, tentukan cara menggabungkannya menjadi satu tingkat sebelum dirata-rata-tertimbang antar alat. Mempengaruhi hasil pratinjau — klik «Hitung ulang pratinjau» setelah mengubah.
+                </p>
+                @can('update', $asesmen)
+                    @if ($asesmen->status === \App\Enums\AssessmentStatus::SelesaiFinal)
+                        <p class="text-sm italic text-on-surface-variant/70">Asesmen sudah difinalisasi; strategi terkunci.</p>
+                    @else
+                        <form method="POST" action="{{ route('asesmen.strategi-agregasi.update', $asesmen) }}" class="max-w-md space-y-2">
+                            @csrf
+                            @method('PATCH')
+                            <select
+                                name="strategi_agregasi_alat"
+                                class="w-full rounded-lg border border-outline-variant/40 bg-surface-container-low px-3 py-2 text-sm text-on-surface"
+                                onchange="this.form.submit()"
+                            >
+                                @foreach ($opsiStrategiAgregasi as $opsi)
+                                    <option value="{{ $opsi->value }}" @selected($strategiAgregasiAktif === $opsi)>{{ $opsi->label() }}</option>
+                                @endforeach
+                            </select>
+                        </form>
+                    @endif
+                @else
+                    <p class="text-sm font-bold text-primary">{{ $strategiAgregasiAktif->label() }}</p>
+                @endcan
+                <p class="mt-4 text-sm italic leading-relaxed text-on-surface-variant/70">{{ $strategiAgregasiAktif->deskripsiSingkat() }}</p>
+            </div>
+
+            <div class="card-depth rounded-xl bg-surface-container-lowest p-8 xl:col-span-2">
                 <p class="mb-2 text-section-header uppercase text-on-surface-variant">Template prompt AI</p>
                 <p class="mb-6 text-xs text-on-surface-variant">Default dari master (per alat), dapat di-override per asesmen. Analisis AI memakai template sesuai alat bukti/payload.</p>
                 @if (($opsiTemplatePromptAi ?? []) === [])
@@ -489,16 +518,26 @@
         <section class="space-y-6">
             <div class="flex flex-wrap items-center justify-between gap-3">
                 <h2 class="font-display text-xl font-bold text-on-surface">Mapping Perilaku Kunci</h2>
-                @if (! $asesmen->keyBehaviors->isEmpty())
-                    <button
-                        type="button"
-                        data-open-modal="modal-unduh-mapping-pk"
-                        class="inline-flex items-center gap-2 rounded-lg border border-outline-variant/40 bg-surface-container-lowest px-4 py-2 text-sm font-semibold text-on-surface shadow-sm transition-colors hover:bg-surface-container-low"
+                <div class="flex flex-wrap items-center gap-2">
+                    <a
+                        href="{{ route('asesmen.laporan-pdf', $asesmen) }}"
+                        class="inline-flex items-center gap-2 rounded-lg bg-primary px-4 py-2 text-sm font-semibold text-on-primary shadow-sm transition-colors hover:opacity-90"
+                        title="Unduh laporan hasil asesmen peserta (PDF)"
                     >
-                        <span class="material-symbols-outlined text-base">download</span>
-                        Unduh Data
-                    </button>
-                @endif
+                        <span class="material-symbols-outlined text-base">picture_as_pdf</span>
+                        Laporan PDF
+                    </a>
+                    @if (! $asesmen->keyBehaviors->isEmpty())
+                        <button
+                            type="button"
+                            data-open-modal="modal-unduh-mapping-pk"
+                            class="inline-flex items-center gap-2 rounded-lg border border-outline-variant/40 bg-surface-container-lowest px-4 py-2 text-sm font-semibold text-on-surface shadow-sm transition-colors hover:bg-surface-container-low"
+                        >
+                            <span class="material-symbols-outlined text-base">download</span>
+                            Unduh Data
+                        </button>
+                    @endif
+                </div>
             </div>
             @error('perilaku_kunci')
                 <p class="rounded-lg border border-error/30 bg-error-container/20 px-4 py-2 text-sm text-on-error-container">{{ $message }}</p>
@@ -521,14 +560,20 @@
                                 </tr>
                             </thead>
                             <tbody class="divide-y divide-outline-variant/10">
-                                @foreach ($asesmen->keyBehaviors as $pk)
+                                @foreach ($asesmen->keyBehaviors->sortBy(fn ($p) => [$p->tervalidasi ? 1 : 0, $p->keyakinan ?? 1]) as $pk)
                                     @php
                                         $badgeSumber = KeyBehaviorPresentation::badgeSumber($pk, $idPerilakuDariBulkAi);
                                         $badgeStatus = KeyBehaviorPresentation::badgeStatus($pk);
                                         $dariAi = $badgeSumber['label'] === 'AI';
                                         $kutipan = $pk->kutipan_referensi ?: (is_array($pk->evidence?->ai_muatan) ? ($pk->evidence->ai_muatan['kutipan_dari_teks_mentah'] ?? null) : null);
+                                        // E-5: keyakinan & penanda "perlu ditinjau" untuk usulan AI keyakinan rendah.
+                                        $keyakinan = $pk->keyakinan;
+                                        $keyakinanRendah = $keyakinan !== null && $keyakinan < ($ambangKeyakinanRendah ?? 0.5) && ! $pk->tervalidasi;
+                                        // E-6: indikator resmi sebagai referensi sekunder bila teks utama berbeda.
+                                        $indikatorResmi = $pk->competencyLevel?->indikator_perilaku;
+                                        $tampilkanIndikator = $indikatorResmi && trim((string) $indikatorResmi) !== trim((string) $pk->teks_perilaku);
                                     @endphp
-                                    <tr class="transition-colors hover:bg-surface-container-lowest {{ $dariAi ? 'bg-primary-fixed/15' : '' }} {{ ! $pk->tervalidasi ? 'opacity-95' : '' }}">
+                                    <tr class="transition-colors hover:bg-surface-container-lowest {{ $dariAi ? 'bg-primary-fixed/15' : '' }} {{ ! $pk->tervalidasi ? 'opacity-95' : '' }} {{ $keyakinanRendah ? 'ring-1 ring-inset ring-amber-300/60' : '' }}">
                                         <td class="px-4 py-6 align-top">
                                             <span class="text-xs font-bold text-on-surface">{{ $pk->tool?->kode ?? '—' }}</span>
                                         </td>
@@ -571,10 +616,21 @@
                                         </td>
                                         <td class="px-4 py-6 align-top text-center">
                                             <span data-pk-status-badge class="inline-block rounded-full border px-2.5 py-1 text-[10px] font-bold {{ $badgeStatus['kelas'] }}">{{ $badgeStatus['label'] }}</span>
+                                            @if ($keyakinan !== null)
+                                                <p class="mt-2 text-[10px] font-semibold text-on-surface-variant" title="Keyakinan AI atas usulan ini">Keyakinan {{ round($keyakinan * 100) }}%</p>
+                                            @endif
+                                            @if ($keyakinanRendah)
+                                                <p class="mt-1 inline-flex rounded-full border border-amber-300 bg-amber-50 px-2 py-0.5 text-[10px] font-bold text-amber-800" title="Keyakinan AI di bawah ambang — prioritaskan untuk ditinjau">perlu ditinjau</p>
+                                            @endif
                                         </td>
                                         <td class="space-y-4 px-4 py-6 align-top">
                                             <div class="space-y-2">
                                                 <p class="font-bold leading-tight text-on-surface">{{ $pk->teks_perilaku }}</p>
+                                                @if ($tampilkanIndikator)
+                                                    <p class="text-xs leading-relaxed text-on-surface-variant/70">
+                                                        <span class="font-semibold">Indikator resmi (L{{ $pk->competencyLevel->tingkat }}):</span> {{ $indikatorResmi }}
+                                                    </p>
+                                                @endif
                                                 @if ($pk->alasan_pemilihan)
                                                     <p class="text-sm leading-relaxed text-on-surface-variant">{{ $pk->alasan_pemilihan }}</p>
                                                 @endif
@@ -671,6 +727,8 @@
             'integrasiPratinjau' => $integrasiPratinjau ?? collect(),
             'isFinal' => $isFinal,
             'isDraft' => $isDraft,
+            'pratinjauKedaluwarsa' => $pratinjauKedaluwarsa ?? false,
+            'strategiAgregasiAktif' => $strategiAgregasiAktif,
         ])
         </div>
 

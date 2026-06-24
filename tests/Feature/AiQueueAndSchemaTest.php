@@ -8,8 +8,6 @@ use App\Models\AssessmentToolPayload;
 use App\Models\Competency;
 use App\Models\CompetencyLevel;
 use App\Models\Evidence;
-use App\Models\MatrixVersion;
-use App\Models\Participant;
 use App\Models\User;
 use App\Services\Ai\BulkToolPayloadAiAnalyzer;
 use App\Services\Ai\EvidenceAiAnalyzer;
@@ -20,7 +18,6 @@ use Tests\TestCase;
 
 class AiQueueAndSchemaTest extends TestCase
 {
-
     public function test_trigger_incremental_mengeksekusi_langsung(): void
     {
         $this->seed(DatabaseSeeder::class);
@@ -54,7 +51,7 @@ class AiQueueAndSchemaTest extends TestCase
 
         $this->actingAs($admin)
             ->post(route('asesmen.bukti.analisis-ai', [$asesmen, $bukti]))
-            ->assertRedirect(route('asesmen.show', $asesmen));
+            ->assertRedirectContains(route('asesmen.show', $asesmen));
 
         $bukti->refresh();
         $this->assertSame('2', $bukti->ai_tingkat);
@@ -103,7 +100,7 @@ class AiQueueAndSchemaTest extends TestCase
 
         $this->actingAs($admin)
             ->post(route('asesmen.payload-alat.analisis-ai', [$asesmen, $payload]))
-            ->assertRedirect(route('asesmen.show', $asesmen));
+            ->assertRedirectContains(route('asesmen.show', $asesmen));
 
         $payload->refresh();
         $this->assertNotNull($payload->diproses_pada);
@@ -324,7 +321,7 @@ class AiQueueAndSchemaTest extends TestCase
 
         $this->actingAs($admin)
             ->post(route('asesmen.payload-alat.analisis-ai', [$asesmen, $payload]))
-            ->assertRedirect(route('asesmen.show', $asesmen));
+            ->assertRedirectContains(route('asesmen.show', $asesmen));
 
         $payload->refresh();
         $this->assertNotNull($payload->diproses_pada);

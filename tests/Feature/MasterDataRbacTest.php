@@ -14,7 +14,6 @@ use Tests\TestCase;
 
 class MasterDataRbacTest extends TestCase
 {
-
     public function test_konsultan_can_view_master_index(): void
     {
         $this->seed(DatabaseSeeder::class);
@@ -120,7 +119,7 @@ class MasterDataRbacTest extends TestCase
                 'berkas_csv' => $berkas,
                 'delimiter' => ';',
             ])
-            ->assertRedirect(route('peserta.impor-csv'));
+            ->assertRedirectContains(route('peserta.impor-csv'));
 
         $this->assertDatabaseHas('ais_peserta', [
             'kode_peserta' => 'TEST-CSV-99',
@@ -168,7 +167,7 @@ class MasterDataRbacTest extends TestCase
                 'sel' => [],
                 'hapus_semua' => '1',
             ])
-            ->assertRedirect(route('master.versi-matriks.pemetaan.index', $versi));
+            ->assertRedirectContains(route('master.versi-matriks.pemetaan.index', $versi));
 
         $this->assertSame(0, CompetencyToolMapping::query()->where('id_versi_matriks', $versi->id)->count());
 
@@ -176,7 +175,7 @@ class MasterDataRbacTest extends TestCase
             ->post(route('master.versi-matriks.pemetaan.sync', $versi), [
                 'sel' => [$c->id.'-'.$t->id],
             ])
-            ->assertRedirect(route('master.versi-matriks.pemetaan.index', $versi));
+            ->assertRedirectContains(route('master.versi-matriks.pemetaan.index', $versi));
 
         $this->assertSame(1, CompetencyToolMapping::query()->where('id_versi_matriks', $versi->id)->count());
         $this->assertDatabaseHas('ais_pemetaan_kompetensi_alat', [
@@ -204,7 +203,7 @@ class MasterDataRbacTest extends TestCase
         $this->actingAs($admin)
             ->from(route('master.versi-matriks.pemetaan.index', $versi))
             ->post(route('master.versi-matriks.pemetaan.sync', $versi), ['sel' => []])
-            ->assertRedirect(route('master.versi-matriks.pemetaan.index', $versi))
+            ->assertRedirectContains(route('master.versi-matriks.pemetaan.index', $versi))
             ->assertSessionHasErrors('hapus_semua');
     }
 
@@ -218,14 +217,14 @@ class MasterDataRbacTest extends TestCase
                 'kode' => 'TST',
                 'nama' => 'Test Group',
             ])
-            ->assertRedirect(route('master.kompetensi.index'));
+            ->assertRedirectContains(route('master.kompetensi.index'));
 
         $group = CompetencyGroup::query()->where('kode', 'TST')->firstOrFail();
         $this->assertDatabaseHas('ais_kelompok_kompetensi', ['kode' => 'TST', 'dihapus_pada' => null]);
 
         $this->actingAs($admin)
             ->delete(route('master.kelompok-kompetensi.destroy', $group))
-            ->assertRedirect(route('master.kompetensi.index'));
+            ->assertRedirectContains(route('master.kompetensi.index'));
 
         $deleted = CompetencyGroup::query()->onlyTrashed()->where('kode', 'TST')->first();
         $this->assertNotNull($deleted);

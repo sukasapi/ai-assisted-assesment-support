@@ -15,7 +15,7 @@ class EnsureUserHasRole
     {
         $user = $request->user();
 
-        if ($user === null || ! in_array($user->role, $roles, true)) {
+        if ($user === null || ! $user->hasPeran(...$roles)) {
             abort(Response::HTTP_FORBIDDEN);
         }
 

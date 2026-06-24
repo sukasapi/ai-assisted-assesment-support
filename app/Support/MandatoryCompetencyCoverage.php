@@ -4,9 +4,9 @@ namespace App\Support;
 
 use App\Models\Assessment;
 use App\Models\AssessmentToolSelection;
-use App\Models\CompetencyToolMapping;
 use App\Models\KeyBehavior;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Collection;
 
 /**
@@ -50,8 +50,7 @@ class MandatoryCompetencyCoverage
             return collect();
         }
 
-        return CompetencyToolMapping::query()
-            ->where('id_versi_matriks', $asesmen->id_versi_matriks)
+        return AssessmentMatrix::mappingQuery($asesmen)
             ->whereIn('id_alat_penilaian', $idAlatAktif)
             ->where(function (Builder $query): void {
                 $query->where('aktif', true)->orWhereNull('aktif');
@@ -90,16 +89,15 @@ class MandatoryCompetencyCoverage
 
         $idKurang = $idKompetensiWajib->diff($idTerpenuhi)->values();
 
-        $mapWajib = CompetencyToolMapping::query()
-            ->where('id_versi_matriks', $asesmen->id_versi_matriks)
+        $mapWajib = AssessmentMatrix::mappingQuery($asesmen)
             ->whereIn('id_kompetensi', $idKurang->all())
             ->where('wajib', true)
             ->with('competency')
             ->get();
 
         $kompetensiKurang = $mapWajib
-            ->filter(fn (CompetencyToolMapping $m): bool => $idKurang->contains($m->id_kompetensi))
-            ->map(fn (CompetencyToolMapping $m): array => [
+            ->filter(fn (Model $m): bool => $idKurang->contains($m->id_kompetensi))
+            ->map(fn (Model $m): array => [
                 'kode' => (string) ($m->competency?->kode_kompetensi ?? '-'),
                 'nama' => (string) ($m->competency?->nama ?? 'Kompetensi'),
             ])
@@ -139,14 +137,13 @@ class MandatoryCompetencyCoverage
             return [];
         }
 
-        return CompetencyToolMapping::query()
-            ->where('id_versi_matriks', $asesmen->id_versi_matriks)
+        return AssessmentMatrix::mappingQuery($asesmen)
             ->whereIn('id_alat_penilaian', $idAlatAktif)
             ->where(function (Builder $query): void {
                 $query->where('aktif', true)->orWhereNull('aktif');
             })
             ->get(['id_kompetensi', 'id_alat_penilaian'])
-            ->map(fn (CompetencyToolMapping $m): array => [
+            ->map(fn (Model $m): array => [
                 'id_kompetensi' => (int) $m->id_kompetensi,
                 'id_alat_penilaian' => (int) $m->id_alat_penilaian,
             ])
@@ -163,14 +160,13 @@ class MandatoryCompetencyCoverage
             return collect();
         }
 
-        return CompetencyToolMapping::query()
-            ->where('id_versi_matriks', $asesmen->id_versi_matriks)
+        return AssessmentMatrix::mappingQuery($asesmen)
             ->whereIn('id_alat_penilaian', $idAlatAktif)
             ->where(function (Builder $query): void {
                 $query->where('aktif', true)->orWhereNull('aktif');
             })
             ->with(['competency', 'tool'])
             ->get()
-            ->keyBy(fn (CompetencyToolMapping $m): string => $m->id_kompetensi.'-'.$m->id_alat_penilaian);
+            ->keyBy(fn (Model $m): string => $m->id_kompetensi.'-'.$m->id_alat_penilaian);
     }
 }

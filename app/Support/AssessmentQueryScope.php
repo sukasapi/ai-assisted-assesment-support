@@ -14,7 +14,7 @@ final class AssessmentQueryScope
      */
     public static function untukPengguna(Builder $query, User $user): Builder
     {
-        if ($user->role === 'admin') {
+        if ($user->isAdmin()) {
             return $query;
         }
 

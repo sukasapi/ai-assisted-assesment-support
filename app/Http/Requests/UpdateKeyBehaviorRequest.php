@@ -7,6 +7,7 @@ use App\Models\Assessment;
 use App\Models\CompetencyLevel;
 use App\Models\KeyBehavior;
 use Illuminate\Foundation\Http\FormRequest;
+use Illuminate\Validation\Rule;
 
 class UpdateKeyBehaviorRequest extends FormRequest
 {
@@ -34,7 +35,7 @@ class UpdateKeyBehaviorRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'id_tingkat_kompetensi' => ['nullable', 'integer', 'exists:ais_tingkat_kompetensi,id'],
+            'id_tingkat_kompetensi' => ['nullable', 'integer', Rule::exists('ais_tingkat_kompetensi', 'id')->whereNull('dihapus_pada')],
             'alasan_pemilihan' => ['nullable', 'string'],
             'simpan_sebagai_mapping' => ['sometimes', 'boolean'],
         ];

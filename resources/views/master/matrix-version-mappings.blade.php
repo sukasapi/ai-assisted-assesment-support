@@ -11,7 +11,7 @@
             <span class="text-on-surface-variant/70">·</span>
             {{ $versiMatriks->nama_versi }}
         </p>
-        @if (auth()->user()->role === 'admin')
+        @if (auth()->user()?->isAdmin())
             <p class="mt-2 max-w-2xl text-xs text-on-surface-variant">
                 Kompetensi dikelompokkan menurut kelompok (inti, manajerial, kepemimpinan). Hanya kombinasi <strong>kompetensi &amp; alat aktif</strong> yang tampil di kisi. Centang alat per baris lalu simpan. Pasangan baru: bobot 1, tidak wajib, aktif.
             </p>
@@ -37,7 +37,7 @@
                 Tidak ada kelompok kompetensi dengan data kompetensi aktif.
             @endif
         </div>
-    @elseif (auth()->user()->role === 'admin')
+    @elseif (auth()->user()?->isAdmin())
         <x-ui.table-toolbar placeholder="Cari kode atau nama kompetensi..." />
 
         <form method="POST" action="{{ route('master.versi-matriks.pemetaan.sync', $versiMatriks) }}" class="space-y-4">

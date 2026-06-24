@@ -7,11 +7,11 @@ use App\Models\AiLog;
 use App\Models\AssessmentToolPayload;
 use App\Models\Competency;
 use App\Models\CompetencyLevel;
-use App\Models\CompetencyToolMapping;
 use App\Models\KeyBehavior;
 use App\Models\User;
 use App\Support\AiModelCatalog;
 use App\Support\AiPromptComposer;
+use App\Support\AssessmentMatrix;
 use App\Support\BulkTextNormalizer;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Support\Facades\DB;
@@ -20,7 +20,7 @@ use Illuminate\Support\Facades\Log;
 class BulkToolPayloadAiAnalyzer
 {
     public function __construct(
-        private readonly OpenRouterClient $client,
+        private readonly ChatClientContract $client,
     ) {}
 
     /**
@@ -39,7 +39,11 @@ class BulkToolPayloadAiAnalyzer
         if ($kompetensi->isEmpty()) {
             return $this->gagal($payload, 'Tidak ada kompetensi aktif pada pemetaan matriks untuk alat payload ini.');
         }
-        $daftarKode = $kompetensi->map(fn (Competency $c): string => $c->kode_kompetensi.' — '.$c->nama)->implode("\n");
+        $daftarKode = $kompetensi->map(function (Competency $c): string {
+            $maxLevel = max(1, (int) ($c->tingkat_maksimum ?? 6));
+
+            return $c->kode_kompetensi.' — '.$c->nama.' (skala tingkat 1–'.$maxLevel.')';
+        })->implode("\n");
 
         $teks = BulkTextNormalizer::canonicalPayloadMuatan(
             $payload->teks_muatan_rich,
@@ -92,7 +96,7 @@ SYS;
                     ['role' => 'user', 'content' => $penggunaMsg],
                 ],
                 $namaModel,
-                config('ai.openrouter.maks_token_keluaran_bulk'),
+                config('ai.'.config('ai.penyedia', 'openrouter').'.maks_token_keluaran_bulk'),
             );
             $response = $hasilApi['response'];
             $latency = $hasilApi['latency_ms'];
@@ -175,8 +179,13 @@ SYS;
             }
             [, $kutipan] = $kutipanDitemukan;
 
+            // L-6: validasi tingkat terhadap skala NYATA kompetensi (tingkat_maksimum),
+            // bukan asumsi 1–6. Usulan di atas plafon kompetensi dibuang (jangan menebak).
+            /** @var Competency|null $kompetensiUntukSkala */
+            $kompetensiUntukSkala = $byKode->get($kode);
+            $maxLevelKompetensi = max(1, (int) ($kompetensiUntukSkala?->tingkat_maksimum ?? 6));
             $tingkatAngka = isset($item['tingkat']) && is_numeric($item['tingkat']) ? (int) $item['tingkat'] : null;
-            if ($tingkatAngka !== null && ($tingkatAngka < 1 || $tingkatAngka > 6)) {
+            if ($tingkatAngka !== null && ($tingkatAngka < 1 || $tingkatAngka > $maxLevelKompetensi)) {
                 $tingkatAngka = null;
             }
 
@@ -271,7 +280,12 @@ SYS;
                 $alasan = trim((string) ($row['alasan'] ?? ''));
                 $kutipan = trim((string) ($row['kutipan'] ?? ''));
                 $idTingkatRow = $row['id_tingkat_kompetensi'] !== null ? (int) $row['id_tingkat_kompetensi'] : null;
-                $teksPk = CompetencyLevel::teksIndikatorResmi($idTingkatRow) ?? $row['teks_perilaku'];
+                // E-6: pertahankan observasi spesifik AI sebagai teks perilaku utama;
+                // indikator resmi tetap tersedia sebagai referensi sekunder lewat relasi tingkat.
+                $teksPk = trim((string) ($row['teks_perilaku'] ?? '')) !== ''
+                    ? trim((string) $row['teks_perilaku'])
+                    : (CompetencyLevel::teksIndikatorResmi($idTingkatRow) ?? '');
+                $keyakinan = $row['keyakinan'] !== null ? max(0.0, min(1.0, (float) $row['keyakinan'])) : null;
 
                 $pk = KeyBehavior::query()->firstOrNew([
                     'id_asesmen' => $payload->id_asesmen,
@@ -285,6 +299,7 @@ SYS;
                     'teks_perilaku' => $teksPk,
                     'alasan_pemilihan' => $alasan !== '' ? $alasan : null,
                     'kutipan_referensi' => $kutipan !== '' ? $kutipan : null,
+                    'keyakinan' => $keyakinan,
                 ]);
 
                 if (! $pk->exists) {
@@ -321,34 +336,26 @@ SYS;
      */
     private function kompetensiDiperbolehkan(AssessmentToolPayload $payload): Collection
     {
-        $idVersi = $payload->assessment?->id_versi_matriks;
+        $asesmen = $payload->assessment;
         $idAlat = (int) $payload->id_alat_penilaian;
 
-        if ($idVersi === null) {
-            return Competency::query()
-                ->where('aktif', true)
-                ->orderBy('kode_kompetensi')
-                ->get(['id', 'kode_kompetensi', 'nama']);
+        // Tanpa asesmen/versi matriks tidak ada kisi pemetaan resmi → jangan izinkan usulan apa pun
+        // (cegah pembuatan perilaku kunci di luar rancangan matriks).
+        if ($asesmen === null || $asesmen->id_versi_matriks === null) {
+            return new Collection;
         }
 
-        $idKompetensi = CompetencyToolMapping::query()
-            ->where('id_versi_matriks', $idVersi)
+        // Pakai pemetaan EFEKTIF asesmen (snapshot bila ada, jika tidak matriks hidup).
+        // "Aktif" konsisten dengan validator bukti/PK: aktif=true ATAU aktif=NULL.
+        // Hanya kompetensi yang dipetakan ke ALAT INI; tanpa fallback ke seluruh matriks.
+        $idKompetensi = AssessmentMatrix::mappingQuery($asesmen)
             ->where('id_alat_penilaian', $idAlat)
-            ->where('aktif', true)
-            ->whereNull('dihapus_pada')
+            ->where(function ($query): void {
+                $query->where('aktif', true)->orWhereNull('aktif');
+            })
             ->pluck('id_kompetensi')
             ->unique()
             ->values();
-
-        if ($idKompetensi->isEmpty()) {
-            $idKompetensi = CompetencyToolMapping::query()
-                ->where('id_versi_matriks', $idVersi)
-                ->where('aktif', true)
-                ->whereNull('dihapus_pada')
-                ->pluck('id_kompetensi')
-                ->unique()
-                ->values();
-        }
 
         if ($idKompetensi->isEmpty()) {
             return new Collection;
@@ -358,7 +365,7 @@ SYS;
             ->whereIn('id', $idKompetensi)
             ->where('aktif', true)
             ->orderBy('kode_kompetensi')
-            ->get(['id', 'kode_kompetensi', 'nama']);
+            ->get(['id', 'kode_kompetensi', 'nama', 'tingkat_maksimum']);
     }
 
     /**

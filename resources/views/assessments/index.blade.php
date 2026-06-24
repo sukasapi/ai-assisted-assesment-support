@@ -5,7 +5,7 @@
 @section('content')
     <x-ui.page-header title="Asesmen">
         <x-slot:actions>
-            @if (auth()->user()->role === 'konsultan' && $penugasanKonsultan)
+            @if (auth()->user()?->isKonsultan() && $penugasanKonsultan)
                 <form method="POST" action="{{ route('asesmen.token.clear') }}" class="inline">
                     @csrf
                     <x-ui.button type="submit" variant="secondary">Ganti token</x-ui.button>
@@ -17,7 +17,7 @@
                     Buat asesmen
                 </x-ui.button>
             @endcan
-            @if (auth()->user()->role === 'admin')
+            @if (auth()->user()?->isAdmin())
                 <x-ui.button href="{{ route('sesi-asesmen.index') }}" variant="secondary">
                     <span class="material-symbols-outlined text-lg">event</span>
                     Sesi assessment

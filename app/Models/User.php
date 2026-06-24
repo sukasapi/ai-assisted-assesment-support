@@ -6,6 +6,7 @@ namespace App\Models;
 use Database\Factories\UserFactory;
 use Illuminate\Database\Eloquent\Casts\Attribute;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 use Laravel\Sanctum\HasApiTokens;
@@ -63,7 +64,16 @@ class User extends Authenticatable
         return $this->peran === 'konsultan';
     }
 
-    public function consultantAssignments(): \Illuminate\Database\Eloquent\Relations\HasMany
+    /**
+     * Apakah peran pengguna termasuk salah satu yang diberikan.
+     * Sumber otoritatif untuk otorisasi (tanpa accessor `role` yang deprecated).
+     */
+    public function hasPeran(string ...$peran): bool
+    {
+        return in_array((string) $this->peran, $peran, true);
+    }
+
+    public function consultantAssignments(): HasMany
     {
         return $this->hasMany(ConsultantAssignment::class, 'id_pengguna');
     }
@@ -85,15 +95,6 @@ class User extends Authenticatable
         return Attribute::make(
             get: fn (): ?string => $this->attributes['nama'] ?? null,
             set: fn (?string $value): array => ['nama' => $value],
-        );
-    }
-
-    /** @deprecated Gunakan `peran` */
-    protected function role(): Attribute
-    {
-        return Attribute::make(
-            get: fn (): ?string => $this->attributes['peran'] ?? null,
-            set: fn (?string $value): array => ['peran' => $value],
         );
     }
 

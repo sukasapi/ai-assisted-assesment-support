@@ -6,7 +6,7 @@
     </div>
     <div class="flex items-center gap-4">
         <span class="hidden text-sm text-on-surface-variant sm:inline">{{ auth()->user()->name }}</span>
-        <span class="rounded-lg bg-surface-container-low px-2 py-0.5 text-xs font-medium text-on-surface-variant">{{ auth()->user()->role }}</span>
+        <span class="rounded-lg bg-surface-container-low px-2 py-0.5 text-xs font-medium text-on-surface-variant">{{ auth()->user()?->peran }}</span>
         <div class="flex size-9 items-center justify-center rounded-full bg-primary-fixed font-display text-sm font-bold text-primary">
             {{ strtoupper(substr(auth()->user()->name ?? 'U', 0, 1)) }}
         </div>

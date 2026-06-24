@@ -5,6 +5,7 @@ namespace App\Models;
 use App\Enums\AssessmentEvidenceCollectionMode;
 use App\Enums\AssessmentPurpose;
 use App\Enums\AssessmentStatus;
+use App\Enums\AssessmentToolAggregationStrategy;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
@@ -24,6 +25,7 @@ class Assessment extends Model
         'status',
         'tanpa_intray',
         'metode_koleksi_bukti',
+        'strategi_agregasi_alat',
         'id_pengguna_pembuat',
         'id_pengguna_finalisasi',
         'waktu_finalisasi',
@@ -44,11 +46,20 @@ class Assessment extends Model
             'status' => AssessmentStatus::class,
             'tanpa_intray' => 'boolean',
             'metode_koleksi_bukti' => AssessmentEvidenceCollectionMode::class,
+            'strategi_agregasi_alat' => AssessmentToolAggregationStrategy::class,
             'waktu_finalisasi' => 'datetime',
             'job_fit_persen_pratinjau' => 'decimal:2',
             'integrasi_pratinjau_pada' => 'datetime',
             'detail_rekomendasi_agregat' => 'array',
         ];
+    }
+
+    /**
+     * Asesmen sudah difinalisasi (terkunci dari mutasi bukti/PK/payload/AI).
+     */
+    public function isFinal(): bool
+    {
+        return $this->status === AssessmentStatus::SelesaiFinal;
     }
 
     public function lastRecommendationConfigRevision(): BelongsTo

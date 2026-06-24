@@ -7,7 +7,7 @@ use App\Enums\AssessmentStatus;
 use App\Enums\EvidenceSourceType;
 use App\Models\Assessment;
 use App\Models\AssessmentToolSelection;
-use App\Models\CompetencyToolMapping;
+use App\Support\AssessmentMatrix;
 use Illuminate\Validation\Validator;
 
 trait ValidatesEvidenceForAssessment
@@ -79,8 +79,7 @@ trait ValidatesEvidenceForAssessment
             $validator->errors()->add('id_alat_penilaian', 'Alat tidak termasuk pemilihan asesmen ini.');
         }
 
-        $dipakaiMatriks = CompetencyToolMapping::query()
-            ->where('id_versi_matriks', $asesmen->id_versi_matriks)
+        $dipakaiMatriks = AssessmentMatrix::mappingQuery($asesmen)
             ->where('id_alat_penilaian', $idAlat)
             ->where(function ($query): void {
                 $query->where('aktif', true)->orWhereNull('aktif');
@@ -91,8 +90,7 @@ trait ValidatesEvidenceForAssessment
         }
 
         $idKompetensi = $this->integer('id_kompetensi');
-        $pasanganValid = CompetencyToolMapping::query()
-            ->where('id_versi_matriks', $asesmen->id_versi_matriks)
+        $pasanganValid = AssessmentMatrix::mappingQuery($asesmen)
             ->where('id_alat_penilaian', $idAlat)
             ->where('id_kompetensi', $idKompetensi)
             ->where(function ($query): void {

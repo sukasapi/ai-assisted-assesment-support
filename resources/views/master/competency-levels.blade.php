@@ -8,7 +8,7 @@
             <a href="{{ route('master.index') }}" class="text-sm text-on-surface-variant hover:text-primary">&larr; Master data</a>
             <h1 class="mt-2 text-2xl font-semibold text-on-surface">Tingkat kompetensi</h1>
         </div>
-        @if (auth()->user()->role === 'admin')
+        @if (auth()->user()?->isAdmin())
             <a href="{{ route('master.tingkat-kompetensi.create') }}" class="rounded-lg accent-gradient px-3 py-2 text-sm font-medium text-white hover:opacity-90">Tambah</a>
         @endif
     </div>
@@ -19,7 +19,7 @@
                     <th class="px-4 py-3">Kompetensi</th>
                     <th class="px-4 py-3">Tingkat</th>
                     <th class="px-4 py-3">Indikator</th>
-                    @if (auth()->user()->role === 'admin')
+                    @if (auth()->user()?->isAdmin())
                         <th class="px-4 py-3 text-right">Aksi</th>
                     @endif
                 </tr>
@@ -30,7 +30,7 @@
                         <td class="px-4 py-3 font-mono text-on-surface">{{ $row->competency?->kode_kompetensi ?? '—' }}</td>
                         <td class="px-4 py-3 text-on-surface-variant">{{ $row->tingkat }}</td>
                         <td class="px-4 py-3 text-on-surface-variant">{{ \Illuminate\Support\Str::limit($row->indikator_perilaku, 120) }}</td>
-                        @if (auth()->user()->role === 'admin')
+                        @if (auth()->user()?->isAdmin())
                             <td class="px-4 py-3 text-right">
                                 <a href="{{ route('master.tingkat-kompetensi.edit', $row) }}" class="text-on-surface-variant underline">Ubah</a>
                                 <form

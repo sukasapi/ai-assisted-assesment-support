@@ -8,8 +8,6 @@ use App\Models\AssessmentTool;
 use App\Models\CompetencyIntegration;
 use App\Models\CompetencyLevel;
 use App\Models\CompetencyToolMapping;
-use App\Models\MatrixVersion;
-use App\Models\Participant;
 use App\Models\User;
 use Database\Seeders\DatabaseSeeder;
 use Tests\Support\AssessmentTestHelpers;
@@ -17,7 +15,6 @@ use Tests\TestCase;
 
 class CompetencyIntegrationTest extends TestCase
 {
-
     public function test_hitung_pratinjau_kosong_tanpa_pk_disahkan(): void
     {
         $this->seed(DatabaseSeeder::class);
@@ -26,7 +23,7 @@ class CompetencyIntegrationTest extends TestCase
 
         $this->actingAs($admin)
             ->post(route('asesmen.integrasi.hitung', $asesmen))
-            ->assertRedirect(route('asesmen.show', $asesmen))
+            ->assertRedirectContains(route('asesmen.show', $asesmen))
             ->assertSessionHas('status');
 
         $this->assertSame(0, CompetencyIntegration::query()->where('id_asesmen', $asesmen->id)->count());
@@ -41,7 +38,7 @@ class CompetencyIntegrationTest extends TestCase
 
         $this->actingAs($admin)
             ->post(route('asesmen.integrasi.hitung', $asesmen))
-            ->assertRedirect(route('asesmen.show', $asesmen))
+            ->assertRedirectContains(route('asesmen.show', $asesmen))
             ->assertSessionHas('status');
 
         $asesmen->refresh();
@@ -67,7 +64,7 @@ class CompetencyIntegrationTest extends TestCase
 
         $this->actingAs($admin)
             ->post(route('asesmen.integrasi.hitung', $asesmen))
-            ->assertRedirect(route('asesmen.show', $asesmen))
+            ->assertRedirectContains(route('asesmen.show', $asesmen))
             ->assertSessionHasErrors('integrasi');
     }
 

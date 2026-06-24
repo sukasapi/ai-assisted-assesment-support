@@ -83,65 +83,110 @@ class ParticipantImportController extends Controller
             }
         }
 
+        // Batas baris (cegah transaksi sangat panjang / timeout) & commit per-chunk
+        // agar berkas besar tidak mengunci tabel dalam satu transaksi raksasa.
+        $maksBaris = (int) config('integrasi.impor_maks_baris', 10000);
+        $ukuranChunk = 500;
+
         $jumlah = 0;
-        DB::transaction(function () use ($handle, $indeks, $separator, &$jumlah): void {
-            while (($data = fgetcsv($handle, 0, $separator)) !== false) {
-                if (count(array_filter($data, fn ($v) => $v !== null && $v !== '')) === 0) {
-                    continue;
-                }
+        $terlampaui = false;
+        $buffer = [];
+        $cacheVersi = [];
 
-                $ambil = function (string $k) use ($indeks, $data): ?string {
-                    if (! isset($indeks[$k])) {
-                        return null;
-                    }
-                    $i = $indeks[$k];
-                    $v = $data[$i] ?? null;
-
-                    return $v !== null && $v !== '' ? trim((string) $v) : null;
-                };
-
-                $kode = $ambil('kode_peserta');
-                $nama = $ambil('nama_lengkap');
-                if ($kode === null || $nama === null) {
-                    continue;
-                }
-
-                $idVersi = null;
-                $kodeVersi = $ambil('kode_versi_matriks');
-                if ($kodeVersi !== null) {
-                    $idVersi = MatrixVersion::query()->where('kode_versi', $kodeVersi)->value('id');
-                }
-
-                $tanggalLahir = null;
-                $tl = $ambil('tanggal_lahir');
-                if ($tl !== null) {
-                    try {
-                        $tanggalLahir = Carbon::parse($tl)->format('Y-m-d');
-                    } catch (\Throwable) {
-                        $tanggalLahir = null;
-                    }
-                }
-
-                Participant::query()->updateOrCreate(
-                    ['kode_peserta' => $kode],
-                    [
-                        'nama_lengkap' => $nama,
-                        'alamat_surel' => $ambil('alamat_surel'),
-                        'jabatan' => $ambil('jabatan'),
-                        'pendidikan' => $ambil('pendidikan'),
-                        'tanggal_lahir' => $tanggalLahir,
-                        'id_versi_matriks' => $idVersi,
-                        'aktif' => true,
-                    ]
-                );
-                $jumlah++;
+        $flush = function () use (&$buffer): void {
+            if ($buffer === []) {
+                return;
             }
-        });
+            DB::transaction(function () use (&$buffer): void {
+                foreach ($buffer as $atribut) {
+                    Participant::query()->updateOrCreate(
+                        ['kode_peserta' => $atribut['kode_peserta']],
+                        $atribut['nilai'],
+                    );
+                }
+            });
+            $buffer = [];
+        };
 
+        while (($data = fgetcsv($handle, 0, $separator)) !== false) {
+            if (count(array_filter($data, fn ($v) => $v !== null && $v !== '')) === 0) {
+                continue;
+            }
+
+            $ambil = function (string $k) use ($indeks, $data): ?string {
+                if (! isset($indeks[$k])) {
+                    return null;
+                }
+                $i = $indeks[$k];
+                $v = $data[$i] ?? null;
+
+                return $v !== null && $v !== '' ? trim((string) $v) : null;
+            };
+
+            $kode = $ambil('kode_peserta');
+            $nama = $ambil('nama_lengkap');
+            if ($kode === null || $nama === null) {
+                continue;
+            }
+
+            if ($jumlah >= $maksBaris) {
+                $terlampaui = true;
+                break;
+            }
+
+            $idVersi = null;
+            $kodeVersi = $ambil('kode_versi_matriks');
+            if ($kodeVersi !== null) {
+                if (! array_key_exists($kodeVersi, $cacheVersi)) {
+                    $cacheVersi[$kodeVersi] = MatrixVersion::query()->where('kode_versi', $kodeVersi)->value('id');
+                }
+                $idVersi = $cacheVersi[$kodeVersi];
+            }
+
+            $tanggalLahir = null;
+            $tl = $ambil('tanggal_lahir');
+            if ($tl !== null) {
+                try {
+                    $tanggalLahir = Carbon::parse($tl)->format('Y-m-d');
+                } catch (\Throwable) {
+                    $tanggalLahir = null;
+                }
+            }
+
+            $buffer[] = [
+                'kode_peserta' => $kode,
+                'nilai' => [
+                    'nama_lengkap' => $nama,
+                    'alamat_surel' => $ambil('alamat_surel'),
+                    'jabatan' => $ambil('jabatan'),
+                    'pendidikan' => $ambil('pendidikan'),
+                    'tanggal_lahir' => $tanggalLahir,
+                    'id_versi_matriks' => $idVersi,
+                    'aktif' => true,
+                ],
+            ];
+            $jumlah++;
+
+            if (count($buffer) >= $ukuranChunk) {
+                $flush();
+            }
+        }
+
+        $flush();
         fclose($handle);
+
+        $pesan = "Berhasil memproses {$jumlah} baris peserta.";
+        if ($terlampaui) {
+            $pesan .= " Batas {$maksBaris} baris per unggahan tercapai — sisanya tidak diproses. Pecah berkas menjadi beberapa bagian.";
+
+            return redirect()
+                ->route('peserta.impor-csv')
+                ->with('status', $pesan)
+                ->withErrors(['berkas_csv' => "Hanya {$maksBaris} baris pertama yang diproses. Pecah berkas dan unggah ulang sisanya."]);
+        }
 
         return redirect()
             ->route('peserta.impor-csv')
-            ->with('status', "Berhasil memproses {$jumlah} baris peserta.");
+            ->with('status', $pesan);
     }
 }

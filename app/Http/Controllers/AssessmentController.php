@@ -2,61 +2,62 @@
 
 namespace App\Http\Controllers;
 
-use App\Enums\AssessorAssignmentType;
 use App\Enums\AssessmentEvidenceCollectionMode;
 use App\Enums\AssessmentPurpose;
 use App\Enums\AssessmentStatus;
+use App\Enums\AssessmentToolAggregationStrategy;
+use App\Enums\AssessmentToolPromptMode;
+use App\Enums\AssessorAssignmentType;
 use App\Enums\EvidenceSourceType;
 use App\Enums\EvidenceTranscriptionStatus;
 use App\Http\Requests\StoreAssessmentRequest;
-use App\Http\Requests\UpdateAssessmentRequest;
 use App\Http\Requests\StoreAssessmentToolPayloadRequest;
 use App\Http\Requests\StoreEvidenceRequest;
+use App\Http\Requests\StoreKeyBehaviorRequest;
 use App\Http\Requests\TranscribeEvidencePreviewRequest;
 use App\Http\Requests\TranscribeEvidenceRequest;
-use App\Http\Requests\UpdateEvidenceRequest;
-use App\Http\Requests\StoreKeyBehaviorRequest;
-use App\Enums\AssessmentToolPromptMode;
 use App\Http\Requests\UpdateAssessmentAiPromptTemplateRequest;
-use App\Http\Requests\UpdateAssessmentToolAiPromptRequest;
 use App\Http\Requests\UpdateAssessmentEvidenceCollectionModeRequest;
+use App\Http\Requests\UpdateAssessmentRequest;
+use App\Http\Requests\UpdateAssessmentToolAiPromptRequest;
+use App\Http\Requests\UpdateEvidenceRequest;
 use App\Http\Requests\UpdateKeyBehaviorRequest;
 use App\Models\Assessment;
-use App\Models\AssessmentSession;
 use App\Models\AssessmentAssessor;
+use App\Models\AssessmentSession;
 use App\Models\AssessmentToolPayload;
 use App\Models\AssessmentToolSelection;
 use App\Models\Competency;
 use App\Models\CompetencyGroup;
+use App\Models\CompetencyIntegration;
 use App\Models\CompetencyLevel;
 use App\Models\CompetencyToolMapping;
 use App\Models\Evidence;
 use App\Models\KeyBehavior;
-use App\Models\MatrixVersion;
-use App\Models\Participant;
-use App\Models\User;
 use App\Services\Ai\AiAnalysisDispatcher;
-use App\Support\AiModelCatalog;
-use App\Support\AiPromptComposer;
-use App\Support\AiPromptTemplateResolver;
-use App\Support\KeyBehaviorPresentation;
-use App\Support\PayloadAnalysisPresenter;
-use App\Support\ToolPayloadDeletionGuard;
 use App\Services\Ai\EvidenceAiAnalyzer;
 use App\Services\Assessment\AlatAsesmenPreset;
 use App\Services\Assessment\AssessmentToolAvailabilityDiagnostic;
 use App\Services\Integration\CompetencyIntegrationService;
-use App\Support\AssessmentQueryScope;
-use App\Support\AssessmentShowRedirect;
-use App\Support\ConsultantAccessSession;
-use App\Support\MandatoryCompetencyCoverage;
-use App\Support\TableSearch;
-use App\Support\AiFeature;
-use App\Support\CatatAktivitas;
-use App\Support\BulkTextNormalizer;
-use App\Support\EvidenceTextNormalizer;
 use App\Services\Stt\EvidenceAudioStorage;
 use App\Services\Stt\EvidenceTranscriptionDispatcher;
+use App\Support\AiFeature;
+use App\Support\AiModelCatalog;
+use App\Support\AiPromptComposer;
+use App\Support\AiPromptTemplateResolver;
+use App\Support\AssessmentMatrix;
+use App\Support\AssessmentQueryScope;
+use App\Support\AssessmentShowRedirect;
+use App\Support\BulkTextNormalizer;
+use App\Support\CatatAktivitas;
+use App\Support\ConsultantAccessSession;
+use App\Support\EvidenceTextNormalizer;
+use App\Support\KeyBehaviorPresentation;
+use App\Support\MandatoryCompetencyCoverage;
+use App\Support\PayloadAnalysisPresenter;
+use App\Support\TableSearch;
+use App\Support\ToolPayloadDeletionGuard;
+use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -64,6 +65,7 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\Rule;
 use Illuminate\View\View;
 use Symfony\Component\HttpFoundation\BinaryFileResponse;
+use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\HttpFoundation\StreamedResponse;
 
 class AssessmentController extends Controller
@@ -102,7 +104,7 @@ class AssessmentController extends Controller
         return view('assessments.index', [
             'daftar' => $daftar,
             'daftarSesi' => $daftarSesi,
-            'penugasanKonsultan' => $user?->role === 'konsultan'
+            'penugasanKonsultan' => $user?->isKonsultan()
                 ? ConsultantAccessSession::penugasanAktif($user)
                 : null,
         ]);
@@ -129,7 +131,9 @@ class AssessmentController extends Controller
             ? $request->integer('id_template_prompt_ai')
             : null;
 
-        DB::transaction(function () use ($request, $asesmen, $tujuan, $metode, $idTemplate): void {
+        $matriksLama = (int) $asesmen->id_versi_matriks;
+
+        DB::transaction(function () use ($request, $asesmen, $tujuan, $metode, $idTemplate, $matriksLama): void {
             $asesmen->update([
                 'id_peserta' => $request->integer('id_peserta'),
                 'id_versi_matriks' => $request->integer('id_versi_matriks'),
@@ -138,6 +142,11 @@ class AssessmentController extends Controller
                 'metode_koleksi_bukti' => $metode,
                 'id_template_prompt_ai' => $idTemplate,
             ]);
+
+            // Matriks berganti → bekukan ulang snapshot pemetaan untuk asesmen ini.
+            if ($matriksLama !== (int) $asesmen->id_versi_matriks) {
+                AssessmentMatrix::snapshot($asesmen->fresh());
+            }
 
             $idsAsesor = array_unique(array_map('intval', $request->input('id_asesor', [])));
             $pembuatId = $asesmen->id_pengguna_pembuat;
@@ -262,6 +271,9 @@ class AssessmentController extends Controller
             $row->tanpa_intray
         );
 
+        // Bekukan pemetaan kompetensi–alat (wajib/bobot) saat asesmen dibuat (Feature: snapshot matriks).
+        AssessmentMatrix::snapshot($row);
+
         AiPromptTemplateResolver::inisialisasiAlatAktifBilaPerlu($row);
         if ($idTemplate !== null) {
             AiPromptTemplateResolver::terapkanKeSemuaAlatAktif($row, $idTemplate);
@@ -337,6 +349,17 @@ class AssessmentController extends Controller
 
         $idPerilakuDariBulkAi = KeyBehaviorPresentation::idDariAnalisisBulk($asesmen);
 
+        // E-8: pratinjau dianggap kedaluwarsa bila ada PK disahkan yang berubah
+        // setelah pratinjau terakhir dihitung.
+        $pratinjauKedaluwarsa = false;
+        if ($asesmen->integrasi_pratinjau_pada !== null) {
+            $pkTerbaruDisahkan = $asesmen->keyBehaviors
+                ->where('tervalidasi', true)
+                ->max('diperbarui_pada');
+            $pratinjauKedaluwarsa = $pkTerbaruDisahkan !== null
+                && $pkTerbaruDisahkan->gt($asesmen->integrasi_pratinjau_pada);
+        }
+
         return view('assessments.show', [
             'asesmen' => $asesmen,
             'idPerilakuDariBulkAi' => $idPerilakuDariBulkAi,
@@ -358,6 +381,10 @@ class AssessmentController extends Controller
             'aiModelDefault' => AiModelCatalog::modelDefault(),
             'aiAntrianAsync' => AiAnalysisDispatcher::antrianAsyncAktif(),
             'integrasiPratinjau' => $integrasiPratinjau,
+            'pratinjauKedaluwarsa' => $pratinjauKedaluwarsa,
+            'strategiAgregasiAktif' => $asesmen->strategi_agregasi_alat ?? AssessmentToolAggregationStrategy::Maksimum,
+            'opsiStrategiAgregasi' => AssessmentToolAggregationStrategy::cases(),
+            'ambangKeyakinanRendah' => (float) config('integrasi.ambang_keyakinan_rendah', 0.5),
             'opsiTemplatePromptAi' => AiPromptComposer::opsiTemplateAktif(),
             'ringkasanTemplatePerAlat' => AiPromptTemplateResolver::ringkasanPerAlatAktif($asesmen),
             'bisaUbahAsesmen' => request()->user()?->can('update', $asesmen) === true
@@ -482,6 +509,11 @@ class AssessmentController extends Controller
     {
         $this->authorize('update', $asesmen);
 
+        if ($asesmen->isFinal()) {
+            return $this->redirectToAssessmentShow($asesmen)
+                ->withErrors(['metode_koleksi_bukti' => 'Asesmen sudah difinalisasi. Batalkan finalisasi dulu untuk mengubah metode koleksi bukti.']);
+        }
+
         $baru = AssessmentEvidenceCollectionMode::from($request->string('metode_koleksi_bukti')->toString());
         $lama = $asesmen->metode_koleksi_bukti;
         if ($lama === $baru) {
@@ -514,6 +546,40 @@ class AssessmentController extends Controller
 
         return $this->redirectToAssessmentShow($asesmen)
             ->with('status', $pesan);
+    }
+
+    public function updateToolAggregationStrategy(Request $request, Assessment $asesmen): RedirectResponse
+    {
+        $this->authorize('update', $asesmen);
+
+        if ($asesmen->isFinal()) {
+            return $this->redirectToAssessmentShow($asesmen)
+                ->withErrors(['strategi_agregasi_alat' => 'Asesmen sudah difinalisasi. Batalkan finalisasi dulu untuk mengubah strategi agregasi.']);
+        }
+
+        $validated = $request->validate([
+            'strategi_agregasi_alat' => ['required', 'string', 'in:max,rata_rata'],
+        ]);
+
+        $baru = AssessmentToolAggregationStrategy::from($validated['strategi_agregasi_alat']);
+        $lama = $asesmen->strategi_agregasi_alat;
+        if ($lama === $baru) {
+            return $this->redirectToAssessmentShow($asesmen)
+                ->with('status', 'Strategi agregasi tidak berubah.');
+        }
+
+        $asesmen->update(['strategi_agregasi_alat' => $baru]);
+
+        CatatAktivitas::catat(
+            $request->user(),
+            'asesmen.strategi_agregasi.diubah',
+            Assessment::class,
+            $asesmen->id,
+            ['dari' => $lama?->value, 'ke' => $baru->value],
+        );
+
+        return $this->redirectToAssessmentShow($asesmen)
+            ->with('status', 'Strategi agregasi diperbarui. Klik «Hitung ulang pratinjau» agar perubahan diterapkan ke hasil.');
     }
 
     public function storeEvidence(StoreEvidenceRequest $request, Assessment $asesmen): RedirectResponse
@@ -935,9 +1001,69 @@ class AssessmentController extends Controller
         ]);
     }
 
+    /**
+     * Laporan hasil asesmen per peserta (PDF). Tambahkan ?format=html untuk pratinjau di browser.
+     */
+    public function exportReportPdf(Request $request, Assessment $asesmen): Response
+    {
+        $this->authorize('view', $asesmen);
+
+        $asesmen->load([
+            'participant',
+            'matrixVersion',
+            'assessorAssignments.user',
+            'creator',
+            'finalizedBy',
+            'keyBehaviors.tool',
+            'keyBehaviors.competency.group',
+            'keyBehaviors.competencyLevel',
+            'competencyIntegrations.competency.group',
+            'lastRecommendationConfigRevision',
+        ]);
+
+        $integrasi = $asesmen->competencyIntegrations
+            ->sortBy(fn (CompetencyIntegration $r): string => $r->competency?->kode_kompetensi ?? '')
+            ->values();
+
+        $pkPerKompetensi = $asesmen->keyBehaviors
+            ->where('tervalidasi', true)
+            ->sortBy(fn (KeyBehavior $p): string => ($p->competency?->kode_kompetensi ?? '').'-'.($p->tool?->kode ?? ''))
+            ->groupBy('id_kompetensi');
+
+        $detailAgregat = is_array($asesmen->detail_rekomendasi_agregat) ? $asesmen->detail_rekomendasi_agregat : [];
+
+        $data = [
+            'asesmen' => $asesmen,
+            'integrasi' => $integrasi,
+            'pkPerKompetensi' => $pkPerKompetensi,
+            'dimensiAgregat' => is_array($detailAgregat['dimensi'] ?? null) ? $detailAgregat['dimensi'] : [],
+            'labelAgregat' => $detailAgregat['label'] ?? null,
+            'strategiAgregasi' => ($asesmen->strategi_agregasi_alat ?? AssessmentToolAggregationStrategy::Maksimum)->label(),
+            'dicetakOleh' => $request->user()?->nama ?? '—',
+            'dicetakPada' => now(),
+        ];
+
+        if ($request->query('format') === 'html') {
+            return response()->view('assessments.report', $data);
+        }
+
+        $idLabel = str_pad((string) $asesmen->id, 4, '0', STR_PAD_LEFT);
+        $kodePeserta = $asesmen->participant?->kode_peserta ?? 'peserta';
+        $namaFile = "laporan-asesmen-{$kodePeserta}-asm-{$idLabel}.pdf";
+
+        return Pdf::loadView('assessments.report', $data)
+            ->setPaper('a4', 'portrait')
+            ->download($namaFile);
+    }
+
     public function storeKeyBehavior(StoreKeyBehaviorRequest $request, Assessment $asesmen): RedirectResponse
     {
         $this->authorize('update', $asesmen);
+
+        if ($asesmen->isFinal()) {
+            return $this->redirectToAssessmentShow($asesmen)
+                ->withErrors(['perilaku' => 'Asesmen sudah difinalisasi. Batalkan finalisasi dulu untuk menambah perilaku kunci.']);
+        }
 
         $idBukti = $request->input('id_bukti_penilaian');
 
@@ -996,6 +1122,11 @@ class AssessmentController extends Controller
         $this->authorize('update', $asesmen);
         abort_unless((int) $perilaku->id_asesmen === (int) $asesmen->id, 404);
 
+        if ($asesmen->isFinal()) {
+            return $this->redirectToAssessmentShow($asesmen)
+                ->withErrors(['perilaku' => 'Asesmen sudah difinalisasi. Batalkan finalisasi dulu untuk mengubah perilaku kunci.']);
+        }
+
         $data = [];
 
         if ($request->has('id_tingkat_kompetensi')) {
@@ -1006,7 +1137,16 @@ class AssessmentController extends Controller
             $data['id_tingkat_kompetensi'] = $tingkatBaru;
 
             if ($tingkatBaru !== null && (int) $tingkatBaru !== (int) ($tingkatLama ?? 0)) {
-                $data['teks_perilaku'] = CompetencyLevel::teksIndikatorResmi($tingkatBaru) ?? $perilaku->teks_perilaku;
+                // E-6: pertahankan teks perilaku spesifik (observasi AI / tulisan asesor).
+                // Isi otomatis dari indikator resmi HANYA bila teks saat ini kosong atau masih
+                // sama persis dengan indikator level lama (artinya teks generik, bukan kustom).
+                $teksSaatIni = trim((string) ($perilaku->teks_perilaku ?? ''));
+                $indikatorLama = $tingkatLama !== null
+                    ? trim((string) (CompetencyLevel::teksIndikatorResmi((int) $tingkatLama) ?? ''))
+                    : '';
+                if ($teksSaatIni === '' || $teksSaatIni === $indikatorLama) {
+                    $data['teks_perilaku'] = CompetencyLevel::teksIndikatorResmi($tingkatBaru) ?? $perilaku->teks_perilaku;
+                }
             }
         }
 
@@ -1123,6 +1263,11 @@ class AssessmentController extends Controller
         $this->authorize('update', $asesmen);
         abort_unless((int) $bukti->id_asesmen === (int) $asesmen->id, 404);
 
+        if ($asesmen->isFinal()) {
+            return $this->redirectToAssessmentShowDenganBukti($asesmen, $bukti)
+                ->withErrors(['ai' => 'Asesmen sudah difinalisasi. Batalkan finalisasi dulu untuk menjalankan analisis AI.']);
+        }
+
         if ($asesmen->metode_koleksi_bukti !== AssessmentEvidenceCollectionMode::Manual) {
             return $this->redirectToAssessmentShowDenganBukti($asesmen, $bukti)
                 ->withErrors(['ai' => 'Analisis AI per bukti hanya untuk metode manual. Ubah metode koleksi bukti atau gunakan analisis bulk pada payload.']);
@@ -1234,6 +1379,12 @@ class AssessmentController extends Controller
     public function storeToolPayload(StoreAssessmentToolPayloadRequest $request, Assessment $asesmen): RedirectResponse
     {
         $this->authorize('update', $asesmen);
+
+        if ($asesmen->isFinal()) {
+            return $this->redirectToAssessmentShow($asesmen)
+                ->withErrors(['payload' => 'Asesmen sudah difinalisasi. Batalkan finalisasi dulu untuk menambah muatan alat.']);
+        }
+
         $teksMuatan = $request->string('teks_muatan')->toString();
         $teksMuatanRich = $request->filled('teks_muatan_rich') ? $request->string('teks_muatan_rich')->toString() : null;
         $teksKanonic = BulkTextNormalizer::canonicalPayloadMuatan(
@@ -1334,6 +1485,11 @@ class AssessmentController extends Controller
                 ->withErrors(['ai' => 'Payload tidak termasuk asesmen ini.']);
         }
 
+        if ($asesmen->isFinal()) {
+            return $this->redirectToAssessmentShow($asesmen)
+                ->withErrors(['ai' => 'Asesmen sudah difinalisasi. Batalkan finalisasi dulu untuk menjalankan analisis AI.']);
+        }
+
         if ($asesmen->metode_koleksi_bukti !== AssessmentEvidenceCollectionMode::PayloadAlat) {
             return $this->redirectToAssessmentShow($asesmen)
                 ->withErrors(['ai' => 'Analisis AI bulk hanya untuk metode otomatis (payload alat). Ubah metode koleksi bukti di atas.']);
@@ -1394,11 +1550,27 @@ class AssessmentController extends Controller
                 ]);
         }
 
-        $asesmen->update([
-            'status' => AssessmentStatus::SelesaiFinal,
-            'id_pengguna_finalisasi' => request()->user()?->id,
-            'waktu_finalisasi' => now(),
-        ]);
+        // Transisi atomik: hanya satu permintaan yang boleh mengubah draf → final
+        // (cegah race / log ganda saat tombol diklik berkali-kali bersamaan).
+        $terfinalisasi = DB::transaction(function () use ($asesmen): bool {
+            $jumlah = Assessment::query()
+                ->whereKey($asesmen->id)
+                ->where('status', '!=', AssessmentStatus::SelesaiFinal->value)
+                ->update([
+                    'status' => AssessmentStatus::SelesaiFinal->value,
+                    'id_pengguna_finalisasi' => request()->user()?->id,
+                    'waktu_finalisasi' => now(),
+                ]);
+
+            return $jumlah === 1;
+        });
+
+        if (! $terfinalisasi) {
+            return $this->redirectToAssessmentShow($asesmen)
+                ->with('status', 'Asesmen sudah difinalisasi sebelumnya.');
+        }
+
+        $asesmen->refresh();
 
         CatatAktivitas::catat(
             request()->user(),
@@ -1463,8 +1635,7 @@ class AssessmentController extends Controller
             ->pluck('id_alat_penilaian')
             ->all();
 
-        $mapWajib = CompetencyToolMapping::query()
-            ->where('id_versi_matriks', $asesmen->id_versi_matriks)
+        $mapWajib = AssessmentMatrix::mappingQuery($asesmen)
             ->whereIn('id_alat_penilaian', $alatAktif)
             ->where(function ($query): void {
                 $query->where('aktif', true)->orWhereNull('aktif');

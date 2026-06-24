@@ -8,7 +8,7 @@
             <a href="{{ route('master.index') }}" class="text-sm text-on-surface-variant hover:text-primary">&larr; Master data</a>
             <h1 class="mt-2 text-2xl font-semibold text-on-surface">Alat penilaian</h1>
         </div>
-        @if (auth()->user()->role === 'admin')
+        @if (auth()->user()?->isAdmin())
             <button type="button" data-open-modal="modal-alat-tambah" class="rounded-lg accent-gradient px-3 py-2 text-sm font-medium text-white hover:opacity-90">Tambah</button>
         @endif
     </div>
@@ -23,7 +23,7 @@
                     <th class="px-4 py-3">Nama</th>
                     <th class="px-4 py-3">Urutan</th>
                     <th class="px-4 py-3">Aktif</th>
-                    @if (auth()->user()->role === 'admin')
+                    @if (auth()->user()?->isAdmin())
                         <th class="px-4 py-3 text-right">Aksi</th>
                     @endif
                 </tr>
@@ -35,7 +35,7 @@
                         <td class="px-4 py-3 text-on-surface-variant">{{ $row->nama }}</td>
                         <td class="px-4 py-3 text-on-surface-variant">{{ $row->urutan }}</td>
                         <td class="px-4 py-3 text-on-surface-variant">{{ $row->aktif ? 'Ya' : 'Tidak' }}</td>
-                        @if (auth()->user()->role === 'admin')
+                        @if (auth()->user()?->isAdmin())
                             <td class="px-4 py-3 text-right">
                                 <button
                                     type="button"
@@ -53,7 +53,7 @@
                     </tr>
                 @empty
                     <tr>
-                        <td colspan="{{ auth()->user()->role === 'admin' ? 5 : 4 }}" class="px-4 py-8 text-center text-sm text-on-surface-variant">Tidak ada data alat penilaian.</td>
+                        <td colspan="{{ auth()->user()?->isAdmin() ? 5 : 4 }}" class="px-4 py-8 text-center text-sm text-on-surface-variant">Tidak ada data alat penilaian.</td>
                     </tr>
                 @endforelse
             </tbody>
@@ -62,7 +62,7 @@
 
     <x-ui.table-pagination :paginator="$items" />
 
-    @if (auth()->user()->role === 'admin')
+    @if (auth()->user()?->isAdmin())
         @include('master.partials.assessment-tool-modals')
 
         <script>

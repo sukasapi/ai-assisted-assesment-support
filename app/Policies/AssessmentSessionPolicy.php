@@ -9,26 +9,26 @@ class AssessmentSessionPolicy
 {
     public function viewAny(User $user): bool
     {
-        return $user->role === 'admin';
+        return $user->isAdmin();
     }
 
     public function view(User $user, AssessmentSession $session): bool
     {
-        return $user->role === 'admin';
+        return $user->isAdmin();
     }
 
     public function create(User $user): bool
     {
-        return $user->role === 'admin';
+        return $user->isAdmin();
     }
 
     public function update(User $user, AssessmentSession $session): bool
     {
-        return $user->role === 'admin';
+        return $user->isAdmin();
     }
 
     public function delete(User $user, AssessmentSession $session): bool
     {
-        return $user->role === 'admin' && $session->kode_sesi !== 'SES-LEGACY';
+        return $user->isAdmin() && $session->kode_sesi !== 'SES-LEGACY';
     }
 }

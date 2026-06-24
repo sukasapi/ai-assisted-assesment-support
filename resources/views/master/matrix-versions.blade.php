@@ -8,7 +8,7 @@
             <a href="{{ route('master.index') }}" class="text-sm text-on-surface-variant hover:text-primary">&larr; Master data</a>
             <h1 class="mt-2 text-2xl font-semibold text-on-surface">Versi matriks</h1>
         </div>
-        @if (auth()->user()->role === 'admin')
+        @if (auth()->user()?->isAdmin())
             <button type="button" data-open-modal="modal-matriks-tambah" class="rounded-lg accent-gradient px-3 py-2 text-sm font-medium text-white hover:opacity-90">Tambah</button>
         @endif
     </div>
@@ -25,7 +25,8 @@
                     <th class="px-4 py-3">Bawaan</th>
                     <th class="px-4 py-3">Pemetaan</th>
                     <th class="px-4 py-3">Rekomendasi</th>
-                    @if (auth()->user()->role === 'admin')
+                    <th class="px-4 py-3">Target</th>
+                    @if (auth()->user()?->isAdmin())
                         <th class="px-4 py-3 text-right">Aksi</th>
                     @endif
                 </tr>
@@ -51,7 +52,14 @@
                                 class="!px-3 !py-1.5 text-xs"
                             >Atur</x-ui.button>
                         </td>
-                        @if (auth()->user()->role === 'admin')
+                        <td class="px-4 py-3">
+                            <x-ui.button
+                                href="{{ route('master.versi-matriks.target-kompetensi.index', $row) }}"
+                                variant="secondary"
+                                class="!px-3 !py-1.5 text-xs"
+                            >Atur</x-ui.button>
+                        </td>
+                        @if (auth()->user()?->isAdmin())
                             <td class="px-4 py-3 text-right">
                                 <div class="flex flex-wrap items-center justify-end gap-2">
                                     <x-ui.button
@@ -76,7 +84,7 @@
     </div>
     <x-ui.table-pagination :paginator="$items" />
 
-    @if (auth()->user()->role === 'admin')
+    @if (auth()->user()?->isAdmin())
         @include('master.partials.matrix-version-modals')
         <x-ui.crud-modal-script
             :update-route="route('master.versi-matriks.update', ['versiMatriks' => 999999999])"

@@ -9,7 +9,7 @@
             <h1 class="mt-2 text-2xl font-semibold text-on-surface">Template prompt AI</h1>
             <p class="mt-1 text-sm text-on-surface-variant">Kerangka analisis (STAR, dll.) yang dapat dipilih per asesmen; berlaku untuk semua alat.</p>
         </div>
-        @if (auth()->user()->role === 'admin')
+        @if (auth()->user()?->isAdmin())
             <button type="button" data-open-modal="modal-template-prompt-tambah" class="rounded-lg accent-gradient px-3 py-2 text-sm font-medium text-white hover:opacity-90">Tambah</button>
         @endif
     </div>
@@ -25,7 +25,7 @@
                     <th class="px-4 py-3">Alat (default)</th>
                     <th class="px-4 py-3">Urutan</th>
                     <th class="px-4 py-3">Aktif</th>
-                    @if (auth()->user()->role === 'admin')
+                    @if (auth()->user()?->isAdmin())
                         <th class="px-4 py-3 text-right">Aksi</th>
                     @endif
                 </tr>
@@ -49,7 +49,7 @@
                         </td>
                         <td class="px-4 py-3 text-on-surface-variant">{{ $row->urutan }}</td>
                         <td class="px-4 py-3 text-on-surface-variant">{{ $row->aktif ? 'Ya' : 'Tidak' }}</td>
-                        @if (auth()->user()->role === 'admin')
+                        @if (auth()->user()?->isAdmin())
                             <td class="px-4 py-3 text-right">
                                 <button
                                     type="button"
@@ -75,7 +75,7 @@
     </div>
     <x-ui.table-pagination :paginator="$items" />
 
-    @if (auth()->user()->role === 'admin')
+    @if (auth()->user()?->isAdmin())
         @include('master.partials.ai-prompt-template-modals', ['alatPenilaian' => $alatPenilaian])
         <x-ui.crud-modal-script
             :update-route="route('master.template-prompt-ai.update', ['templatePromptAi' => 999999999])"

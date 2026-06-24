@@ -5,8 +5,6 @@ namespace App\Services\Recommendation;
 use App\Models\Assessment;
 use App\Models\Competency;
 use App\Models\CompetencyIntegration;
-use App\Models\MatrixVersion;
-use App\Models\RecommendationConfigRevision;
 use App\Support\MandatoryCompetencyCoverage;
 use Illuminate\Support\Collection;
 
@@ -125,47 +123,85 @@ class RecommendationEvaluator
         Collection $metaKompetensi,
         array $kriteria,
     ): array {
-        $pelanggaran = [];
         $logika = (string) ($kriteria['logika'] ?? 'and');
         $aturan = is_array($kriteria['aturan'] ?? null) ? $kriteria['aturan'] : [];
 
+        // Prasyarat data (selalu wajib): kompetensi wajib tanpa data integrasi = pelanggaran keras,
+        // berlaku terlepas dari logika and/or antar aturan.
+        $pelanggaranWajib = [];
         $idTercakup = $barisDimensi->pluck('id_kompetensi')->map(fn ($id): int => (int) $id);
-
         foreach ($idKompetensiDimensi as $idKompetensi) {
             if (! $idTercakup->contains((int) $idKompetensi)) {
                 $kode = (string) ($metaKompetensi->get((int) $idKompetensi)['kode_kompetensi'] ?? (string) $idKompetensi);
-                $pelanggaran[] = "Kompetensi wajib {$kode} belum memiliki data integrasi (PK disahkan).";
+                $pelanggaranWajib[] = "Kompetensi wajib {$kode} belum memiliki data integrasi (PK disahkan).";
             }
         }
 
+        // Evaluasi tiap aturan secara terpisah (kumpulkan pelanggaran per-aturan).
+        $hasilPerAturan = [];
         foreach ($aturan as $aturanItem) {
             if (! is_array($aturanItem)) {
                 continue;
             }
-
-            $jenis = (string) ($aturanItem['jenis'] ?? '');
-            $tingkat = (int) ($aturanItem['tingkat'] ?? 0);
-
-            match ($jenis) {
-                'forbid_tingkat' => $this->terapkanForbidTingkat($barisDimensi, $metaKompetensi, $tingkat, $pelanggaran),
-                'max_count_tingkat' => $this->terapkanMaxCountTingkat(
-                    $barisDimensi,
-                    $metaKompetensi,
-                    $tingkat,
-                    (int) ($aturanItem['maksimum'] ?? 0),
-                    $pelanggaran,
-                ),
-                'min_tingkat_semua' => $this->terapkanMinTingkatSemua($barisDimensi, $metaKompetensi, $tingkat, $pelanggaran),
-                default => null,
-            };
+            $hasilPerAturan[] = $this->evaluasiAturan($aturanItem, $barisDimensi, $metaKompetensi);
         }
 
-        if ($logika === 'or' && count($pelanggaran) > 0 && count($aturan) > 1) {
-            // Untuk logika OR antar aturan, evaluator tetap mengumpulkan semua pelanggaran;
-            // dimensi lolos hanya jika tidak ada pelanggaran sama sekali (AND antar aturan default MVP).
+        // Gabungkan menurut logika antar aturan.
+        $pelanggaranAturan = [];
+        if ($hasilPerAturan !== []) {
+            if ($logika === 'or') {
+                // OR: lolos jika ADA minimal satu aturan tanpa pelanggaran.
+                $adaAturanLolos = false;
+                foreach ($hasilPerAturan as $pelanggaranAturanItem) {
+                    if ($pelanggaranAturanItem === []) {
+                        $adaAturanLolos = true;
+                        break;
+                    }
+                }
+                if (! $adaAturanLolos) {
+                    foreach ($hasilPerAturan as $pelanggaranAturanItem) {
+                        $pelanggaranAturan = array_merge($pelanggaranAturan, $pelanggaranAturanItem);
+                    }
+                }
+            } else {
+                // AND (default): semua aturan harus lolos; laporkan pelanggaran aturan yang gagal.
+                foreach ($hasilPerAturan as $pelanggaranAturanItem) {
+                    $pelanggaranAturan = array_merge($pelanggaranAturan, $pelanggaranAturanItem);
+                }
+            }
         }
 
-        return array_values(array_unique($pelanggaran));
+        return array_values(array_unique(array_merge($pelanggaranWajib, $pelanggaranAturan)));
+    }
+
+    /**
+     * Evaluasi satu aturan, kembalikan daftar pelanggarannya (kosong = aturan terpenuhi).
+     *
+     * @param  array<string, mixed>  $aturanItem
+     * @param  Collection<int, CompetencyIntegration>  $barisDimensi
+     * @param  Collection<int, array{kode_kompetensi: string, kode_kelompok: string|null}>  $metaKompetensi
+     * @return list<string>
+     */
+    private function evaluasiAturan(array $aturanItem, Collection $barisDimensi, Collection $metaKompetensi): array
+    {
+        $jenis = (string) ($aturanItem['jenis'] ?? '');
+        $tingkat = (int) ($aturanItem['tingkat'] ?? 0);
+        $pelanggaran = [];
+
+        match ($jenis) {
+            'forbid_tingkat' => $this->terapkanForbidTingkat($barisDimensi, $metaKompetensi, $tingkat, $pelanggaran),
+            'max_count_tingkat' => $this->terapkanMaxCountTingkat(
+                $barisDimensi,
+                $metaKompetensi,
+                $tingkat,
+                (int) ($aturanItem['maksimum'] ?? 0),
+                $pelanggaran,
+            ),
+            'min_tingkat_semua' => $this->terapkanMinTingkatSemua($barisDimensi, $metaKompetensi, $tingkat, $pelanggaran),
+            default => null,
+        };
+
+        return array_values($pelanggaran);
     }
 
     /**
