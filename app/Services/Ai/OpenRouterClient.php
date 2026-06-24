@@ -8,7 +8,7 @@ use Illuminate\Http\Client\Response;
 use Illuminate\Support\Facades\Http;
 use RuntimeException;
 
-class OpenRouterClient
+class OpenRouterClient implements ChatClientContract
 {
     /**
      * Coba model secara bergantian (pilihan pengguna dulu, lalu model lain di daftar) bila timeout/error server.
@@ -76,7 +76,7 @@ class OpenRouterClient
         $url = config('ai.openrouter.url_dasar').'/chat/completions';
         $kunci = config('ai.openrouter.kunci_api');
         if (! is_string($kunci) || $kunci === '') {
-            throw new \RuntimeException('Kunci API OpenRouter tidak diatur.');
+            throw new RuntimeException('Kunci API OpenRouter tidak diatur.');
         }
 
         $mulai = (int) (microtime(true) * 1000);

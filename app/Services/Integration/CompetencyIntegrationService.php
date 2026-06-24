@@ -4,9 +4,11 @@ namespace App\Services\Integration;
 
 use App\Enums\AssessmentPurpose;
 use App\Enums\AssessmentStatus;
+use App\Enums\AssessmentToolAggregationStrategy;
 use App\Models\Assessment;
 use App\Models\Competency;
 use App\Models\CompetencyIntegration;
+use App\Models\CompetencyToolMapping;
 use App\Models\KeyBehavior;
 use App\Services\Recommendation\RecommendationConfigService;
 use App\Services\Recommendation\RecommendationEvaluator;
@@ -106,7 +108,7 @@ class CompetencyIntegrationService
             ]);
         }
 
-        DB::transaction(function () use ($asesmen, $barisIntegrasi, $idKompetensiWajib, $sekarang, $idPenggunaPemicu): void {
+        DB::transaction(function () use ($asesmen, $barisIntegrasi, $idKompetensiWajib, $sekarang): void {
             $idKompetensiTerhitung = collect($barisIntegrasi)->pluck('id_kompetensi')->all();
 
             CompetencyIntegration::query()
@@ -126,7 +128,7 @@ class CompetencyIntegrationService
                 );
             }
 
-            $jobFit = $this->hitungJobFitPersen($asesmen->id, $idKompetensiWajib);
+            $jobFit = $this->hitungJobFitPersen($asesmen, $idKompetensiWajib);
             $hasilRekomendasi = $this->evaluasiRekomendasiAgregat($asesmen, $idKompetensiWajib);
 
             $asesmen->update([
@@ -139,7 +141,7 @@ class CompetencyIntegrationService
             ]);
         });
 
-        $rekomendasiAgregat = $this->rekomendasiAgregat($asesmen->id, $idKompetensiWajib);
+        $rekomendasiAgregat = $this->rekomendasiAgregat($asesmen, $idKompetensiWajib);
         $jobFit = Assessment::query()->whereKey($asesmen->id)->value('job_fit_persen_pratinjau');
         $asesmen->refresh();
         $asesmen->load('lastRecommendationConfigRevision');
@@ -187,7 +189,7 @@ class CompetencyIntegrationService
 
     /**
      * @param  Collection<int, KeyBehavior>  $pkGrup
-     * @param  Collection<string, \App\Models\CompetencyToolMapping>  $pemetaan
+     * @param  Collection<string, CompetencyToolMapping>  $pemetaan
      * @return array<string, mixed>|null
      */
     private function agregasiKompetensi(
@@ -198,9 +200,11 @@ class CompetencyIntegrationService
         Collection $idDariBulk,
     ): ?array {
         $maxLevel = max(1, (int) ($kompetensi->tingkat_maksimum ?? 6));
+        $strategi = $this->strategiAgregasi($asesmen);
         $kontribusiPerAlat = [];
         $detailBobot = [];
         $jumlahPk = $pkGrup->count();
+        $targetProfil = null;
 
         $pkPerAlat = $pkGrup->groupBy('id_alat_penilaian');
 
@@ -211,25 +215,38 @@ class CompetencyIntegrationService
                 continue;
             }
 
+            // Target jabatan beku (bila ada) — sama untuk semua alat satu kompetensi.
+            if ($targetProfil === null && ! empty($map->tingkat_target)) {
+                $targetProfil = (int) $map->tingkat_target;
+            }
+
             $bobot = (float) $map->bobot;
             if ($bobot <= 0) {
                 continue;
             }
 
-            $levelMax = $pkAlat
+            $levelTiap = $pkAlat
                 ->map(fn (KeyBehavior $pk): int => (int) ($pk->competencyLevel?->tingkat ?? 0))
                 ->filter(fn (int $l): bool => $l > 0)
-                ->max() ?? 0;
+                ->values();
 
-            if ($levelMax <= 0) {
+            if ($levelTiap->isEmpty()) {
                 continue;
             }
 
+            // L-3: gabungkan beberapa PK satu alat sesuai strategi yang dipilih asesor.
+            $levelAlat = $strategi === AssessmentToolAggregationStrategy::RataRata
+                ? (int) max(1, min($maxLevel, (int) round($levelTiap->avg())))
+                : (int) $levelTiap->max();
+
             $kontribusiPerAlat[(int) $idAlat] = [
-                'level' => $levelMax,
+                'level' => $levelAlat,
                 'bobot' => $bobot,
-                'kontribusi' => $levelMax * $bobot,
+                'kontribusi' => $levelAlat * $bobot,
                 'kode_alat' => (string) ($map->tool?->kode ?? (string) $idAlat),
+                'jumlah_pk' => $levelTiap->count(),
+                'level_min' => (int) $levelTiap->min(),
+                'level_max' => (int) $levelTiap->max(),
             ];
         }
 
@@ -247,10 +264,14 @@ class CompetencyIntegrationService
                 'level' => $row['level'],
                 'bobot' => round($row['bobot'], 4),
                 'kontribusi' => round($row['kontribusi'], 4),
+                'jumlah_pk' => $row['jumlah_pk'],
+                'level_min' => $row['level_min'],
+                'level_max' => $row['level_max'],
+                'strategi' => $strategi->value,
             ];
         }
 
-        $tingkatTarget = $this->tentukanTingkatTarget($asesmen, $tingkatTercapai, $maxLevel);
+        $tingkatTarget = $this->tentukanTingkatTarget($asesmen, $tingkatTercapai, $maxLevel, $targetProfil);
         $selisihGap = $tingkatTarget - $tingkatTercapai;
         $rekomendasiKode = $this->rekomendasiPerKompetensi($selisihGap);
 
@@ -267,8 +288,24 @@ class CompetencyIntegrationService
         ];
     }
 
-    private function tentukanTingkatTarget(Assessment $asesmen, int $tingkatTercapai, int $maxLevel): int
+    private function strategiAgregasi(Assessment $asesmen): AssessmentToolAggregationStrategy
     {
+        if ($asesmen->strategi_agregasi_alat instanceof AssessmentToolAggregationStrategy) {
+            return $asesmen->strategi_agregasi_alat;
+        }
+
+        return AssessmentToolAggregationStrategy::tryFrom(
+            (string) config('integrasi.strategi_agregasi_alat_default', 'max')
+        ) ?? AssessmentToolAggregationStrategy::Maksimum;
+    }
+
+    private function tentukanTingkatTarget(Assessment $asesmen, int $tingkatTercapai, int $maxLevel, ?int $targetProfil = null): int
+    {
+        // Feature: target dari profil jabatan (matriks) bila didefinisikan — menggantikan heuristik.
+        if ($targetProfil !== null && $targetProfil > 0) {
+            return min(max($targetProfil, 1), $maxLevel);
+        }
+
         if ($asesmen->tujuan === AssessmentPurpose::Promosi) {
             return min(max($tingkatTercapai, 1) + 1, $maxLevel);
         }
@@ -336,25 +373,43 @@ class CompetencyIntegrationService
     }
 
     /**
+     * Job Fit % = Σ tingkat tercapai / Σ tingkat target, atas SELURUH kompetensi wajib.
+     *
+     * L-2: kompetensi wajib yang belum punya bukti (tanpa baris integrasi) tetap diperhitungkan
+     * sebagai capaian 0 terhadap target standarnya, sehingga cakupan tidak lengkap menurunkan
+     * Job Fit (mencegah skor "palsu tinggi" saat banyak kompetensi wajib kosong).
+     *
      * @param  Collection<int, int>  $idKompetensiWajib
      */
-    private function hitungJobFitPersen(int $idAsesmen, Collection $idKompetensiWajib): ?float
+    private function hitungJobFitPersen(Assessment $asesmen, Collection $idKompetensiWajib): ?float
     {
         if ($idKompetensiWajib->isEmpty()) {
             return null;
         }
 
         $baris = CompetencyIntegration::query()
-            ->where('id_asesmen', $idAsesmen)
+            ->where('id_asesmen', $asesmen->id)
             ->whereIn('id_kompetensi', $idKompetensiWajib->all())
             ->get();
 
-        if ($baris->isEmpty()) {
-            return null;
-        }
-
         $totalCapaian = $baris->sum(fn (CompetencyIntegration $r): int => (int) ($r->tingkat_tercapai ?? 0));
         $totalTarget = $baris->sum(fn (CompetencyIntegration $r): int => (int) ($r->tingkat_target ?? 0));
+
+        $idTerhitung = $baris->pluck('id_kompetensi')->map(fn ($id): int => (int) $id)->all();
+        $idBelum = $idKompetensiWajib
+            ->reject(fn ($id): bool => in_array((int) $id, $idTerhitung, true))
+            ->values();
+
+        if ($idBelum->isNotEmpty()) {
+            $kompetensiBelum = Competency::query()
+                ->whereIn('id', $idBelum->all())
+                ->get(['id', 'tingkat_maksimum']);
+            foreach ($kompetensiBelum as $kompetensi) {
+                $maxLevel = max(1, (int) ($kompetensi->tingkat_maksimum ?? 6));
+                $totalTarget += $this->tentukanTingkatTarget($asesmen, 0, $maxLevel);
+                // capaian += 0 (belum ada bukti)
+            }
+        }
 
         if ($totalTarget <= 0) {
             return null;
@@ -364,16 +419,22 @@ class CompetencyIntegrationService
     }
 
     /**
+     * Rekomendasi heuristik indikatif (fit/development/not_fit).
+     *
+     * L-1: selaras dengan mesin aturan konfigurabel — cakupan kompetensi wajib yang belum
+     * lengkap TIDAK boleh menghasilkan "fit" (minimal "development"), sehingga pesan ke
+     * konsultan tidak bertentangan dengan verdict qualified/not_qualified.
+     *
      * @param  Collection<int, int>  $idKompetensiWajib
      */
-    private function rekomendasiAgregat(int $idAsesmen, Collection $idKompetensiWajib): ?string
+    private function rekomendasiAgregat(Assessment $asesmen, Collection $idKompetensiWajib): ?string
     {
         if ($idKompetensiWajib->isEmpty()) {
             return null;
         }
 
         $barisWajib = CompetencyIntegration::query()
-            ->where('id_asesmen', $idAsesmen)
+            ->where('id_asesmen', $asesmen->id)
             ->whereIn('id_kompetensi', $idKompetensiWajib->all())
             ->get();
 
@@ -381,14 +442,16 @@ class CompetencyIntegrationService
             return null;
         }
 
-        $jobFit = $this->hitungJobFitPersen($idAsesmen, $idKompetensiWajib) ?? 0.0;
+        $cakupanLengkap = $barisWajib->count() >= $idKompetensiWajib->count();
+
+        $jobFit = $this->hitungJobFitPersen($asesmen, $idKompetensiWajib) ?? 0.0;
         $gapBesar = $barisWajib->where(fn (CompetencyIntegration $r): bool => (int) ($r->selisih_gap ?? 0) >= 2)->count();
         $gapSatu = $barisWajib->where(fn (CompetencyIntegration $r): bool => (int) ($r->selisih_gap ?? 0) === 1)->count();
 
-        if ($jobFit >= 85.0 && $gapBesar === 0) {
+        if ($jobFit >= 85.0 && $gapBesar === 0 && $cakupanLengkap) {
             return 'fit';
         }
-        if ($jobFit >= 60.0 || $gapSatu > 0) {
+        if ($jobFit >= 60.0 || $gapSatu > 0 || ! $cakupanLengkap) {
             return 'development';
         }
 

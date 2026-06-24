@@ -5,9 +5,14 @@ namespace App\Http\Controllers;
 use App\Http\Requests\StoreAssessmentSessionRequest;
 use App\Http\Requests\UpdateAssessmentSessionRequest;
 use App\Models\AssessmentSession;
+use App\Models\User;
+use App\Support\SessionAggregate;
 use App\Support\TableSearch;
+use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Http\RedirectResponse;
+use Illuminate\Http\Request;
 use Illuminate\View\View;
+use Symfony\Component\HttpFoundation\Response;
 
 class AssessmentSessionController extends Controller
 {
@@ -56,7 +61,7 @@ class AssessmentSessionController extends Controller
             'consultantAssignments.assessments.participant',
         ]);
 
-        $konsultanKandidat = \App\Models\User::query()
+        $konsultanKandidat = User::query()
             ->where('peran', 'konsultan')
             ->where('aktif', true)
             ->orderBy('nama')
@@ -65,8 +70,40 @@ class AssessmentSessionController extends Controller
         return view('assessment-sessions.show', [
             'sesi' => $sesiAsesmen,
             'konsultanKandidat' => $konsultanKandidat,
+            'ringkasanSesi' => SessionAggregate::untukSesi($sesiAsesmen),
             'bukaModalAsesmenSesi' => session('buka_modal_asesmen_sesi'),
         ]);
+    }
+
+    /**
+     * Laporan agregat satu sesi (PDF). Tambahkan ?format=html untuk pratinjau.
+     */
+    public function aggregateReportPdf(Request $request, AssessmentSession $sesiAsesmen): Response
+    {
+        $this->authorize('view', $sesiAsesmen);
+
+        $sesiAsesmen->load([
+            'assessments.participant',
+            'assessments.matrixVersion',
+            'assessments.assessorAssignments.user',
+        ]);
+
+        $data = [
+            'sesi' => $sesiAsesmen,
+            'ringkasan' => SessionAggregate::untukSesi($sesiAsesmen),
+            'dicetakOleh' => $request->user()?->nama ?? '—',
+            'dicetakPada' => now(),
+        ];
+
+        if ($request->query('format') === 'html') {
+            return response()->view('assessment-sessions.report', $data);
+        }
+
+        $namaFile = 'laporan-sesi-'.$sesiAsesmen->kode_sesi.'.pdf';
+
+        return Pdf::loadView('assessment-sessions.report', $data)
+            ->setPaper('a4', 'portrait')
+            ->download($namaFile);
     }
 
     public function edit(AssessmentSession $sesiAsesmen): RedirectResponse

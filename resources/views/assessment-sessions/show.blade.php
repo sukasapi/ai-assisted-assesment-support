@@ -17,6 +17,12 @@
                 data-sesi-id="{{ $sesi->id }}"
                 data-sesi-label="{{ $sesi->kode_sesi }} — {{ $sesi->nama }}"
             >Buat asesmen</x-ui.button>
+            @if ($sesi->assessments->isNotEmpty())
+                <x-ui.button href="{{ route('sesi-asesmen.laporan-pdf', $sesi) }}" variant="secondary">
+                    <span class="material-symbols-outlined text-base">picture_as_pdf</span>
+                    Laporan sesi (PDF)
+                </x-ui.button>
+            @endif
             <x-ui.button type="button" variant="secondary" data-open-modal="modal-sesi-ubah" data-edit="{{ json_encode(['id' => $sesi->id, 'kode_sesi' => $sesi->kode_sesi, 'nama' => $sesi->nama, 'tanggal_mulai' => $sesi->tanggal_mulai?->format('Y-m-d'), 'tanggal_selesai' => $sesi->tanggal_selesai?->format('Y-m-d'), 'status' => $sesi->status?->value, 'catatan' => $sesi->catatan], JSON_HEX_APOS | JSON_HEX_QUOT | JSON_UNESCAPED_UNICODE) }}">Ubah sesi</x-ui.button>
         </x-slot:actions>
     </x-ui.page-header>
@@ -28,35 +34,92 @@
         </div>
     @endif
 
+    @php
+        $statusBadge = fn (?string $s): array => match ($s) {
+            'selesai_final' => ['Final', 'border-emerald-200 bg-emerald-50 text-emerald-800'],
+            'terintegrasi' => ['Terintegrasi', 'border-sky-200 bg-sky-50 text-sky-800'],
+            'berlangsung' => ['Berlangsung', 'border-amber-200 bg-amber-50 text-amber-800'],
+            default => ['Draf', 'border-outline-variant/40 bg-surface-container text-on-surface-variant'],
+        };
+        $rekomBadge = fn (?string $k): array => match ($k) {
+            'qualified' => ['Memenuhi', 'border-emerald-300 bg-emerald-50 text-emerald-900'],
+            'not_qualified' => ['Belum memenuhi', 'border-rose-300 bg-rose-50 text-rose-900'],
+            default => ['—', 'border-outline-variant/30 bg-surface-container text-on-surface-variant/70'],
+        };
+    @endphp
+
+    @if ($sesi->assessments->isNotEmpty())
+        <section class="mb-8">
+            <h2 class="mb-3 text-section-header uppercase text-on-surface-variant">Ringkasan sesi</h2>
+            <div class="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">
+                <div class="card-depth rounded-xl bg-surface-container-lowest p-4">
+                    <p class="text-xs uppercase tracking-wide text-on-surface-variant">Peserta</p>
+                    <p class="mt-1 font-display text-2xl font-bold text-on-surface">{{ $ringkasanSesi['total'] }}</p>
+                </div>
+                <div class="card-depth rounded-xl bg-surface-container-lowest p-4">
+                    <p class="text-xs uppercase tracking-wide text-on-surface-variant">Rata Job Fit</p>
+                    <p class="mt-1 font-display text-2xl font-bold text-primary">{{ $ringkasanSesi['rata_job_fit'] !== null ? $ringkasanSesi['rata_job_fit'].'%' : '—' }}</p>
+                </div>
+                <div class="card-depth rounded-xl bg-surface-container-lowest p-4">
+                    <p class="text-xs uppercase tracking-wide text-on-surface-variant">Memenuhi</p>
+                    <p class="mt-1 font-display text-2xl font-bold text-emerald-700">{{ $ringkasanSesi['qualified'] }}</p>
+                </div>
+                <div class="card-depth rounded-xl bg-surface-container-lowest p-4">
+                    <p class="text-xs uppercase tracking-wide text-on-surface-variant">Belum memenuhi</p>
+                    <p class="mt-1 font-display text-2xl font-bold text-rose-700">{{ $ringkasanSesi['not_qualified'] }}</p>
+                </div>
+                <div class="card-depth rounded-xl bg-surface-container-lowest p-4">
+                    <p class="text-xs uppercase tracking-wide text-on-surface-variant">Final</p>
+                    <p class="mt-1 font-display text-2xl font-bold text-on-surface">{{ $ringkasanSesi['final'] }}/{{ $ringkasanSesi['total'] }}</p>
+                </div>
+                <div class="card-depth rounded-xl bg-surface-container-lowest p-4">
+                    <p class="text-xs uppercase tracking-wide text-on-surface-variant">Belum dinilai</p>
+                    <p class="mt-1 font-display text-2xl font-bold text-amber-700">{{ $ringkasanSesi['belum_dinilai'] }}</p>
+                </div>
+            </div>
+        </section>
+    @endif
+
     <section class="card-depth mb-8 overflow-hidden rounded-xl">
-        <div class="border-b border-outline-variant/30 px-6 py-4">
-            <h2 class="text-section-header uppercase text-on-surface-variant">Asesmen dalam sesi</h2>
+        <div class="flex flex-wrap items-center justify-between gap-2 border-b border-outline-variant/30 px-6 py-4">
+            <h2 class="text-section-header uppercase text-on-surface-variant">Asesmen dalam sesi · peringkat Job Fit</h2>
         </div>
         <div class="px-6 pt-4">
             <x-ui.table-client-filter target="tabel-asesmen-sesi" placeholder="Cari peserta atau status..." />
         </div>
+        <div class="overflow-x-auto">
         <table class="min-w-full text-sm" id="tabel-asesmen-sesi">
             <thead class="bg-surface-container-low text-xs uppercase text-on-surface-variant">
                 <tr>
+                    <th class="px-6 py-3 text-left">#</th>
                     <th class="px-6 py-3 text-left">Peserta</th>
+                    <th class="px-6 py-3 text-center">Job Fit</th>
+                    <th class="px-6 py-3 text-left">Rekomendasi</th>
                     <th class="px-6 py-3 text-left">Status</th>
                     <th class="px-6 py-3 text-right">Aksi</th>
                 </tr>
             </thead>
             <tbody class="divide-y divide-outline-variant/20">
-                @forelse ($sesi->assessments as $a)
+                @forelse ($ringkasanSesi['peringkat'] as $a)
+                    @php [$stLabel, $stKelas] = $statusBadge($a->status?->value); [$rkLabel, $rkKelas] = $rekomBadge($a->kode_rekomendasi_agregat); @endphp
                     <tr>
-                        <td class="px-6 py-4">{{ $a->participant?->nama_lengkap ?? '—' }}</td>
-                        <td class="px-6 py-4">{{ $a->status?->value ?? '—' }}</td>
+                        <td class="px-6 py-4 font-mono text-on-surface-variant">{{ $loop->iteration }}</td>
+                        <td class="px-6 py-4 font-medium text-on-surface">{{ $a->participant?->nama_lengkap ?? '—' }}</td>
+                        <td class="px-6 py-4 text-center font-bold {{ $a->job_fit_persen_pratinjau !== null ? 'text-primary' : 'text-on-surface-variant/50' }}">
+                            {{ $a->job_fit_persen_pratinjau !== null ? number_format((float) $a->job_fit_persen_pratinjau, 1).'%' : '—' }}
+                        </td>
+                        <td class="px-6 py-4"><span class="inline-flex rounded-full border px-2.5 py-0.5 text-xs font-bold {{ $rkKelas }}">{{ $rkLabel }}</span></td>
+                        <td class="px-6 py-4"><span class="inline-flex rounded-full border px-2.5 py-0.5 text-xs font-bold {{ $stKelas }}">{{ $stLabel }}</span></td>
                         <td class="px-6 py-4 text-right">
                             <a href="{{ route('asesmen.show', $a) }}" class="font-semibold text-primary hover:underline">Detail</a>
                         </td>
                     </tr>
                 @empty
-                    <tr><td colspan="3" class="px-6 py-8 text-center text-on-surface-variant">Belum ada asesmen.</td></tr>
+                    <tr><td colspan="6" class="px-6 py-8 text-center text-on-surface-variant">Belum ada asesmen.</td></tr>
                 @endforelse
             </tbody>
         </table>
+        </div>
     </section>
 
     <section class="card-depth overflow-hidden rounded-xl">

@@ -1,5 +1,7 @@
 <?php
 
+use App\Support\AiModelCatalog;
+
 $kunciApi = trim((string) (env('OPENROUTER_API_KEY') ?: env('AI_OPENROUTER_API_KEY')));
 $aiAktifEnv = env('AI_AKTIF');
 
@@ -14,9 +16,29 @@ $modelUtama = (string) (env('OPENROUTER_MODEL') ?: env('AI_OPENROUTER_MODEL', 'g
 $rawDaftarModel = env('AI_OPENROUTER_MODELS', env('OPENROUTER_MODELS'));
 $rawString = is_string($rawDaftarModel) ? trim($rawDaftarModel) : '';
 if ($rawString === '') {
-    $daftarModel = \App\Support\AiModelCatalog::modelGratisBawaan();
+    $daftarModel = AiModelCatalog::modelGratisBawaan();
 } else {
-    $daftarModel = \App\Support\AiModelCatalog::parseDariEnv($rawString, $modelUtama);
+    $daftarModel = AiModelCatalog::parseDariEnv($rawString, $modelUtama);
+}
+
+/*
+| Penyedia chat AI: 'openrouter' (default) atau 'gemini' (Google AI Studio langsung).
+| Gemini dipanggil lewat endpoint kompatibel-OpenAI Google.
+*/
+$penyedia = strtolower(trim((string) env('AI_PROVIDER', 'openrouter'))) ?: 'openrouter';
+
+$kunciGemini = trim((string) (env('GEMINI_API_KEY') ?: env('GOOGLE_AI_API_KEY')));
+$modelGemini = (string) env('GEMINI_MODEL', 'gemini-2.0-flash');
+$rawDaftarGemini = env('GEMINI_MODELS');
+$daftarGemini = is_string($rawDaftarGemini) && trim($rawDaftarGemini) !== ''
+    ? AiModelCatalog::parseDariEnv(trim($rawDaftarGemini), $modelGemini)
+    : [['id' => $modelGemini, 'label' => $modelGemini]];
+
+/*
+| AI aktif jika kunci penyedia terpilih terisi (atau AI_AKTIF eksplisit di atas).
+*/
+if ($aiAktifEnv === null || $aiAktifEnv === '') {
+    $aiAktif = $penyedia === 'gemini' ? ($kunciGemini !== '') : ($kunciApi !== '');
 }
 
 return [
@@ -32,6 +54,9 @@ return [
     */
 
     'aktif' => $aiAktif,
+
+    /** Penyedia chat AI aktif: 'openrouter' | 'gemini'. */
+    'penyedia' => $penyedia === 'gemini' ? 'gemini' : 'openrouter',
 
     /*
     | Sinkron nama .env: OPENROUTER_* (dokumentasi umum) dan AI_OPENROUTER_* (proyek ini).
@@ -64,6 +89,29 @@ return [
         'maks_token_keluaran_bulk' => env('AI_OPENROUTER_MAX_TOKENS_BULK', env('OPENROUTER_MAX_TOKENS_BULK', 8192)),
         'retry_total' => (int) env('OPENROUTER_RETRY_TOTAL', env('AI_OPENROUTER_RETRY_TOTAL', 2)),
         'retry_tunda_ms' => (int) env('OPENROUTER_RETRY_DELAY_MS', env('AI_OPENROUTER_RETRY_DELAY_MS', 400)),
+    ],
+
+    /*
+    | Google Gemini (Google AI Studio) lewat endpoint kompatibel-OpenAI.
+    | Aktifkan dengan AI_PROVIDER=gemini dan isi GEMINI_API_KEY.
+    */
+    'gemini' => [
+        'kunci_api' => $kunciGemini !== '' ? $kunciGemini : null,
+        'url_dasar' => rtrim(
+            (string) env('GEMINI_BASE_URL', 'https://generativelanguage.googleapis.com/v1beta/openai'),
+            '/'
+        ),
+        'nama_model' => $modelGemini,
+        /** @var list<array{id: string, label: string}> */
+        'daftar_model' => $daftarGemini,
+        'batas_waktu_per_model_detik' => (int) env('GEMINI_TIMEOUT_PER_MODEL', 45),
+        'batas_waktu_koneksi_detik' => (int) env('GEMINI_CONNECT_TIMEOUT', 12),
+        'fallback_otomatis' => filter_var(env('GEMINI_FALLBACK', true), FILTER_VALIDATE_BOOLEAN),
+        'suhu' => (float) env('GEMINI_TEMPERATURE', 0.2),
+        'maks_token_keluaran' => env('GEMINI_MAX_TOKENS'),
+        'maks_token_keluaran_bulk' => env('GEMINI_MAX_TOKENS_BULK', 8192),
+        'retry_total' => (int) env('GEMINI_RETRY_TOTAL', 2),
+        'retry_tunda_ms' => (int) env('GEMINI_RETRY_DELAY_MS', 400),
     ],
 
     'queue' => [

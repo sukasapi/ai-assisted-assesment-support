@@ -22,6 +22,7 @@ class KeyBehavior extends Model
         'teks_perilaku',
         'alasan_pemilihan',
         'kutipan_referensi',
+        'keyakinan',
         'tervalidasi',
         'id_pengguna_validasi',
         'waktu_validasi',
@@ -31,6 +32,7 @@ class KeyBehavior extends Model
     {
         return [
             'tervalidasi' => 'boolean',
+            'keyakinan' => 'float',
             'waktu_validasi' => 'datetime',
         ];
     }

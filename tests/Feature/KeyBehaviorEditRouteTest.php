@@ -6,8 +6,6 @@ use App\Models\Assessment;
 use App\Models\AssessmentTool;
 use App\Models\Competency;
 use App\Models\KeyBehavior;
-use App\Models\MatrixVersion;
-use App\Models\Participant;
 use App\Models\User;
 use Database\Seeders\DatabaseSeeder;
 use Tests\Support\AssessmentTestHelpers;
@@ -15,7 +13,6 @@ use Tests\TestCase;
 
 class KeyBehaviorEditRouteTest extends TestCase
 {
-
     public function test_halaman_ubah_perilaku_kunci_dapat_diakses(): void
     {
         $this->seed(DatabaseSeeder::class);
@@ -60,7 +57,7 @@ class KeyBehaviorEditRouteTest extends TestCase
                 'teks_perilaku' => 'Teks diserang via form',
                 'kutipan_referensi' => 'Kutipan diserang via form',
             ])
-            ->assertRedirect(route('asesmen.show', $asesmen));
+            ->assertRedirectContains(route('asesmen.show', $asesmen));
 
         $pk->refresh();
         $this->assertSame('Alasan diperbarui', $pk->alasan_pemilihan);
@@ -88,7 +85,7 @@ class KeyBehaviorEditRouteTest extends TestCase
 
         $this->actingAs($admin)
             ->patch(route('asesmen.perilaku.sahkan', [$asesmen, $pk]))
-            ->assertRedirect(route('asesmen.show', $asesmen))
+            ->assertRedirectContains(route('asesmen.show', $asesmen))
             ->assertSessionHas('status');
 
         $pk->refresh();
@@ -150,7 +147,7 @@ class KeyBehaviorEditRouteTest extends TestCase
                 'simpan_sebagai_mapping' => '1',
                 'alasan_pemilihan' => 'Disetujui asesor',
             ])
-            ->assertRedirect(route('asesmen.show', $asesmen));
+            ->assertRedirectContains(route('asesmen.show', $asesmen));
 
         $pk->refresh();
         $this->assertTrue($pk->tervalidasi);

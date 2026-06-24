@@ -71,6 +71,6 @@ class ConsultantAssignmentController extends Controller
 
     private function authorizeAdmin(): void
     {
-        abort_unless(auth()->user()?->role === 'admin', 403);
+        abort_unless((bool) auth()->user()?->isAdmin(), 403);
     }
 }

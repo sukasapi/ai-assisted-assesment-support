@@ -28,7 +28,7 @@
         </div>
     @endif
 
-    @if (auth()->user()->role === 'admin')
+    @if (auth()->user()?->isAdmin())
         <form method="POST" action="{{ route('master.versi-matriks.konfigurasi-rekomendasi.store', $versiMatriks) }}" class="mb-10 space-y-6" id="form-konfigurasi-rekomendasi">
             @csrf
 

@@ -9,7 +9,7 @@
             <h1 class="mt-2 text-2xl font-semibold text-on-surface">Peserta</h1>
         </div>
         <div class="flex flex-wrap gap-2">
-            @if (auth()->user()->role === 'admin')
+            @if (auth()->user()?->isAdmin())
                 <button type="button" data-open-modal="modal-peserta-tambah" class="rounded-md border border-outline-variant bg-surface-container-lowest px-3 py-2 text-sm font-medium text-on-surface hover:bg-surface-container-low">Tambah</button>
                 <a href="{{ route('peserta.impor-csv') }}" class="rounded-lg accent-gradient px-3 py-2 text-sm font-medium text-white hover:opacity-90">Impor CSV</a>
             @endif
@@ -27,7 +27,7 @@
                     <th class="px-4 py-3">Surel</th>
                     <th class="px-4 py-3">Matriks</th>
                     <th class="px-4 py-3">Aktif</th>
-                    @if (auth()->user()->role === 'admin')
+                    @if (auth()->user()?->isAdmin())
                         <th class="px-4 py-3 text-right">Aksi</th>
                     @endif
                 </tr>
@@ -40,7 +40,7 @@
                         <td class="px-4 py-3 text-on-surface-variant">{{ $row->alamat_surel ?? '—' }}</td>
                         <td class="px-4 py-3 text-on-surface-variant">{{ $row->matrixVersion?->kode_versi ?? '—' }}</td>
                         <td class="px-4 py-3 text-on-surface-variant">{{ $row->aktif ? 'Ya' : 'Tidak' }}</td>
-                        @if (auth()->user()->role === 'admin')
+                        @if (auth()->user()?->isAdmin())
                             <td class="px-4 py-3 text-right">
                                 <button
                                     type="button"
@@ -70,7 +70,7 @@
     </div>
     <x-ui.table-pagination :paginator="$items" />
 
-    @if (auth()->user()->role === 'admin')
+    @if (auth()->user()?->isAdmin())
         @include('master.partials.participant-modals', ['versiMatriks' => $versiMatriks])
         <x-ui.crud-modal-script
             :update-route="route('master.peserta.update', ['peserta' => 999999999])"

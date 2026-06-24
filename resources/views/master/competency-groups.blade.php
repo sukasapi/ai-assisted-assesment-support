@@ -8,7 +8,7 @@
             <a href="{{ route('master.index') }}" class="text-sm text-on-surface-variant hover:text-primary">&larr; Master data</a>
             <h1 class="mt-2 text-2xl font-semibold text-on-surface">Kelompok kompetensi</h1>
         </div>
-        @if (auth()->user()->role === 'admin')
+        @if (auth()->user()?->isAdmin())
             <a href="{{ route('master.kelompok-kompetensi.create') }}" class="rounded-lg accent-gradient px-3 py-2 text-sm font-medium text-white hover:opacity-90">Tambah</a>
         @endif
     </div>
@@ -18,7 +18,7 @@
                 <tr>
                     <th class="px-4 py-3">Kode</th>
                     <th class="px-4 py-3">Nama</th>
-                    @if (auth()->user()->role === 'admin')
+                    @if (auth()->user()?->isAdmin())
                         <th class="px-4 py-3 text-right">Aksi</th>
                     @endif
                 </tr>
@@ -28,7 +28,7 @@
                     <tr class="hover:bg-surface-container-low/80">
                         <td class="px-4 py-3 font-mono text-on-surface">{{ $row->kode }}</td>
                         <td class="px-4 py-3 text-on-surface-variant">{{ $row->nama }}</td>
-                        @if (auth()->user()->role === 'admin')
+                        @if (auth()->user()?->isAdmin())
                             <td class="px-4 py-3 text-right">
                                 <a href="{{ route('master.kelompok-kompetensi.edit', $row) }}" class="text-on-surface-variant underline">Ubah</a>
                                 <form

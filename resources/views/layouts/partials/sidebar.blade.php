@@ -1,5 +1,5 @@
 @php
-    $bolehMaster = in_array(auth()->user()->role, ['admin', 'konsultan'], true);
+    $bolehMaster = auth()->user()?->hasPeran('admin', 'konsultan');
     $iconBase = 'material-symbols-outlined flex size-10 shrink-0 items-center justify-center rounded-xl transition-all p-2';
     $iconActive = 'bg-primary-fixed/40 text-primary';
     $iconIdle = 'text-on-surface-variant group-hover:bg-surface-container-low group-hover:text-primary';
@@ -16,7 +16,7 @@
     ];
 
     if ($bolehMaster) {
-        if (auth()->user()->role === 'admin') {
+        if (auth()->user()?->isAdmin()) {
             $navItems[] = [
                 'href' => route('sesi-asesmen.index'),
                 'active' => request()->routeIs('sesi-asesmen.*'),
@@ -99,7 +99,7 @@
             </div>
             <div class="sidebar-footer-text min-w-0">
                 <p class="text-sm font-medium leading-snug text-on-surface">{{ auth()->user()->name }}</p>
-                <p class="text-xs text-on-surface-variant">{{ auth()->user()->role }}</p>
+                <p class="text-xs text-on-surface-variant">{{ auth()->user()?->peran }}</p>
             </div>
         </div>
         <form method="POST" action="{{ route('logout') }}" class="w-full">

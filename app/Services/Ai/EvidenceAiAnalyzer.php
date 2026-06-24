@@ -5,6 +5,7 @@ namespace App\Services\Ai;
 use App\Models\AiLog;
 use App\Models\CompetencyLevel;
 use App\Models\Evidence;
+use App\Models\KeyBehavior;
 use App\Models\User;
 use App\Support\AiModelCatalog;
 use App\Support\AiPromptComposer;
@@ -15,7 +16,7 @@ use Illuminate\Support\Facades\Log;
 class EvidenceAiAnalyzer
 {
     public function __construct(
-        private readonly OpenRouterClient $client,
+        private readonly ChatClientContract $client,
     ) {}
 
     /**
@@ -64,7 +65,7 @@ SYS;
             ."Daftar tingkat untuk kompetensi ini (pilih id_tingkat_kompetensi yang paling sesuai):\n{$ringkasanTingkat}\n\n"
             ."Teks mentah bukti:\n---\n{$teksMentah}\n---";
 
-        $namaModel = (string) config('ai.openrouter.nama_model');
+        $namaModel = AiModelCatalog::modelDefault();
         $logBaru = new AiLog([
             'id_pengguna' => $pengguna->id,
             'id_asesmen' => $bukti->id_asesmen,
@@ -179,6 +180,13 @@ SYS;
         $aiTingkat = $tingkatAngka !== null ? (string) $tingkatAngka : 'tidak_tahu';
         $keyakinanNorm = $keyakinan !== null ? max(0.0, min(1.0, $keyakinan)) : null;
 
+        // Resolusi akhir id_tingkat: pakai id_tingkat valid; jika kosong tapi ada angka tingkat,
+        // petakan ke baris tingkat yang sesuai.
+        $idTingkatFinal = is_numeric($idTingkat) ? (int) $idTingkat : null;
+        if ($idTingkatFinal === null && $tingkatAngka !== null) {
+            $idTingkatFinal = $tingkatRows->firstWhere('tingkat', $tingkatAngka)?->id;
+        }
+
         $muatan = [
             'id_tingkat_kompetensi_usulan' => is_numeric($idTingkat) ? (int) $idTingkat : null,
             'kutipan_dari_teks_mentah' => $kutipan,
@@ -186,7 +194,7 @@ SYS;
             'konfirmatori' => isset($parsed['konfirmatori']) ? (string) $parsed['konfirmatori'] : null,
         ];
 
-        DB::transaction(function () use ($bukti, $aiTingkat, $alasan, $keyakinanNorm, $muatan, $logBaru): void {
+        DB::transaction(function () use ($bukti, $aiTingkat, $alasan, $kutipan, $keyakinanNorm, $idTingkatFinal, $muatan, $logBaru): void {
             $bukti->update([
                 'ai_tingkat' => $aiTingkat,
                 'ai_alasan' => $alasan,
@@ -194,6 +202,9 @@ SYS;
                 'ai_muatan' => $muatan,
                 'ai_dinilai_pada' => now(),
             ]);
+
+            $this->buatAtauPerbaruiDraftPk($bukti, $idTingkatFinal, $alasan, $kutipan, $keyakinanNorm);
+
             $logBaru->status = 'berhasil';
             $logBaru->pesan_kesalahan = null;
             $logBaru->dibuat_pada = now();
@@ -201,6 +212,38 @@ SYS;
         });
 
         return ['berhasil' => true];
+    }
+
+    /**
+     * E-3: buat/segarkan draf perilaku kunci (tervalidasi=false) dari hasil AI inkremental,
+     * agar asesor cukup meninjau & mengesahkan tanpa mengetik ulang. PK yang sudah disahkan
+     * tidak ditimpa.
+     */
+    private function buatAtauPerbaruiDraftPk(Evidence $bukti, ?int $idTingkat, string $alasan, string $kutipan, ?float $keyakinan): void
+    {
+        $pk = KeyBehavior::query()->firstOrNew([
+            'id_asesmen' => $bukti->id_asesmen,
+            'id_alat_penilaian' => $bukti->id_alat_penilaian,
+            'id_kompetensi' => $bukti->id_kompetensi,
+        ]);
+
+        if ($pk->exists && $pk->tervalidasi) {
+            return;
+        }
+
+        $teks = CompetencyLevel::teksIndikatorResmi($idTingkat)
+            ?? ($kutipan !== '' ? $kutipan : 'Usulan AI — tinjau & lengkapi perilaku kunci.');
+
+        $pk->fill([
+            'id_bukti_penilaian' => $bukti->id,
+            'id_tingkat_kompetensi' => $idTingkat,
+            'teks_perilaku' => $teks,
+            'alasan_pemilihan' => $alasan !== '' ? $alasan : null,
+            'kutipan_referensi' => $kutipan !== '' ? $kutipan : null,
+            'keyakinan' => $keyakinan,
+            'tervalidasi' => false,
+        ]);
+        $pk->save();
     }
 
     /**

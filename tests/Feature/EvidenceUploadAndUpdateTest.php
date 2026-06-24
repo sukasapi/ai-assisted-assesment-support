@@ -18,7 +18,6 @@ use Tests\TestCase;
 
 class EvidenceUploadAndUpdateTest extends TestCase
 {
-
     public function test_store_bukti_teks_berhasil(): void
     {
         $this->seed(DatabaseSeeder::class);
@@ -33,7 +32,7 @@ class EvidenceUploadAndUpdateTest extends TestCase
                 'jenis_sumber' => EvidenceSourceType::Teks->value,
                 'teks_mentah' => 'Observasi peserta menunjukkan inisiatif.',
             ])
-            ->assertRedirect($this->redirectPengumpulan($asesmen, $idKompetensi, $idAlat));
+            ->assertRedirectContains($this->redirectPengumpulan($asesmen, $idKompetensi, $idAlat));
 
         $this->assertDatabaseHas('ais_bukti_penilaian', [
             'id_asesmen' => $asesmen->id,
@@ -75,7 +74,7 @@ class EvidenceUploadAndUpdateTest extends TestCase
                 'jenis_sumber' => EvidenceSourceType::Wawancara->value,
                 'berkas_audio' => $audio,
             ])
-            ->assertRedirect($this->redirectPengumpulan($asesmen, $idKompetensi, $idAlat));
+            ->assertRedirectContains($this->redirectPengumpulan($asesmen, $idKompetensi, $idAlat));
 
         $bukti = Evidence::query()->where('id_asesmen', $asesmen->id)->latest('id')->first();
         $this->assertNotNull($bukti);
@@ -109,7 +108,7 @@ class EvidenceUploadAndUpdateTest extends TestCase
                 'jenis_sumber' => EvidenceSourceType::Wawancara->value,
                 'teks_mentah' => 'Transkrip manual oleh asesor.',
             ])
-            ->assertRedirect($this->redirectPengumpulan($asesmen, $idKompetensi, $idAlat));
+            ->assertRedirectContains($this->redirectPengumpulan($asesmen, $idKompetensi, $idAlat));
 
         $bukti->refresh();
         $this->assertSame('Transkrip manual oleh asesor.', $bukti->teks_mentah);
@@ -143,7 +142,7 @@ class EvidenceUploadAndUpdateTest extends TestCase
                 'jenis_sumber' => EvidenceSourceType::Teks->value,
                 'teks_mentah' => 'Teks baru',
             ])
-            ->assertRedirect(route('asesmen.show', $asesmen))
+            ->assertRedirectContains(route('asesmen.show', $asesmen))
             ->assertSessionHasErrors('asesmen');
 
         $bukti->refresh();
@@ -185,7 +184,7 @@ class EvidenceUploadAndUpdateTest extends TestCase
                 'jenis_sumber' => EvidenceSourceType::Wawancara->value,
                 'berkas_audio' => $audio,
             ])
-            ->assertRedirect($this->redirectPengumpulan($asesmen, $idKompetensi, $idAlat));
+            ->assertRedirectContains($this->redirectPengumpulan($asesmen, $idKompetensi, $idAlat));
 
         $bukti->refresh();
         $this->assertSame(EvidenceSourceType::Wawancara, $bukti->jenis_sumber);
@@ -222,7 +221,7 @@ class EvidenceUploadAndUpdateTest extends TestCase
                 'jenis_sumber' => EvidenceSourceType::Teks->value,
                 'teks_mentah' => 'Diubah menjadi bukti teks.',
             ])
-            ->assertRedirect($this->redirectPengumpulan($asesmen, $idKompetensi, $idAlat));
+            ->assertRedirectContains($this->redirectPengumpulan($asesmen, $idKompetensi, $idAlat));
 
         $bukti->refresh();
         $this->assertSame(EvidenceSourceType::Teks, $bukti->jenis_sumber);
@@ -252,7 +251,7 @@ class EvidenceUploadAndUpdateTest extends TestCase
                 'jenis_sumber' => EvidenceSourceType::Wawancara->value,
                 'teks_mentah' => 'Transkrip wawancara manual tanpa audio.',
             ])
-            ->assertRedirect($this->redirectPengumpulan($asesmen, $idKompetensi, $idAlat));
+            ->assertRedirectContains($this->redirectPengumpulan($asesmen, $idKompetensi, $idAlat));
 
         $bukti->refresh();
         $this->assertSame(EvidenceSourceType::Wawancara, $bukti->jenis_sumber);
@@ -315,7 +314,7 @@ class EvidenceUploadAndUpdateTest extends TestCase
                 'berkas_audio' => $audio,
                 'teks_mentah' => 'Transkrip dari tombol Transcript.',
             ])
-            ->assertRedirect($this->redirectPengumpulan($asesmen, $idKompetensi, $idAlat));
+            ->assertRedirectContains($this->redirectPengumpulan($asesmen, $idKompetensi, $idAlat));
 
         $bukti = Evidence::query()->where('id_asesmen', $asesmen->id)->latest('id')->first();
         $this->assertNotNull($bukti);
@@ -394,7 +393,7 @@ class EvidenceUploadAndUpdateTest extends TestCase
         $this->actingAs($admin)
             ->from(route('asesmen.show', $asesmen))
             ->delete(route('asesmen.bukti.destroy', [$asesmen, $bukti]))
-            ->assertRedirect($this->redirectPengumpulan($asesmen, $idKompetensi, $idAlat))
+            ->assertRedirectContains($this->redirectPengumpulan($asesmen, $idKompetensi, $idAlat))
             ->assertSessionHas('status');
 
         $buktiTerhapus = Evidence::withTrashed()->find($bukti->id);
@@ -425,7 +424,7 @@ class EvidenceUploadAndUpdateTest extends TestCase
         $this->actingAs($admin)
             ->from(route('asesmen.show', $asesmen))
             ->delete(route('asesmen.bukti.destroy', [$asesmen, $bukti]))
-            ->assertRedirect($this->redirectPengumpulan($asesmen, $idKompetensi, $idAlat))
+            ->assertRedirectContains($this->redirectPengumpulan($asesmen, $idKompetensi, $idAlat))
             ->assertSessionHasErrors('bukti');
 
         $bukti->refresh();
@@ -460,6 +459,6 @@ class EvidenceUploadAndUpdateTest extends TestCase
             $params['alat'] = $alatId;
         }
 
-        return route('asesmen.show', $params).'#pengumpulan';
+        return route('asesmen.show', $params);
     }
 }

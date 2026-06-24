@@ -6,12 +6,15 @@ use App\Models\Assessment;
 use App\Models\AssessmentSession;
 use App\Models\PersonalAccessToken;
 use App\Models\User;
-use App\Services\Stt\GroqSttTranscriber;
-use App\Services\Stt\OpenRouterSttTranscriber;
-use App\Services\Stt\TranscriberContract;
 use App\Policies\AssessmentPolicy;
 use App\Policies\AssessmentSessionPolicy;
 use App\Policies\UserPolicy;
+use App\Services\Ai\ChatClientContract;
+use App\Services\Ai\GeminiChatClient;
+use App\Services\Ai\OpenRouterClient;
+use App\Services\Stt\GroqSttTranscriber;
+use App\Services\Stt\OpenRouterSttTranscriber;
+use App\Services\Stt\TranscriberContract;
 use Illuminate\Cache\RateLimiting\Limit;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Gate;
@@ -40,6 +43,15 @@ class AppServiceProvider extends ServiceProvider
                 default => $app->make(GroqSttTranscriber::class),
             };
         });
+
+        $this->app->bind(ChatClientContract::class, function ($app) {
+            $penyedia = (string) config('ai.penyedia', 'openrouter');
+
+            return match ($penyedia) {
+                'gemini' => $app->make(GeminiChatClient::class),
+                default => $app->make(OpenRouterClient::class),
+            };
+        });
     }
 
     /**
@@ -60,6 +72,10 @@ class AppServiceProvider extends ServiceProvider
 
         RateLimiter::for('konsultan-token', function (Request $request): Limit {
             return Limit::perMinute(10)->by('konsultan-token:'.($request->user()?->id ?? $request->ip()));
+        });
+
+        RateLimiter::for('api', function (Request $request): Limit {
+            return Limit::perMinute(60)->by($request->user()?->id ? 'api:'.$request->user()->id : 'api-ip:'.$request->ip());
         });
 
         $this->guardDestructiveSchemaCommands();

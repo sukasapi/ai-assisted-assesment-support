@@ -4,13 +4,13 @@ namespace App\Http\Controllers;
 
 use App\Http\Controllers\Master\AiPromptTemplateController;
 use App\Models\AiOpenRouterModel;
-use App\Models\User;
 use App\Models\AiPromptTemplate;
 use App\Models\AssessmentTool;
 use App\Models\Competency;
 use App\Models\CompetencyGroup;
 use App\Models\MatrixVersion;
 use App\Models\Participant;
+use App\Models\User;
 use App\Support\CompetencyTreeFilter;
 use App\Support\TableSearch;
 use Illuminate\Http\Request;
@@ -47,7 +47,7 @@ class MasterDataController extends Controller
         return view('master.competencies', [
             'kelompok' => $kelompok,
             'jumlahBaris' => $jumlahBaris,
-            'bolehUbah' => auth()->user()?->role === 'admin',
+            'bolehUbah' => (bool) auth()->user()?->isAdmin(),
         ]);
     }
 

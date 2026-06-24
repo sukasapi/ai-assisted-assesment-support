@@ -5,11 +5,12 @@ namespace App\Http\Requests;
 use App\Http\Requests\Concerns\PreservesAssessmentTab;
 use App\Models\Assessment;
 use App\Models\AssessmentToolSelection;
-use App\Models\CompetencyToolMapping;
 use App\Models\CompetencyLevel;
 use App\Models\Evidence;
 use App\Models\KeyBehavior;
+use App\Support\AssessmentMatrix;
 use Illuminate\Foundation\Http\FormRequest;
+use Illuminate\Validation\Rule;
 
 class StoreKeyBehaviorRequest extends FormRequest
 {
@@ -34,7 +35,7 @@ class StoreKeyBehaviorRequest extends FormRequest
             'id_alat_penilaian' => ['required', 'integer', 'exists:ais_alat_penilaian,id'],
             'id_kompetensi' => ['required', 'integer', 'exists:ais_kompetensi,id'],
             'id_bukti_penilaian' => ['nullable', 'integer', 'exists:ais_bukti_penilaian,id'],
-            'id_tingkat_kompetensi' => ['nullable', 'integer', 'exists:ais_tingkat_kompetensi,id'],
+            'id_tingkat_kompetensi' => ['nullable', 'integer', Rule::exists('ais_tingkat_kompetensi', 'id')->whereNull('dihapus_pada')],
             'teks_perilaku' => ['required', 'string'],
             'alasan_pemilihan' => ['nullable', 'string'],
             'kutipan_referensi' => ['nullable', 'string'],
@@ -55,8 +56,7 @@ class StoreKeyBehaviorRequest extends FormRequest
             if (! $adaAlat) {
                 $validator->errors()->add('id_alat_penilaian', 'Alat tidak termasuk pemilihan asesmen ini.');
             }
-            $dipakaiMatriks = CompetencyToolMapping::query()
-                ->where('id_versi_matriks', $asesmen->id_versi_matriks)
+            $dipakaiMatriks = AssessmentMatrix::mappingQuery($asesmen)
                 ->where('id_alat_penilaian', $idAlat)
                 ->where(function ($query): void {
                     $query->where('aktif', true)->orWhereNull('aktif');
@@ -75,8 +75,7 @@ class StoreKeyBehaviorRequest extends FormRequest
             }
 
             $idKompetensi = $this->integer('id_kompetensi');
-            $pasanganMapped = CompetencyToolMapping::query()
-                ->where('id_versi_matriks', $asesmen->id_versi_matriks)
+            $pasanganMapped = AssessmentMatrix::mappingQuery($asesmen)
                 ->where('id_alat_penilaian', $idAlat)
                 ->where('id_kompetensi', $idKompetensi)
                 ->where(function ($query): void {

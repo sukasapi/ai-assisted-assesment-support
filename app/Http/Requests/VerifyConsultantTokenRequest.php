@@ -8,7 +8,7 @@ class VerifyConsultantTokenRequest extends FormRequest
 {
     public function authorize(): bool
     {
-        return $this->user()?->role === 'konsultan';
+        return (bool) $this->user()?->isKonsultan();
     }
 
     /**

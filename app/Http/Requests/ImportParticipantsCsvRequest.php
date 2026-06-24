@@ -9,7 +9,7 @@ class ImportParticipantsCsvRequest extends FormRequest
 {
     public function authorize(): bool
     {
-        return $this->user()?->role === 'admin';
+        return (bool) $this->user()?->hasPeran('admin');
     }
 
     /**

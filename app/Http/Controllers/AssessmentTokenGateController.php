@@ -13,7 +13,7 @@ class AssessmentTokenGateController extends Controller
     public function show(): View|RedirectResponse
     {
         $user = auth()->user();
-        abort_unless($user?->role === 'konsultan', 403);
+        abort_unless((bool) $user?->isKonsultan(), 403);
 
         if (ConsultantAccessSession::penugasanAktif($user) !== null) {
             return redirect()->route('asesmen.index');

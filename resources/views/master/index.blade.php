@@ -8,7 +8,7 @@
     </x-ui.page-header>
 
     @php
-        $isAdmin = auth()->user()->role === 'admin';
+        $isAdmin = auth()->user()?->isAdmin();
 
         $sections = [
             [
@@ -36,6 +36,7 @@
                     $isAdmin ? ['route' => 'master.pengguna.index', 'icon' => 'manage_accounts', 'label' => 'Pengguna aplikasi'] : null,
                     ['route' => 'master.peserta.index', 'icon' => 'group', 'label' => 'Peserta'],
                     $isAdmin ? ['route' => 'master.log-aktivitas.index', 'icon' => 'history', 'label' => 'Log aktivitas'] : null,
+                    $isAdmin ? ['route' => 'master.token-api.index', 'icon' => 'vpn_key', 'label' => 'Token API'] : null,
                 ])),
             ],
         ];

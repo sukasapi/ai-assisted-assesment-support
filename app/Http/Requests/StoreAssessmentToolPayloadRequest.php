@@ -6,7 +6,7 @@ use App\Enums\AssessmentEvidenceCollectionMode;
 use App\Http\Requests\Concerns\PreservesAssessmentTab;
 use App\Models\Assessment;
 use App\Models\AssessmentToolSelection;
-use App\Models\CompetencyToolMapping;
+use App\Support\AssessmentMatrix;
 use Illuminate\Foundation\Http\FormRequest;
 
 class StoreAssessmentToolPayloadRequest extends FormRequest
@@ -50,8 +50,7 @@ class StoreAssessmentToolPayloadRequest extends FormRequest
             if (! $ada) {
                 $validator->errors()->add('id_alat_penilaian', 'Alat tidak termasuk pemilihan asesmen ini.');
             }
-            $dipakaiMatriks = CompetencyToolMapping::query()
-                ->where('id_versi_matriks', $asesmen->id_versi_matriks)
+            $dipakaiMatriks = AssessmentMatrix::mappingQuery($asesmen)
                 ->where('id_alat_penilaian', $idAlat)
                 ->where(function ($query): void {
                     $query->where('aktif', true)->orWhereNull('aktif');
